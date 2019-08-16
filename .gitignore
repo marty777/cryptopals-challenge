@@ -1,4 +1,5 @@
 Debug/*
+x64/*
 ipch/*
 packages/*
 .vs/*
