@@ -1,0 +1,8 @@
+Debug/*
+ipch/*
+packages/*
+.vs/*
+*.VC.db
+*.VC.VC.opendb
+CryptopalsChallenge/Debug/*
+CryptopalsChallenge/x64/*
