@@ -93,6 +93,7 @@ ByteVector::ByteVector(char *input, bv_str_format format) {
 
 			_v[i] = b;
 		}
+		
 		break;
 	case BASE64:
 		// 6 bits per char
@@ -122,11 +123,15 @@ ByteVector::ByteVector(ByteVector *bv) {
 		_v[0] = bv->atIndex(i);
 	}
 }
-ByteVector::ByteVector(int len) {
-	_v.resize((size_t)len, 0);
+ByteVector::ByteVector(size_t len) {
+	_v.resize(len, 0);
 }
 ByteVector::ByteVector() {
 	_v.resize(0);
+}
+
+ByteVector::~ByteVector() {
+	_v.~vector();
 }
 
 
@@ -135,6 +140,12 @@ size_t ByteVector::length() {
 }
 byte ByteVector::atIndex(size_t index) {
 	return _v[index];
+}
+byte ByteVector::setAtIndex(byte value, size_t index) {
+	if (index >= _v.size()) {
+		throw -1;
+	}
+	_v[index] = value;
 }
 bool ByteVector::equal(ByteVector *bv) {
 	if (bv->length() != _v.size()) {
@@ -150,6 +161,20 @@ bool ByteVector::equal(ByteVector *bv) {
 		}
 	}
 	return equal;
+}
+
+// XOR input vector of arbitrary length with this one and return result
+ByteVector ByteVector:: xor (ByteVector *bv) {
+	ByteVector bv2 = new ByteVector(_v.size());
+	size_t j = 0;
+	for (size_t i = 0; i < _v.size(); i++) {
+		if (j >= bv->length()) {
+			j = 0;
+		}
+		bv2.setAtIndex(bv->atIndex(j) ^ _v[i], i);
+		j++;
+	}
+	return bv2;
 }
 
 char *ByteVector::toStr(bv_str_format format) {
@@ -182,6 +207,7 @@ char *ByteVector::toStr(bv_str_format format) {
 			str[i * 2] = hex[(_v[i] >> 4) & 0xf];
 			str[(i * 2) + 1] = hex[(_v[i]) & 0xf];
 		}
+		
 		str[(_v.size() * 2)] = '\0';
 		break;
 	case BASE64:

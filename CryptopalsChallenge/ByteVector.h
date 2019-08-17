@@ -13,12 +13,16 @@ private:
 public:
 	ByteVector(char *input, bv_str_format format);
 	ByteVector(ByteVector *bv);
-	ByteVector(int len);
+	ByteVector(size_t len);
 	ByteVector();
+	~ByteVector();
 
 	size_t length();
 	byte atIndex(size_t index);
+	byte setAtIndex(byte value, size_t index);
 	bool equal(ByteVector *bv);
+
+	ByteVector xor(ByteVector *bv);
 
 	char *toStr(bv_str_format format);
 };
