@@ -4,10 +4,12 @@ using namespace std;
 
 
 void Set1Challenge1() {
-	char *inputStr = "49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d";
+	//char *inputStr = "49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d";
+	char *inputStr = "f013";
 	cout << "Input (hex): " << inputStr << "\n";
 	ByteVector bv = ByteVector(inputStr, HEX);
-
+	char *output = bv.toStr(HEX);
+	cout << output << "\n";
 
 }
 

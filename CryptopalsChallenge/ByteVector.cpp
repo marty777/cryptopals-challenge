@@ -1,4 +1,5 @@
 #include "ByteVector.h"
+#include <iostream>
 
 char indexToCharBase64(unsigned int index) {
 	if (index <= 25) {
@@ -74,20 +75,20 @@ ByteVector::ByteVector(char *input, bv_str_format format) {
 		_v.resize(strlen(input)/2);
 		for (size_t i = 0; i < _v.size(); i++) {
 			byte b = 0;
-			char c1 = (byte)input[i/2];
-			char c2 = (byte)input[(i/2) + 1];
+			char c1 = (byte)input[i*2];
+			char c2 = (byte)input[(i*2) + 1];
 			if (c1 >= 0x30 && c1 <= 0x39) {
-				b = ((c1 - 0x30) << 8);
+				b = ((c1 - 0x30) << 4);
 			}
-			else if (c1 >= 0x41 && c1 >= 0x46) {
-				b = (10 + (c1 - 0x41)) << 8;
+			else if (c1 >= 0x61 && c1 <= 0x66) {
+				b = (byte)((int)((10 + (c1 - 0x61)) << 4));
 			}
-
+			
 			if (c2 >= 0x30 && c2 <= 0x39) {
 				b |= ((c2 - 0x30));
 			}
-			else if (c2 >= 0x41 && c2 >= 0x46) {
-				b |= (10 + (c1 - 0x41));
+			else if (c2 >= 0x61 && c2 <= 0x66) {
+				b |= (10 + (c2 - 0x61));
 			}
 
 			_v[i] = b;
@@ -101,24 +102,25 @@ ByteVector::ByteVector(char *input, bv_str_format format) {
 		_v.resize(3 * (strlen(input)/4));
 		for (size_t i = 0; i < _v.size(); i+=3) {
 			size_t index = 4 * (i / 3);
-			byte a = 0;
-			byte b = 0;
-			byte c = 0;
-			char d1 = input[index];
-			char d2 = input[index + 1];
-			char d3 = input[index + 2];
-			char d4 = input[index + 3];
-			// TBD
+			
+			int d1 = charToIndexBase64(input[index]);
+			int d2 = charToIndexBase64(input[index + 1]);
+			int d3 = charToIndexBase64(input[index + 2]);
+			int d4 = charToIndexBase64(input[index + 3]);
+			_v[i]= (d1 << 2) | ((d2 >> 4) & 0x3);
+			_v[i + 1] = ((d2 << 4) & 0xf0) | (d3 >> 2);
+			_v[i + 2] = ((d3 << 6) & 0xc0) | d4;
 		}
 		break;
 	default:
+		break;
 	}
 }
 
 ByteVector::ByteVector(ByteVector *bv) {
 	_v.resize(bv->length());
-	for (int i = 0; i < bv->length; i++) {
-		_v[0] = bv->atIndex[i];
+	for (int i = 0; i < bv->length(); i++) {
+		_v[0] = bv->atIndex(i);
 	}
 }
 ByteVector::ByteVector(int len) {
@@ -137,7 +139,40 @@ size_t ByteVector::length() {
 }
 
 char *ByteVector::toStr(bv_str_format format) {
+	char *str = NULL;
+	const char *hex = "0123456789abcdef";
+	const char *base64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 	switch (format) {
+		
+	case ASCII:
+		str = new char[_v.size() + 1];
+		for (int i = 0; i < _v.size(); i++) {
+			str[i] = _v[i];
+		}
+		str[_v.size()] = '\0';
+		break;
+	case BINARY:
+		str = new char[_v.size() * 8 + 1];
+		
+		for (int i = 0; i < _v.size(); i++) {
+			for (int j = 0; j < 8; j++) {
+				str[i * 8 + j] = ((_v[i] >> (7 - j)) & 0x1) == 1 ? '1' : '0';
+			}
+		}
+		str[_v.size() * 8] = '\0';
+		break;
+	case HEX:
+		str = new char[(_v.size() * 2) + 1];
+		
+		for (int i = 0; i < _v.size(); i++) {
+			str[i * 2] = hex[(_v[i] >> 4) & 0xf];
+			str[(i * 2) + 1] = hex[(_v[i]) & 0xf];
+		}
+		str[(_v.size() * 2)] = '\0';
+		break;
+	case BASE64:
 		// TBD
+		break;
 	}
+	return str;
 }
