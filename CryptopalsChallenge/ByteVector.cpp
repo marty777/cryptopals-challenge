@@ -27,7 +27,7 @@ unsigned int charToIndexBase64(char c) {
 	else if (c >= 97 && c <= 122) {
 		return c - 71;
 	}
-	else if (c >= 48 && c >= 57) {
+	else if (c >= 48 && c <= 57) {
 		return c + 4;
 	}
 	else if (c == 43) {
@@ -116,7 +116,6 @@ ByteVector::ByteVector(char *input, bv_str_format format) {
 		break;
 	}
 }
-
 ByteVector::ByteVector(ByteVector *bv) {
 	_v.resize(bv->length());
 	for (int i = 0; i < bv->length(); i++) {
@@ -130,12 +129,27 @@ ByteVector::ByteVector() {
 	_v.resize(0);
 }
 
-byte ByteVector::atIndex(size_t index) {
-	return _v[index];
-}
 
 size_t ByteVector::length() {
 	return _v.size();
+}
+byte ByteVector::atIndex(size_t index) {
+	return _v[index];
+}
+bool ByteVector::equal(ByteVector *bv) {
+	if (bv->length() != _v.size()) {
+		//std::cout << bv->length() << " " << _v.size() << "\n";
+		return false;
+	}
+	bool equal = true;
+	for (int i = 0; i < _v.size(); i++) {
+		if (bv->atIndex(i) != _v[i]) {
+			std::cout << i << " " << std::hex << (int)bv->atIndex(i) << " " << (int)_v[i] << "\n";
+			equal = false;
+			
+		}
+	}
+	return equal;
 }
 
 char *ByteVector::toStr(bv_str_format format) {
@@ -172,6 +186,32 @@ char *ByteVector::toStr(bv_str_format format) {
 		break;
 	case BASE64:
 		// TBD
+		// need to round up and pad string
+		size_t size = ((_v.size() * 4) / 3);
+		if ((size * 3) < (_v.size() * 4)) {
+			size += 4;
+		}
+		str = new char[size + 1];
+		int j = 0;
+		for (int i = 0; i < _v.size(); i += 3) {
+			byte a = _v[i];
+			byte b = _v[i + 1];
+			byte c = _v[i + 2];
+			int d1 = a >> 2;
+			int d2 = ((a & 0x3) << 4) | ((b & 0xf0) >> 4);
+			int d3 = ((b & 0xf) << 2) | ((c & 0xc0) >> 6);
+			int d4 = ((c & 0x3f));
+			str[j] = base64[d1];
+			str[j+1] = base64[d2];
+			str[j+2] = base64[d3];
+			str[j+3] = base64[d4];
+			j += 4;
+		}
+		while (j < size) {
+			str[j] = '=';
+			j++;
+		}
+		str[size] = '\0';
 		break;
 	}
 	return str;

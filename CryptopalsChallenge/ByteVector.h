@@ -18,6 +18,7 @@ public:
 
 	size_t length();
 	byte atIndex(size_t index);
+	bool equal(ByteVector *bv);
 
 	char *toStr(bv_str_format format);
 };
