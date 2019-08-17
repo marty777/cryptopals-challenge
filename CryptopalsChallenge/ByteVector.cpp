@@ -160,6 +160,38 @@ bool ByteVector::equal(ByteVector *bv) {
 	return equal;
 }
 
+int ByteVector::hammingDistance(ByteVector *bv) {
+	int dist = 0;
+	int i = 0;
+	while (i < _v.size() && i < bv->length()) {
+		byte xor = _v[i] ^ bv->atIndex(i);
+		for (int j = 0; j < 8; j++) {
+			dist += (0x01 & (xor >> j));
+		}
+		i++;
+	}
+
+	// for vectors of unequal length, count missing bytes as 0s.
+	if (i < _v.size()) {
+		while (i < _v.size()) {
+			for (int j = 0; j < 8; j++) {
+				dist += (0x01 & (_v[i] >> j));
+			}
+			
+			i++;
+		}
+	}
+	else if (i < bv->length()) {
+		while (i < bv->length()) {
+			for (int j = 0; j < 8; j++) {
+				dist += (0x01 & (bv->atIndex(i) >> j));
+			}
+			i++;
+		}
+	}
+	return dist;
+}
+
 // XOR input vector of arbitrary length with this one and return result
 ByteVector ByteVector:: xor (ByteVector *bv) {
 	ByteVector bv2 = new ByteVector(_v.size());

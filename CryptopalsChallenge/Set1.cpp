@@ -98,6 +98,26 @@ void Set1Challenge5() {
 	cout << (expected_bv.equal(&result) ? "Output matches expected result\n" : "Output does not match expected") << endl;
 }
 
+void Set1Challenge6() {
+	
+	char *input1 = "this is a test";
+	char *input2 = "wokka wokka!!!";
+	ByteVector input1_bv = ByteVector(input1, ASCII);
+	ByteVector input2_bv = ByteVector(input2, ASCII);
+	cout << "Test input 1:\t" << input1_bv.toStr(ASCII) << endl;
+	cout << "Test input 2:\t" << input2_bv.toStr(ASCII) << endl;
+	cout << "Test hamming distance:\t" << dec << (int)input1_bv.hammingDistance(&input2_bv) << endl;
+
+	char *filePath = "../challenge-files/set1/6.txt";
+	ifstream in(filePath);
+	if (!in) {
+		cout << "Cannot open input file.\n";
+		return;
+	}
+
+
+}
+
 int main() {
 	
 	cout << "Set 1 Challenge 1\n";
@@ -122,6 +142,11 @@ int main() {
 	getchar();
 	cout << "Set 1 Challenge 5\n";
 	Set1Challenge5();
+	// Pause before continuing
+	cout << "Press any key to continue...\n";
+	getchar();
+	cout << "Set 1 Challenge 6\n";
+	Set1Challenge6();
 	// Pause before continuing
 	cout << "Press any key to continue...\n";
 	getchar();
