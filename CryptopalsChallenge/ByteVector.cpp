@@ -43,12 +43,9 @@ unsigned int charToIndexBase64(char c) {
 ByteVector::ByteVector(char *input, bv_str_format format) {
 	switch (format) {
 	case ASCII:
-		_v.resize(2 * strlen(input));
+		_v.resize(strlen(input));
 		for (size_t i = 0; i < strlen(input); i++) {
-			byte a = input[i] & 0xf;
-			byte b = input[i] >> 8;
-			_v[2 * i] = a;
-			_v[2 * i + 1] = b;
+			_v[i] = input[i];
 		}
 		break;
 	case BINARY:
@@ -172,6 +169,7 @@ ByteVector ByteVector:: xor (ByteVector *bv) {
 			j = 0;
 		}
 		bv2.setAtIndex(bv->atIndex(j) ^ _v[i], i);
+		//std::cout << std::hex << (int)bv->atIndex(j) << " " << (int)_v[i] << " " << (int)(bv->atIndex(j) ^ _v[i]) << std::endl;
 		j++;
 	}
 	return bv2;
