@@ -1,3 +1,4 @@
+*.TMP
 Debug/*
 x64/*
 ipch/*

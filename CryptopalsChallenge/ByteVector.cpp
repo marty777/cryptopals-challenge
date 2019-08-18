@@ -20,7 +20,7 @@ char indexToCharBase64(unsigned int index) {
 	return ' ';
 }
 
-unsigned int charToIndexBase64(char c) {
+ int charToIndexBase64(char c) {
 	if (c >= 65 && c <= 90) {
 		return c - 65;
 	}
@@ -36,21 +36,24 @@ unsigned int charToIndexBase64(char c) {
 	else if (c == 47) {
 		return 63;
 	}
-
-	return 0;
+	else if (c == 61) { // kludge for the = padding.
+		return 100;
+	}
+	return -1;
 }
 
 ByteVector::ByteVector(char *input, bv_str_format format) {
 	switch (format) {
-	case ASCII:
+	case ASCII: {
 		_v.resize(strlen(input));
 		for (size_t i = 0; i < strlen(input); i++) {
 			_v[i] = input[i];
 		}
 		break;
-	case BINARY:
+	}
+	case BINARY: {
 		if ((strlen(input) % 8) != 0) {
-			throw -1;
+			throw - 1;
 		}
 		_v.resize(strlen(input) / 8);
 		for (size_t i = 0; i < _v.size(); i++) {
@@ -65,22 +68,23 @@ ByteVector::ByteVector(char *input, bv_str_format format) {
 			_v[i] = b;
 		}
 		break;
-	case HEX:
+	}
+	case HEX: {
 		if ((strlen(input) % 2) != 0) {
 			throw - 1;
 		}
-		_v.resize(strlen(input)/2);
+		_v.resize(strlen(input) / 2);
 		for (size_t i = 0; i < _v.size(); i++) {
 			byte b = 0;
-			char c1 = (byte)input[i*2];
-			char c2 = (byte)input[(i*2) + 1];
+			char c1 = (byte)input[i * 2];
+			char c2 = (byte)input[(i * 2) + 1];
 			if (c1 >= 0x30 && c1 <= 0x39) {
 				b = ((c1 - 0x30) << 4);
 			}
 			else if (c1 >= 0x61 && c1 <= 0x66) {
 				b = (byte)((int)((10 + (c1 - 0x61)) << 4));
 			}
-			
+
 			if (c2 >= 0x30 && c2 <= 0x39) {
 				b |= ((c2 - 0x30));
 			}
@@ -90,15 +94,82 @@ ByteVector::ByteVector(char *input, bv_str_format format) {
 
 			_v[i] = b;
 		}
-		
+
 		break;
-	case BASE64:
+	}
+	case BASE64: {
+		// It's useful to have this skip all non-base64 characters in the input string.
 		// 6 bits per char
-		if ((strlen(input) % 4) != 0) {
+		/*if ((strlen(input) % 4) != 0) {
 			throw - 1;
+		}*/
+
+		size_t inputlen = strlen(input);
+		int d[4];
+		int inputCount = 0;
+		// determine size to allocate - this count skips padding characters
+		for (size_t i = 0; i < inputlen; i++) {
+			if (charToIndexBase64(input[i]) >= 0 && charToIndexBase64(input[i]) != 100) {
+				inputCount++;
+			}
 		}
-		_v.resize(3 * (strlen(input)/4));
-		for (size_t i = 0; i < _v.size(); i+=3) {
+		
+		int byteCount = 3*(inputCount / 4);
+		if(inputCount % 4 == 3) {
+			byteCount += 2;
+		}
+		else if (inputCount % 4 == 2) {
+			byteCount += 1;
+		}
+		std::cout << inputCount << " " << byteCount << std::endl;
+		_v.resize(byteCount);
+		size_t i = 0;
+		size_t k = 0;
+		byte accumulator = 0;
+		bool done = false;
+		int j = 0;
+		while (i < inputlen && !done) {
+			
+			int index = charToIndexBase64(input[i]);
+			//std::cout << index;
+			if (index > -1) {
+				if (j == 0) {
+					accumulator = 0xff & (index << 2);
+				}
+				else if (j == 1) {
+					accumulator = accumulator | (index >> 4);
+					_v[k] = accumulator;
+					k++;
+					accumulator = 0xff & (index << 4);
+				}
+				else if (j == 2) {
+					if (index != 100) {
+						accumulator = accumulator | (index >> 2);
+						_v[k] = accumulator;
+						k++;
+						accumulator = 0xff & (index << 6);
+					}
+					else {
+						done = true;
+					}
+				}
+				else if (j == 3) {
+					if (index != 100) {
+						accumulator = accumulator | index;
+						_v[k] = accumulator;
+						k++;
+						accumulator = 0;
+						j = -1;
+					}
+					else {
+						done = true;
+					}
+				}
+				j++;
+			}
+			i++;
+		}
+		/*for (size_t i = 0; i < _v.size(); i+=3) {
 			size_t index = 4 * (i / 3);
 			
 			int d1 = charToIndexBase64(input[index]);
@@ -108,8 +179,9 @@ ByteVector::ByteVector(char *input, bv_str_format format) {
 			_v[i]= (d1 << 2) | ((d2 >> 4) & 0x3);
 			_v[i + 1] = ((d2 << 4) & 0xf0) | (d3 >> 2);
 			_v[i + 2] = ((d3 << 6) & 0xc0) | d4;
-		}
+		}*/
 		break;
+	}
 	default:
 		break;
 	}
@@ -212,7 +284,7 @@ char *ByteVector::toStr(bv_str_format format) {
 	const char *hex = "0123456789abcdef";
 	const char *base64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 	switch (format) {
-		
+
 	case ASCII:
 		str = new char[_v.size() + 1];
 		for (int i = 0; i < _v.size(); i++) {
@@ -222,7 +294,7 @@ char *ByteVector::toStr(bv_str_format format) {
 		break;
 	case BINARY:
 		str = new char[_v.size() * 8 + 1];
-		
+
 		for (int i = 0; i < _v.size(); i++) {
 			for (int j = 0; j < 8; j++) {
 				str[i * 8 + j] = ((_v[i] >> (7 - j)) & 0x1) == 1 ? '1' : '0';
@@ -232,41 +304,65 @@ char *ByteVector::toStr(bv_str_format format) {
 		break;
 	case HEX:
 		str = new char[(_v.size() * 2) + 1];
-		
+
 		for (int i = 0; i < _v.size(); i++) {
 			str[i * 2] = hex[(_v[i] >> 4) & 0xf];
 			str[(i * 2) + 1] = hex[(_v[i]) & 0xf];
 		}
-		
+
 		str[(_v.size() * 2)] = '\0';
 		break;
 	case BASE64:
 		// TBD
 		// need to round up and pad string
 		size_t size = ((_v.size() * 4) / 3);
-		if ((size * 3) < (_v.size() * 4)) {
-			size += 4;
+		if (_v.size() % 3 == 1) {
+			size += 3;
+		}
+		else if (_v.size() % 3 == 2) {
+			size += 2;
 		}
 		str = new char[size + 1];
-		int j = 0;
-		for (int i = 0; i < _v.size(); i += 3) {
-			byte a = _v[i];
-			byte b = _v[i + 1];
-			byte c = _v[i + 2];
-			int d1 = a >> 2;
-			int d2 = ((a & 0x3) << 4) | ((b & 0xf0) >> 4);
-			int d3 = ((b & 0xf) << 2) | ((c & 0xc0) >> 6);
-			int d4 = ((c & 0x3f));
-			str[j] = base64[d1];
-			str[j+1] = base64[d2];
-			str[j+2] = base64[d3];
-			str[j+3] = base64[d4];
-			j += 4;
+		size_t j = 0;
+		size_t i = 0;
+		byte accumulator = 0;
+		while (i < _v.size()) {
+			if (i % 3 == 0) {
+				accumulator = (_v[i] >> 2);
+				str[j] = base64[accumulator];
+				j++;
+				accumulator = 0x30 & (_v[i] << 4);
+			}
+			else if (i % 3 == 1) {
+				accumulator = accumulator | (_v[i] >> 4);
+				str[j] = base64[accumulator];
+				j++;
+				accumulator = (_v[i] & 0xf) << 2;
+			}
+			else if (i % 3 == 2) {
+				accumulator = accumulator | (_v[i] >> 6);
+				str[j] = base64[accumulator];
+				j++;
+				accumulator = 0x3f & _v[i];
+				str[j] = base64[accumulator];
+				j++;
+				accumulator = 0;
+			}
+			i++;
 		}
-		while (j < size) {
+		if (_v.size() % 3 == 1) {
+			str[j] = base64[accumulator];
+			j++;
 			str[j] = '=';
 			j++;
+			str[j] = '=';
 		}
+		else if (_v.size() % 3 == 2) {
+			str[j] = base64[accumulator];
+			j++;
+			str[j] = '=';
+		}
+
 		str[size] = '\0';
 		break;
 	}

@@ -67,7 +67,7 @@ void Set1Challenge4() {
 	while (in) {
 		in.getline(line, 255);
 		// test possible key bytes and print if below a specific threshold for manual inspection.
-		float threshold = 0.8;
+		float threshold = 0.8f;
 		ByteVector line_bv = ByteVector(line, HEX);
 		ByteVector key_bv = ByteVector("00", HEX);
 		for (byte i = 0; i < 255; i++) {
@@ -109,42 +109,52 @@ void Set1Challenge6() {
 	cout << "Test hamming distance:\t" << dec << (int)input1_bv.hammingDistance(&input2_bv) << endl;
 
 	char *filePath = "../challenge-files/set1/6.txt";
-	ifstream in(filePath);
-	if (!in) {
-		cout << "Cannot open input file.\n";
-		return;
-	}
+	ifstream f;
+	string input;
 
+	f.open(filePath);
+	f.seekg(0, std::ios::end);
+	input.reserve(f.tellg());
+	f.seekg(0, std::ios::beg);
 
+	input.assign((std::istreambuf_iterator<char>(f)),
+	std::istreambuf_iterator<char>());
+
+	f.close();
+
+	ByteVector bv = ByteVector(&input[0], BASE64);
+
+	cout << bv.toStr(BASE64) << endl;
+	
 }
 
 int main() {
 	
-	cout << "Set 1 Challenge 1\n";
-	Set1Challenge1();
-	// Pause before continuing
-	cout << "Press any key to continue...\n";
-	getchar();
-	cout << "Set 1 Challenge 2\n";
-	Set1Challenge2();
-	// Pause before continuing
-	cout << "Press any key to continue...\n";
-	getchar();
-	cout << "Set 1 Challenge 3\n";
-	Set1Challenge3();
-	// Pause before continuing
-	cout << "Press any key to continue...\n";
-	getchar();
-	cout << "Set 1 Challenge 4\n";
-	Set1Challenge4();
-	// Pause before continuing
-	cout << "Press any key to continue...\n";
-	getchar();
-	cout << "Set 1 Challenge 5\n";
-	Set1Challenge5();
-	// Pause before continuing
-	cout << "Press any key to continue...\n";
-	getchar();
+	//cout << "Set 1 Challenge 1\n";
+	//Set1Challenge1();
+	//// Pause before continuing
+	//cout << "Press any key to continue...\n";
+	//getchar();
+	//cout << "Set 1 Challenge 2\n";
+	//Set1Challenge2();
+	//// Pause before continuing
+	//cout << "Press any key to continue...\n";
+	//getchar();
+	//cout << "Set 1 Challenge 3\n";
+	//Set1Challenge3();
+	//// Pause before continuing
+	//cout << "Press any key to continue...\n";
+	//getchar();
+	//cout << "Set 1 Challenge 4\n";
+	//Set1Challenge4();
+	//// Pause before continuing
+	//cout << "Press any key to continue...\n";
+	//getchar();
+	//cout << "Set 1 Challenge 5\n";
+	//Set1Challenge5();
+	//// Pause before continuing
+	//cout << "Press any key to continue...\n";
+	//getchar();
 	cout << "Set 1 Challenge 6\n";
 	Set1Challenge6();
 	// Pause before continuing
