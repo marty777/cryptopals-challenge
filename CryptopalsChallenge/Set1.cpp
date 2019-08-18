@@ -124,8 +124,105 @@ void Set1Challenge6() {
 
 	ByteVector bv = ByteVector(&input[0], BASE64);
 
-	cout << bv.toStr(BASE64) << endl;
+	// Test hamming distances of sequential blocks for various potential key lengths.
+	// Lower hamming distance indicates more likely length of actual key
+	const int max_keysize = 40;
+	float keysize_distances[max_keysize];
+	for (int i = 0; i < max_keysize; i++) {
+		// let's try averaging multiple blocks per keysize
+		// keysize = i+1
+		size_t h1 = bv.hammingDistance(&bv, true, 0, i, i + 1, 2*i + 1);
+		size_t h2 = bv.hammingDistance(&bv, true, i+1, 2*i+1, 2*i+2, 3*i+2);
+		size_t h3 = bv.hammingDistance(&bv, true, 2*i + 2, 3 * i + 2, 3 * i + 3, 4 * i + 3);
+		keysize_distances[i] = (float)(h1 + h2 + h3) / ((i + 1) * 3.0f);
+		//cout << (i + 1) << " " << keysize_distances[i] << endl;
+	}
+	// ugh, sorting
+	int keysize_order[max_keysize];
+	int j = 0;
+	while (j < max_keysize) {
+		float best_distance = 1000;
+		int best_index = -1;
+		for (int i = 0; i < max_keysize; i++) {
+			bool already_found = false;
+			for (int k = 0; k < j; k++) {
+				if (keysize_order[k] == i) {
+					already_found = true;
+					break;
+				}
+			}
+			if (already_found) {
+				continue;
+			}
+			if (keysize_distances[i] < best_distance) {
+				best_distance = keysize_distances[i];
+				best_index = i;
+			}
+		}
+		keysize_order[j] = best_index;
+		j++;
+	}
+
+	/*for (int i = 0; i < max_keysize; i++) {
+		cout << (i) << " " << keysize_order[i] << endl;
+	}*/
+
+	// Test the top 5 likely keysizes
+
+	float best_decrypt_score = 100000;
+	int best_keysize = 0;
+	ByteVector best_key;
+
+	for (int i = 0; i < 5; i++) {
+		int keysize = keysize_order[i] + 1;
+		int numblocks = bv.length() / keysize;
+		ByteVector *transpose_blocks = new ByteVector[keysize];
+		ByteVector potential_key = ByteVector(keysize);
+		for (int j = 0; j < keysize; j++) {
+			// transpose nth byte of each keysize-sized block into a new vector
+			transpose_blocks[j] = ByteVector(numblocks);
+			int block = 0;
+			for (int k = j; k < bv.length() - keysize; k += keysize) {
+				transpose_blocks[j].setAtIndex(bv.atIndex(k), block);
+				block++;
+			}
+			// treat transposed vector as a single-byte keyed xor cipher and test character frequencies for all bytes
+			ByteVector key_bv = ByteVector(1);
+			float histogram[255];
+			for (byte b = 0; b < 255; b++) {
+				key_bv.setAtIndex(b, 0);
+				ByteVector result = transpose_blocks[j]. xor (&key_bv);
+				string resultText(reinterpret_cast<char*>(result.toStr(ASCII)));
+				histogram[b] = PlaintextEvaluator::score(resultText);
+			}
+			// record best scoring byte for this keylength and position
+			byte best_byte = 0;
+			float best_score = 1000;
+			for (byte b = 0; b < 255; b++) {
+				if (histogram[b] < best_score) {
+					best_byte = b;
+					best_score = histogram[b];
+				}
+			}
+			potential_key.setAtIndex(best_byte, j);
+		}
+		// attempt decryption with potential key
+		ByteVector decryption = bv. xor (&potential_key);
+		// test character frequency
+		string resultText(reinterpret_cast<char*>(decryption.toStr(ASCII)));
+		float score = PlaintextEvaluator::score(resultText);
+		if (score < best_decrypt_score) {
+			best_decrypt_score = score;
+			best_keysize = keysize;
+			best_key = ByteVector(potential_key);
+		}
+	}
 	
+	cout << "Best key length:\t" << best_keysize << endl;
+	cout << "Best key:\t" << best_key.toStr(HEX) << endl << "\t\t" << best_key.toStr(ASCII) << endl ;
+	ByteVector decryption = bv. xor (&best_key);
+	cout << "Decryption: " << endl << decryption.toStr(ASCII) << endl;
+
 }
 
 int main() {

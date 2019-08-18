@@ -100,12 +100,8 @@ ByteVector::ByteVector(char *input, bv_str_format format) {
 	case BASE64: {
 		// It's useful to have this skip all non-base64 characters in the input string.
 		// 6 bits per char
-		/*if ((strlen(input) % 4) != 0) {
-			throw - 1;
-		}*/
-
+		
 		size_t inputlen = strlen(input);
-		int d[4];
 		int inputCount = 0;
 		// determine size to allocate - this count skips padding characters
 		for (size_t i = 0; i < inputlen; i++) {
@@ -121,7 +117,6 @@ ByteVector::ByteVector(char *input, bv_str_format format) {
 		else if (inputCount % 4 == 2) {
 			byteCount += 1;
 		}
-		std::cout << inputCount << " " << byteCount << std::endl;
 		_v.resize(byteCount);
 		size_t i = 0;
 		size_t k = 0;
@@ -169,17 +164,6 @@ ByteVector::ByteVector(char *input, bv_str_format format) {
 			}
 			i++;
 		}
-		/*for (size_t i = 0; i < _v.size(); i+=3) {
-			size_t index = 4 * (i / 3);
-			
-			int d1 = charToIndexBase64(input[index]);
-			int d2 = charToIndexBase64(input[index + 1]);
-			int d3 = charToIndexBase64(input[index + 2]);
-			int d4 = charToIndexBase64(input[index + 3]);
-			_v[i]= (d1 << 2) | ((d2 >> 4) & 0x3);
-			_v[i + 1] = ((d2 << 4) & 0xf0) | (d3 >> 2);
-			_v[i + 2] = ((d3 << 6) & 0xc0) | d4;
-		}*/
 		break;
 	}
 	default:
@@ -232,34 +216,53 @@ bool ByteVector::equal(ByteVector *bv) {
 	return equal;
 }
 
-int ByteVector::hammingDistance(ByteVector *bv) {
+// Arguments:
+//	*bv		- comparison vector pointer
+//  subset	- optional, use start and end indexes for comparison, not both full vectors
+//	start_a - start comparison index for this vector
+//  end_a	- end comparison index for this vector
+//	start_b	- start comparison index for the provided vector bv
+//  end_b	- end comparison index for provided vector
+size_t ByteVector::hammingDistance(ByteVector *bv, bool subset, size_t start_a, size_t end_a, size_t start_b, size_t end_b) {
+	if (subset) {
+		// 0 length comparisons are allowed (start_a = start_b, for example)
+		if (start_a >= bv->length() || end_a > bv->length() || start_a > end_a ||
+			start_b >= bv->length() || end_b > bv->length() || start_b > end_b) {
+			return 0;
+		}
+	}
+	else {
+		start_a = 0;
+		end_a = _v.size() - 1;
+		start_b = 0;
+		end_b = bv->length() - 1;
+	}
 	int dist = 0;
-	int i = 0;
-	while (i < _v.size() && i < bv->length()) {
-		byte xor = _v[i] ^ bv->atIndex(i);
-		for (int j = 0; j < 8; j++) {
-			dist += (0x01 & (xor >> j));
+	int i = start_a;
+	int j = start_b;
+	while (i <= end_a && j <= end_b) {
+		byte xor = _v[i] ^ bv->atIndex(j);
+		for (int k = 0; k < 8; k++) {
+			dist += (0x01) & (xor >> k);
 		}
 		i++;
+		j++;
 	}
 
 	// for vectors of unequal length, count missing bytes as 0s.
-	if (i < _v.size()) {
-		while (i < _v.size()) {
-			for (int j = 0; j < 8; j++) {
-				dist += (0x01 & (_v[i] >> j));
-			}
-			
-			i++;
+	while (i <= end_a) {
+		std::cout << "Got 1 " << i << " " << end_a << std::endl;
+		for (int k = 0; k < 8; k++) {
+			dist += (0x01) & (_v[i] >> k);
 		}
+		i++;
 	}
-	else if (i < bv->length()) {
-		while (i < bv->length()) {
-			for (int j = 0; j < 8; j++) {
-				dist += (0x01 & (bv->atIndex(i) >> j));
-			}
-			i++;
+	while (j <= end_b) {
+		std::cout << "Got 2" << j << " " << end_b << std::endl;
+		for (int k = 0; k < 8; k++) {
+			dist += (0x01) & (bv->atIndex(j) >> k);
 		}
+		j++;
 	}
 	return dist;
 }
@@ -313,8 +316,6 @@ char *ByteVector::toStr(bv_str_format format) {
 		str[(_v.size() * 2)] = '\0';
 		break;
 	case BASE64:
-		// TBD
-		// need to round up and pad string
 		size_t size = ((_v.size() * 4) / 3);
 		if (_v.size() % 3 == 1) {
 			size += 3;

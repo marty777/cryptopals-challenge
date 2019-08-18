@@ -11,6 +11,7 @@ PlaintextEvaluator::~PlaintextEvaluator()
 
 // Lower scores are closer to the average relative character frequency distribution
 // in english language text.
+// Needs work.
 float PlaintextEvaluator::score(std::string input) {
 	// score based on character frequency compared to english language distribution
 	// Frequencies taken from https://en.wikipedia.org/wiki/Letter_frequency
@@ -72,7 +73,8 @@ float PlaintextEvaluator::score(std::string input) {
 		score += abs(frequencies[i] - ((float)(counts[i]) / (float)(total)));
 	}
 
-	score += 0.1 * penalty_count;
+	// This seems to give worse results. Probably just need to omit characters like line breaks.
+	//score += 0.1 * penalty_count;
 
 	return score;
 }
