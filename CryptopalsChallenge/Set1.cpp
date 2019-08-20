@@ -2,6 +2,11 @@
 #include "PlaintextEvaluator.h"
 #include <iostream>
 #include <fstream>
+
+#include  "openssl/bio.h"
+#include  "openssl/ssl.h"
+#include  "openssl/err.h"
+
 using namespace std;
 
 
@@ -67,7 +72,7 @@ void Set1Challenge4() {
 	while (in) {
 		in.getline(line, 255);
 		// test possible key bytes and print if below a specific threshold for manual inspection.
-		float threshold = 0.8f;
+		float threshold = 0.7f;
 		ByteVector line_bv = ByteVector(line, HEX);
 		ByteVector key_bv = ByteVector("00", HEX);
 		for (byte i = 0; i < 255; i++) {
@@ -135,7 +140,6 @@ void Set1Challenge6() {
 		size_t h2 = bv.hammingDistance(&bv, true, i+1, 2*i+1, 2*i+2, 3*i+2);
 		size_t h3 = bv.hammingDistance(&bv, true, 2*i + 2, 3 * i + 2, 3 * i + 3, 4 * i + 3);
 		keysize_distances[i] = (float)(h1 + h2 + h3) / ((i + 1) * 3.0f);
-		//cout << (i + 1) << " " << keysize_distances[i] << endl;
 	}
 	// ugh, sorting
 	int keysize_order[max_keysize];
@@ -162,10 +166,6 @@ void Set1Challenge6() {
 		keysize_order[j] = best_index;
 		j++;
 	}
-
-	/*for (int i = 0; i < max_keysize; i++) {
-		cout << (i) << " " << keysize_order[i] << endl;
-	}*/
 
 	// Test the top 5 likely keysizes
 
@@ -222,36 +222,59 @@ void Set1Challenge6() {
 	cout << "Best key:\t" << best_key.toStr(HEX) << endl << "\t\t" << best_key.toStr(ASCII) << endl ;
 	ByteVector decryption = bv. xor (&best_key);
 	cout << "Decryption: " << endl << decryption.toStr(ASCII) << endl;
+}
+
+void Set1Challenge7() {
+	char *key = "YELLOW SUBMARINE";
+
+	char *filePath = "../challenge-files/set1/7.txt";
+	ifstream f;
+	string input;
+
+	f.open(filePath);
+	f.seekg(0, std::ios::end);
+	input.reserve(f.tellg());
+	f.seekg(0, std::ios::beg);
+
+	input.assign((std::istreambuf_iterator<char>(f)),
+		std::istreambuf_iterator<char>());
+
+	f.close();
+	SSL_load_error_strings();
+	ERR_load_BIO_strings();
+	OpenSSL_add_all_algorithms();
+
+	
 
 }
 
 int main() {
 	
-	//cout << "Set 1 Challenge 1\n";
-	//Set1Challenge1();
-	//// Pause before continuing
-	//cout << "Press any key to continue...\n";
-	//getchar();
-	//cout << "Set 1 Challenge 2\n";
-	//Set1Challenge2();
-	//// Pause before continuing
-	//cout << "Press any key to continue...\n";
-	//getchar();
-	//cout << "Set 1 Challenge 3\n";
-	//Set1Challenge3();
-	//// Pause before continuing
-	//cout << "Press any key to continue...\n";
-	//getchar();
-	//cout << "Set 1 Challenge 4\n";
-	//Set1Challenge4();
-	//// Pause before continuing
-	//cout << "Press any key to continue...\n";
-	//getchar();
-	//cout << "Set 1 Challenge 5\n";
-	//Set1Challenge5();
-	//// Pause before continuing
-	//cout << "Press any key to continue...\n";
-	//getchar();
+	cout << "Set 1 Challenge 1\n";
+	Set1Challenge1();
+	// Pause before continuing
+	cout << "Press any key to continue...\n";
+	getchar();
+	cout << "Set 1 Challenge 2\n";
+	Set1Challenge2();
+	// Pause before continuing
+	cout << "Press any key to continue...\n";
+	getchar();
+	cout << "Set 1 Challenge 3\n";
+	Set1Challenge3();
+	// Pause before continuing
+	cout << "Press any key to continue...\n";
+	getchar();
+	cout << "Set 1 Challenge 4\n";
+	Set1Challenge4();
+	// Pause before continuing
+	cout << "Press any key to continue...\n";
+	getchar();
+	cout << "Set 1 Challenge 5\n";
+	Set1Challenge5();
+	// Pause before continuing
+	cout << "Press any key to continue...\n";
+	getchar();
 	cout << "Set 1 Challenge 6\n";
 	Set1Challenge6();
 	// Pause before continuing

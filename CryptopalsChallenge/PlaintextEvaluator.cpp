@@ -61,11 +61,14 @@ float PlaintextEvaluator::score(std::string input) {
 		else if (input[i] >= 0x61 && input[i] <= 0x7A) {
 			counts[input[i] - 0x61]++;
 			total++;
+			
 		}
 		// penalty characters
-		else if (input[i] <= 0x1F || input[i] > 0x7F) {
+		else if (/*input[i] <= 0x1F ||*/ input[i] > 0x7F) {
 			penalty_count++;
 		}
+		
+		
 	}
 
 	float score = 0;
@@ -74,7 +77,7 @@ float PlaintextEvaluator::score(std::string input) {
 	}
 
 	// This seems to give worse results. Probably just need to omit characters like line breaks.
-	//score += 0.1 * penalty_count;
+	score += 0.5 * penalty_count;
 
 	return score;
 }

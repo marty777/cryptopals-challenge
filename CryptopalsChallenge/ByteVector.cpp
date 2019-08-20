@@ -250,18 +250,22 @@ size_t ByteVector::hammingDistance(ByteVector *bv, bool subset, size_t start_a, 
 	}
 
 	// for vectors of unequal length, count missing bytes as 0s.
+	// edit: that's insane. every additional bit is a difference, and comparison strings of uneven length don't even make sense for a hamming distance.
 	while (i <= end_a) {
-		std::cout << "Got 1 " << i << " " << end_a << std::endl;
+		/*std::cout << "Got 1 " << i << " " << end_a << std::endl;
 		for (int k = 0; k < 8; k++) {
 			dist += (0x01) & (_v[i] >> k);
-		}
+		}*/
+		dist += 8;
 		i++;
 	}
 	while (j <= end_b) {
-		std::cout << "Got 2" << j << " " << end_b << std::endl;
+
+		/*std::cout << "Got 2" << j << " " << end_b << std::endl;
 		for (int k = 0; k < 8; k++) {
 			dist += (0x01) & (bv->atIndex(j) >> k);
-		}
+		}*/
+		dist += 8;
 		j++;
 	}
 	return dist;
