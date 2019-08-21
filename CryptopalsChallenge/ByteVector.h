@@ -29,5 +29,6 @@ public:
 	char *toStr(bv_str_format format);
 
 	void copyBytes(byte *dest);
+	void padToLength(size_t len, byte padding);
 };
 

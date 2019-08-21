@@ -27,12 +27,24 @@
     <ClCompile Include="PlaintextEvaluator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Set2.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ByteVector.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="PlaintextEvaluator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Set1.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Set2.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

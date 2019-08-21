@@ -386,3 +386,14 @@ void ByteVector::copyBytes(byte *dest) {
 		dest[i] = _v[i];
 	}
 }
+
+void ByteVector::padToLength(size_t len, byte padding) {	
+	if (len < _v.size()) {
+		return;
+	}
+	size_t startlen = _v.size();
+	_v.resize(len);
+	for (size_t i = startlen; i < len; i++) {
+		_v[i] = padding;
+	}
+}

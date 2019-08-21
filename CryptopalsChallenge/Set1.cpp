@@ -282,8 +282,6 @@ void Set1Challenge8(){
 		std::istreambuf_iterator<char>(), '\n');
 	in.seekg(0);
 	
-	cout << linecount << endl;
-	
 	// allocate storage and read lines.
 	std::vector<ByteVector> lines;
 	std::vector<int> linescores;
@@ -329,47 +327,47 @@ void Set1Challenge8(){
 	lines.~vector();
 }
 
-int main() {
-	
-	cout << "Set 1 Challenge 1\n";
+int Set1() {
+	cout << "### SET 1 ###" << endl;
+	cout << "Set 1 Challenge 1" << endl;
 	Set1Challenge1();
 	// Pause before continuing
-	cout << "Press any key to continue...\n";
+	cout << "Press any key to continue..." << endl;
 	getchar();
-	cout << "Set 1 Challenge 2\n";
+	cout << "Set 1 Challenge 2" << endl;
 	Set1Challenge2();
 	// Pause before continuing
-	cout << "Press any key to continue...\n";
+	cout << "Press any key to continue..." << endl;
 	getchar();
-	cout << "Set 1 Challenge 3\n";
+	cout << "Set 1 Challenge 3" << endl;
 	Set1Challenge3();
 	// Pause before continuing
-	cout << "Press any key to continue...\n";
+	cout << "Press any key to continue..." << endl;
 	getchar();
-	cout << "Set 1 Challenge 4\n";
+	cout << "Set 1 Challenge 4" << endl;
 	Set1Challenge4();
 	// Pause before continuing
-	cout << "Press any key to continue...\n";
+	cout << "Press any key to continue..." << endl;
 	getchar();
-	cout << "Set 1 Challenge 5\n";
+	cout << "Set 1 Challenge 5" << endl;
 	Set1Challenge5();
 	// Pause before continuing
-	cout << "Press any key to continue...\n";
+	cout << "Press any key to continue..." << endl;
 	getchar();
-	cout << "Set 1 Challenge 6\n";
+	cout << "Set 1 Challenge 6" << endl;
 	Set1Challenge6();
 	// Pause before continuing
-	cout << "Press any key to continue...\n";
+	cout << "Press any key to continue..." << endl;
 	getchar();
-	cout << "Set 1 Challenge 7\n";
+	cout << "Set 1 Challenge 7" << endl;
 	Set1Challenge7();
 	// Pause before continuing
-	cout << "Press any key to continue...\n";
+	cout << "Press any key to continue..." << endl;
 	getchar();
-	cout << "Set 1 Challenge 8\n";
+	cout << "Set 1 Challenge 8" << endl;
 	Set1Challenge8();
 	// Pause before continuing
-	cout << "Press any key to continue...\n";
+	cout << "Press any key to continue..." << endl;
 	getchar();
 	return 0;
 }

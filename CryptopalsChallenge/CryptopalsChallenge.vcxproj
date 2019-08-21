@@ -114,12 +114,16 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ByteVector.cpp" />
+    <ClCompile Include="Main.cpp" />
     <ClCompile Include="PlaintextEvaluator.cpp" />
     <ClCompile Include="Set1.cpp" />
+    <ClCompile Include="Set2.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ByteVector.h" />
     <ClInclude Include="PlaintextEvaluator.h" />
+    <ClInclude Include="Set1.h" />
+    <ClInclude Include="Set2.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
