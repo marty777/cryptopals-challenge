@@ -13,6 +13,7 @@ private:
 public:
 	ByteVector(char *input, bv_str_format format);
 	ByteVector(ByteVector *bv);
+	ByteVector(byte *source, size_t len);
 	ByteVector(size_t len);
 	ByteVector();
 	~ByteVector();
@@ -26,5 +27,7 @@ public:
 	ByteVector xor(ByteVector *bv);
 
 	char *toStr(bv_str_format format);
+
+	void copyBytes(byte *dest);
 };
 

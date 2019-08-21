@@ -6,6 +6,7 @@
 #include  "openssl/bio.h"
 #include  "openssl/ssl.h"
 #include  "openssl/err.h"
+#include "openssl/aes.h"
 
 using namespace std;
 
@@ -225,8 +226,8 @@ void Set1Challenge6() {
 }
 
 void Set1Challenge7() {
-	char *key = "YELLOW SUBMARINE";
-
+	char *keyStr = "YELLOW SUBMARINE";
+	
 	char *filePath = "../challenge-files/set1/7.txt";
 	ifstream f;
 	string input;
@@ -240,12 +241,92 @@ void Set1Challenge7() {
 		std::istreambuf_iterator<char>());
 
 	f.close();
-	SSL_load_error_strings();
-	ERR_load_BIO_strings();
-	OpenSSL_add_all_algorithms();
 
+	ByteVector bv = ByteVector(&input[0], BASE64);
+	// pad to 16 byte increment if needed.
+	size_t inputLen = bv.length() * sizeof(byte);
+	if (inputLen % 16 != 0) {
+		inputLen += 16 - (inputLen % 16);
+	}
+	byte *inputBytes = (byte *)malloc(inputLen);
+	byte *outputBytes = (byte *)malloc(inputLen + 1);
 	
+	memset(inputBytes, 0, inputLen);
+	memset(outputBytes, 0, inputLen+1);
+	bv.copyBytes(inputBytes);
 
+	AES_KEY aes_key;
+	AES_set_decrypt_key((unsigned char *)keyStr, 128, &aes_key);
+	size_t i = 0;
+
+	while( i < inputLen) {
+		AES_ecb_encrypt(inputBytes + i, outputBytes + i, &aes_key, AES_DECRYPT);
+		i += AES_BLOCK_SIZE;
+	}
+	outputBytes[inputLen] = '\0';
+	
+	cout << outputBytes << endl;
+
+	free(outputBytes);
+	free(inputBytes);
+}
+
+void Set1Challenge8(){
+	char *filePath = "../challenge-files/set1/8.txt";
+	ifstream in(filePath);
+	if (!in) {
+		cout << "Cannot open input file.\n";
+		return;
+	}
+	int linecount = count(std::istreambuf_iterator<char>(in),
+		std::istreambuf_iterator<char>(), '\n');
+	in.seekg(0);
+	
+	cout << linecount << endl;
+	
+	// allocate storage and read lines.
+	std::vector<ByteVector> lines;
+	std::vector<int> linescores;
+	lines.resize(linecount);
+	linescores.resize(linecount);
+	int index = 0;
+	char line[512];
+	while (index < linecount) {
+		in.getline(line, 512);
+		lines[index] = ByteVector(line, HEX);
+		index++;
+	}
+	in.close();
+	
+	// analysis: search for repeated 16-byte blocks. Duplicates may be counted more than once with the below method, but it works for this sample.
+	int bestscore = 0;
+	int bestindex = 0;
+	for (int i = 0; i < linecount; i++) {
+		int score = 0;
+		for (int j = 0; j < lines[i].length()/16; j ++) {
+			for (int k = j + 1; k < lines[i].length() / 16; k++) {
+				bool match = true;
+				for (int x = 0; x < 16; x++) {
+					if (lines[i].atIndex(j * 16 + x) != lines[i].atIndex(k * 16 + x)) {
+						match = false;
+						break;
+					}
+				}
+				if (match) {
+					score++;
+				}
+			}
+		}
+		linescores[i] = score;
+		if (score > bestscore) {
+			bestindex = i;
+			bestscore = score;
+		}
+	}
+
+	cout << "ECB Candidate found: Line " << bestindex + 1 << endl;
+	cout << lines[bestindex].toStr(HEX) << endl;
+	lines.~vector();
 }
 
 int main() {
@@ -277,6 +358,16 @@ int main() {
 	getchar();
 	cout << "Set 1 Challenge 6\n";
 	Set1Challenge6();
+	// Pause before continuing
+	cout << "Press any key to continue...\n";
+	getchar();
+	cout << "Set 1 Challenge 7\n";
+	Set1Challenge7();
+	// Pause before continuing
+	cout << "Press any key to continue...\n";
+	getchar();
+	cout << "Set 1 Challenge 8\n";
+	Set1Challenge8();
 	// Pause before continuing
 	cout << "Press any key to continue...\n";
 	getchar();

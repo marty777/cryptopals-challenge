@@ -176,6 +176,12 @@ ByteVector::ByteVector(ByteVector *bv) {
 		_v[0] = bv->atIndex(i);
 	}
 }
+ByteVector::ByteVector(byte *source, size_t len) {
+	_v.resize(len);
+	for (size_t i = 0; i < len; i++) {
+		_v[i] = source[i];
+	}
+}
 ByteVector::ByteVector(size_t len) {
 	_v.resize(len, 0);
 }
@@ -372,4 +378,11 @@ char *ByteVector::toStr(bv_str_format format) {
 		break;
 	}
 	return str;
+}
+
+// copy to a pre-allocated byte array of appropriate size
+void ByteVector::copyBytes(byte *dest) {
+	for (size_t i = 0; i < _v.size(); i++) {
+		dest[i] = _v[i];
+	}
 }
