@@ -63,17 +63,51 @@ void Set2Challenge10() {
 	cout << output.toStr(ASCII) << endl;
 }
 
+void Set2Challenge11() {
+	srand(0);
+
+	// our carefully selected plaintext
+	size_t inputlen = 1024;
+	ByteVector input = ByteVector(inputlen);
+	for (size_t i = 0; i < input.length(); i++) {
+		input.setAtIndex(0xff, i);
+	}
+	ByteVector output = ByteVector(inputlen);
+	
+	int oracle_sucesses = 0;
+	int trials = 1000;
+	for (int i = 0; i < trials; i++) {
+		bool detected_block_mode = false; // true for ecb, false for cbc
+		bool actual_block_mode = ByteEncryption::aes_random_encrypt(&input, &output);
+		int repeat_block_count = ByteEncryption::aes_repeated_block_count(&output);
+		// this is probably an overly cautious metric, but I assume you can get occasional 
+		// repeated blocks in a long enough stream using CBC.
+		if (repeat_block_count * 16 > output.length() / 2) {
+			detected_block_mode = true;
+		}
+		if (detected_block_mode == actual_block_mode) {
+			oracle_sucesses++;
+		}
+	}
+	cout << oracle_sucesses << " successes out of " << trials << " trial detections of AES ECB vs CBC cipher block mode." << endl;
+}
+
 int Set2() {
 	cout << "### SET 2 ###" << endl;
 	cout << "Set 2 Challenge 9" << endl;
 	Set2Challenge9();
 	// Pause before continuing
-	cout << "Press any key to continue..." << endl;
+	cout << "Press enter to continue..." << endl;
 	getchar();
 	cout << "Set 2 Challenge 10" << endl;
 	Set2Challenge10();
 	// Pause before continuing
-	cout << "Press any key to continue..." << endl;
+	cout << "Press enter to continue..." << endl;
+	getchar();
+	cout << "Set 2 Challenge 11" << endl;
+	Set2Challenge11();
+	// Pause before continuing
+	cout << "Press enter to continue..." << endl;
 	getchar();
 	return 0;
 }

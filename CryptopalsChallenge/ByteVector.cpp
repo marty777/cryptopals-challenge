@@ -245,8 +245,8 @@ size_t ByteVector::hammingDistance(ByteVector *bv, bool subset, size_t start_a, 
 		end_b = bv->length() - 1;
 	}
 	int dist = 0;
-	int i = start_a;
-	int j = start_b;
+	size_t i = start_a;
+	size_t j = start_b;
 	while (i <= end_a && j <= end_b) {
 		byte xor = _v[i] ^ bv->atIndex(j);
 		for (int k = 0; k < 8; k++) {
@@ -421,7 +421,20 @@ void ByteVector::padToLength(size_t len, byte padding) {
 	}
 }
 
+// set all bytes to pseudorandom values using rand()
+void ByteVector::random() {
+	for (size_t i = 0; i < _v.size(); i++) {
+		_v[i] = (byte)(rand() % 0xff);
+	}
+}
+
+
+void ByteVector::resize(size_t len) {
+	_v.resize(len);
+}
+
 // exposing this kind of negates having the vector as a private member, but I'm building this as I go.
 byte *ByteVector::dataPtr() {
 	return _v.data();
 }
+

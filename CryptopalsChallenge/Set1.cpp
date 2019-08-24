@@ -177,7 +177,7 @@ void Set1Challenge6() {
 
 	for (int i = 0; i < 5; i++) {
 		int keysize = keysize_order[i] + 1;
-		int numblocks = bv.length() / keysize;
+		size_t numblocks = bv.length() / keysize;
 		ByteVector *transpose_blocks = new ByteVector[keysize];
 		ByteVector potential_key = ByteVector(keysize);
 		for (int j = 0; j < keysize; j++) {
@@ -333,42 +333,42 @@ int Set1() {
 	cout << "Set 1 Challenge 1" << endl;
 	Set1Challenge1();
 	// Pause before continuing
-	cout << "Press any key to continue..." << endl;
+	cout << "Press enter to continue..." << endl;
 	getchar();
 	cout << "Set 1 Challenge 2" << endl;
 	Set1Challenge2();
 	// Pause before continuing
-	cout << "Press any key to continue..." << endl;
+	cout << "Press enter to continue..." << endl;
 	getchar();
 	cout << "Set 1 Challenge 3" << endl;
 	Set1Challenge3();
 	// Pause before continuing
-	cout << "Press any key to continue..." << endl;
+	cout << "Press enter to continue..." << endl;
 	getchar();
 	cout << "Set 1 Challenge 4" << endl;
 	Set1Challenge4();
 	// Pause before continuing
-	cout << "Press any key to continue..." << endl;
+	cout << "Press enter to continue..." << endl;
 	getchar();
 	cout << "Set 1 Challenge 5" << endl;
 	Set1Challenge5();
 	// Pause before continuing
-	cout << "Press any key to continue..." << endl;
+	cout << "Press enter to continue..." << endl;
 	getchar();
 	cout << "Set 1 Challenge 6" << endl;
 	Set1Challenge6();
 	// Pause before continuing
-	cout << "Press any key to continue..." << endl;
+	cout << "Press enter to continue..." << endl;
 	getchar();
 	cout << "Set 1 Challenge 7" << endl;
 	Set1Challenge7();
 	// Pause before continuing
-	cout << "Press any key to continue..." << endl;
+	cout << "Press enter to continue..." << endl;
 	getchar();
 	cout << "Set 1 Challenge 8" << endl;
 	Set1Challenge8();
 	// Pause before continuing
-	cout << "Press any key to continue..." << endl;
+	cout << "Press enter to continue..." << endl;
 	getchar();
 	return 0;
 }

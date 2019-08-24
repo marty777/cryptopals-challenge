@@ -16,32 +16,32 @@ float PlaintextEvaluator::score(std::string input) {
 	// score based on character frequency compared to english language distribution
 	// Frequencies taken from https://en.wikipedia.org/wiki/Letter_frequency
 	const float frequencies[] = {	
-									0.08167, // a
-									0.01492, // b
-									0.02782, // c
-									0.04253, // d
-									0.12702, // e
-									0.02228, // f
-									0.02015, // g
-									0.06094, // h
-									0.06966, // i
-									0.00153, // j
-									0.00772, // k
-									0.04025, // l
-									0.02406, // m
-									0.06749, // n
-									0.07507, // o
-									0.01929, // p
-									0.00095, // q
-									0.05987, // r
-									0.06327, // s
-									0.09056, // t
-									0.02758, // u
-									0.00978, // v
-									0.02360, // w
-									0.00150, // x
-									0.01974, // y
-									0.00074  // z
+									0.08167f, // a
+									0.01492f, // b
+									0.02782f, // c
+									0.04253f, // d
+									0.12702f, // e
+									0.02228f, // f
+									0.02015f, // g
+									0.06094f, // h
+									0.06966f, // i
+									0.00153f, // j
+									0.00772f, // k
+									0.04025f, // l
+									0.02406f, // m
+									0.06749f, // n
+									0.07507f, // o
+									0.01929f, // p
+									0.00095f, // q
+									0.05987f, // r
+									0.06327f, // s
+									0.09056f, // t
+									0.02758f, // u
+									0.00978f, // v
+									0.02360f, // w
+									0.00150f, // x
+									0.01974f, // y
+									0.00074f  // z
 								};
 
 	// Add a penalty for characters that we don't expect to see in ASCII text. Everything from 0x00 to 0x1F are control characters and probably
@@ -77,7 +77,7 @@ float PlaintextEvaluator::score(std::string input) {
 	}
 
 	// This seems to give worse results. Probably just need to omit characters like line breaks.
-	score += 0.5 * penalty_count;
+	score += 0.5f * penalty_count;
 
 	return score;
 }
