@@ -1,5 +1,6 @@
 #include "ByteVector.h"
 #include <iostream>
+#include <assert.h>
 
 char indexToCharBase64(unsigned int index) {
 	if (index <= 25) {
@@ -183,7 +184,7 @@ ByteVector::ByteVector(byte *source, size_t len) {
 	}
 }
 ByteVector::ByteVector(size_t len) {
-	_v.resize(len, 0);
+	_v.resize(len);
 }
 ByteVector::ByteVector() {
 	_v.resize(0);
@@ -286,12 +287,20 @@ ByteVector ByteVector:: xor (ByteVector *bv) {
 			j = 0;
 		}
 		bv2.setAtIndex(bv->atIndex(j) ^ _v[i], i);
-		//std::cout << std::hex << (int)bv->atIndex(j) << " " << (int)_v[i] << " " << (int)(bv->atIndex(j) ^ _v[i]) << std::endl;
 		j++;
 	}
 	return bv2;
 }
 
+
+// XOR input vector with this one starting and ending at specified indexes
+void ByteVector:: xorByIndex(ByteVector *bv, size_t start_index, size_t length, size_t input_start_index) {
+	assert(bv->length() > input_start_index && bv->length() >= input_start_index + length && _v.size() > start_index && _v.size() >= start_index + length);
+
+	for (size_t i = 0; i < length; i++) {
+		_v[start_index + i] = _v[start_index + i] ^ bv->atIndex(input_start_index + i);
+	}
+}
 char *ByteVector::toStr(bv_str_format format) {
 	char *str = NULL;
 	const char *hex = "0123456789abcdef";
@@ -387,6 +396,20 @@ void ByteVector::copyBytes(byte *dest) {
 	}
 }
 
+void ByteVector::copyBytes(ByteVector *dest) {
+	for (size_t i = 0; i < _v.size(); i++) {
+		dest->setAtIndex(_v[i],i);
+	}
+}
+
+// copy a section to an arbitrary index of another vector.
+void ByteVector::copyBytesByIndex(ByteVector * dest, size_t start_index, size_t length, size_t dest_index) {
+	assert(length <= dest->length() - dest_index);
+	for (size_t i = start_index; i < start_index + length; i++) {
+		dest->setAtIndex(_v[i], dest_index + i - start_index);
+	}
+}
+
 void ByteVector::padToLength(size_t len, byte padding) {	
 	if (len < _v.size()) {
 		return;
@@ -396,4 +419,9 @@ void ByteVector::padToLength(size_t len, byte padding) {
 	for (size_t i = startlen; i < len; i++) {
 		_v[i] = padding;
 	}
+}
+
+// exposing this kind of negates having the vector as a private member, but I'm building this as I go.
+byte *ByteVector::dataPtr() {
+	return _v.data();
 }

@@ -59,6 +59,7 @@ void Set1Challenge3() {
 	ByteVector result = bv.xor(&key);
 	cout << "Best result:\t" << std::hex << (int)bestKey << " - " << bestScore << endl;
 	cout << "Plaintext:\t" << result.toStr(ASCII) << endl;
+	
 }
 
 void Set1Challenge4() {

@@ -113,6 +113,7 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="ByteEncryption.cpp" />
     <ClCompile Include="ByteVector.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="PlaintextEvaluator.cpp" />
@@ -120,6 +121,7 @@
     <ClCompile Include="Set2.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ByteEncryption.h" />
     <ClInclude Include="ByteVector.h" />
     <ClInclude Include="PlaintextEvaluator.h" />
     <ClInclude Include="Set1.h" />

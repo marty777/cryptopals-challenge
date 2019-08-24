@@ -25,10 +25,15 @@ public:
 	size_t hammingDistance(ByteVector *bv, bool subset = false, size_t start_a = 0, size_t end_a = 0, size_t start_b = 0, size_t end_b = 0);
 
 	ByteVector xor(ByteVector *bv);
+	void xorByIndex(ByteVector *bv, size_t start_index, size_t length, size_t input_start_index);
 
 	char *toStr(bv_str_format format);
 
 	void copyBytes(byte *dest);
+	void copyBytes(ByteVector *dest);
+	void copyBytesByIndex(ByteVector * dest, size_t start_index, size_t length, size_t dest_index);
 	void padToLength(size_t len, byte padding);
+
+	byte *dataPtr();
 };
 
