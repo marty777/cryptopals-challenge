@@ -1,6 +1,7 @@
 #include "ByteVector.h"
 #include "ByteEncryption.h"
 #include "PlaintextEvaluator.h"
+#include "KeyValueParser.h"
 #include <iostream>
 #include <fstream>
 
@@ -173,25 +174,51 @@ void Set2Challenge12() {
 	cout << "Decoded: " << decoded.toStr(ASCII) << endl;
 }
 
+void Set2Challenge13() {
+	KeyValueParser parser = KeyValueParser();
+	ByteVector input = ByteVector("foo@bar.com", ASCII);
+	ByteVector outputProfile = ByteVector();
+	parser.profile_for(&input, &outputProfile);
+	cout << outputProfile.toStr(ASCII) << endl;
+
+	// random 128-bit AES key
+	ByteVector key = ByteVector(16);
+	key.random();
+
+	size_t block_size = 16;
+	if (outputProfile.length() % block_size != 0) {
+		outputProfile.padToLength(outputProfile.length() + block_size - (outputProfile.length() % block_size), 0);
+	}
+	
+	ByteVector encryptedProfile = ByteVector(outputProfile.length());
+	ByteEncryption::aes_ecb_encrypt(&outputProfile, &key, &encryptedProfile, 0, outputProfile.length() - 1, true);
+	cout << "Encrypted profile: " << encryptedProfile.toStr(HEX) << endl;
+}
+
 int Set2() {
 	cout << "### SET 2 ###" << endl;
-	cout << "Set 2 Challenge 9" << endl;
-	Set2Challenge9();
-	// Pause before continuing
-	cout << "Press enter to continue..." << endl;
-	getchar();
-	cout << "Set 2 Challenge 10" << endl;
-	Set2Challenge10();
-	// Pause before continuing
-	cout << "Press enter to continue..." << endl;
-	getchar();
-	cout << "Set 2 Challenge 11" << endl;
-	Set2Challenge11();
-	// Pause before continuing
-	cout << "Press enter to continue..." << endl;
-	getchar();
-	cout << "Set 2 Challenge 12" << endl;
-	Set2Challenge12();
+	//cout << "Set 2 Challenge 9" << endl;
+	//Set2Challenge9();
+	//// Pause before continuing
+	//cout << "Press enter to continue..." << endl;
+	//getchar();
+	//cout << "Set 2 Challenge 10" << endl;
+	//Set2Challenge10();
+	//// Pause before continuing
+	//cout << "Press enter to continue..." << endl;
+	//getchar();
+	//cout << "Set 2 Challenge 11" << endl;
+	//Set2Challenge11();
+	//// Pause before continuing
+	//cout << "Press enter to continue..." << endl;
+	//getchar();
+	//cout << "Set 2 Challenge 12" << endl;
+	//Set2Challenge12();
+	//// Pause before continuing
+	//cout << "Press enter to continue..." << endl;
+	//getchar();
+	cout << "Set 2 Challenge 13" << endl;
+	Set2Challenge13();
 	// Pause before continuing
 	cout << "Press enter to continue..." << endl;
 	getchar();
