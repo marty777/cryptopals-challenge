@@ -92,6 +92,88 @@ void Set2Challenge11() {
 	cout << oracle_sucesses << " successes out of " << trials << " trial detections of AES ECB vs CBC cipher block mode." << endl;
 }
 
+void Set2Challenge12() {
+	ByteVector post = ByteVector("Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIGRvd24gc28gbXkgaGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBqdXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUgYnkK", BASE64);
+	ByteVector secretKey = ByteVector(16);
+	secretKey.random();
+
+	ByteVector output = ByteVector();
+
+	// Determine block size and estimate length of appended bytes
+	size_t last_len = 0;
+	size_t block_size = 0;
+	size_t append_size = 0;
+	for (size_t i = 1; i < 255; i++) {
+		ByteVector bv = ByteVector(i);
+		ByteEncryption::aes_append_encrypt(&bv, &post, &secretKey, &output);
+		size_t len = output.length();
+		if (last_len != 0 && len != last_len) {
+			block_size = len - last_len;
+			append_size = last_len - i + 1;
+			break;
+		}
+		last_len = len;
+	}
+	cout << "Inferred block size:\t" << block_size << endl;
+
+	// Detect ECB vs CBC
+	ByteVector input = ByteVector(1000);
+	for (size_t i = 0; i < input.length(); i++) {
+		input.setAtIndex(0xff, i);
+	}
+	ByteEncryption::aes_append_encrypt(&input, &post, &secretKey, &output);
+	cout << "Detected block cipher mode:\t" << ((ByteEncryption::aes_repeated_block_count(&output) > 50) ? "ECB" : "CBC") << endl;
+
+	// Decode appended bytes
+	ByteVector decoded = ByteVector(append_size);
+	ByteVector testInput = ByteVector(block_size);
+
+	for (size_t i = 0; i < append_size; i++) {
+		int blockindex = i / block_size;
+		// our varying length input vector, all 0xff
+		int input_size = block_size - 1 - (i % block_size);
+		input.resize((size_t)input_size);
+		for (size_t j = 0; j < input_size; j++) {
+			input.setAtIndex(0xff, j);
+		}
+		ByteEncryption::aes_append_encrypt(&input, &post, &secretKey, &output);
+
+		// test output againt all possible next bytes in block
+		
+		if (i < block_size) {
+			// if < blocksize, fill in blocksize - i bytes of 0xff, and insert 
+			// previously decoded bytes to positions blocksize-i to blocksize-1;
+			for (size_t j = 0; j < block_size - i; j++) {
+				testInput.setAtIndex(0xff, j);
+			}
+			for (size_t j = 0; j < i; j++) {
+				testInput.setAtIndex(decoded.atIndex(j), block_size - 1 - i + j);
+			}
+		}
+		else {
+			// copy last blocksize-1 decoded bytes to testInput.
+			for (size_t j = 0; j < block_size - 1; j++) {
+				
+				testInput.setAtIndex(decoded.atIndex(i - block_size + 1 + j), j);
+			}
+		}
+
+		// vary final byte in test input to find a match against the block at blockindex
+		for (int j = 0; j <= 0xff; j++) {
+			ByteVector testOutput = ByteVector();
+			testInput.setAtIndex((byte)j, block_size - 1);
+			ByteEncryption::aes_append_encrypt(&testInput, &post, &secretKey, &testOutput);
+			
+			if (output.equalAtIndex(&testOutput, 16 * blockindex, 16, 0)) {
+				decoded.setAtIndex((byte)j, i);
+				break;
+			}
+		}
+	}
+
+	cout << "Decoded: " << decoded.toStr(ASCII) << endl;
+}
+
 int Set2() {
 	cout << "### SET 2 ###" << endl;
 	cout << "Set 2 Challenge 9" << endl;
@@ -106,6 +188,11 @@ int Set2() {
 	getchar();
 	cout << "Set 2 Challenge 11" << endl;
 	Set2Challenge11();
+	// Pause before continuing
+	cout << "Press enter to continue..." << endl;
+	getchar();
+	cout << "Set 2 Challenge 12" << endl;
+	Set2Challenge12();
 	// Pause before continuing
 	cout << "Press enter to continue..." << endl;
 	getchar();

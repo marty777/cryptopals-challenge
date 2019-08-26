@@ -22,6 +22,7 @@ public:
 	byte atIndex(size_t index);
 	byte setAtIndex(byte value, size_t index);
 	bool equal(ByteVector *bv);
+	bool equalAtIndex(ByteVector *bv, size_t start_index, size_t length, size_t input_start_index);
 	size_t hammingDistance(ByteVector *bv, bool subset = false, size_t start_a = 0, size_t end_a = 0, size_t start_b = 0, size_t end_b = 0);
 
 	ByteVector xor(ByteVector *bv);

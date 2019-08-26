@@ -209,15 +209,28 @@ byte ByteVector::setAtIndex(byte value, size_t index) {
 }
 bool ByteVector::equal(ByteVector *bv) {
 	if (bv->length() != _v.size()) {
-		//std::cout << bv->length() << " " << _v.size() << "\n";
 		return false;
 	}
 	bool equal = true;
-	for (int i = 0; i < _v.size(); i++) {
+	for (size_t i = 0; i < _v.size(); i++) {
 		if (bv->atIndex(i) != _v[i]) {
-			std::cout << i << " " << std::hex << (int)bv->atIndex(i) << " " << (int)_v[i] << "\n";
 			equal = false;
-			
+			break;
+		}
+	}
+	return equal;
+}
+
+
+bool ByteVector::equalAtIndex(ByteVector *bv, size_t start_index, size_t length, size_t input_start_index) {
+	if (start_index + length >= _v.size() || input_start_index + length >= bv->length()) {
+		return false;
+	}
+	bool equal = true;
+	for (size_t i = 0; i < length; i++) {
+		if (bv->atIndex(input_start_index + i) != _v[start_index + i]) {
+			equal = false;
+			break;
 		}
 	}
 	return equal;
@@ -424,7 +437,7 @@ void ByteVector::padToLength(size_t len, byte padding) {
 // set all bytes to pseudorandom values using rand()
 void ByteVector::random() {
 	for (size_t i = 0; i < _v.size(); i++) {
-		_v[i] = (byte)(rand() % 0xff);
+		_v[i] = (byte)(rand() % 0x100);
 	}
 }
 

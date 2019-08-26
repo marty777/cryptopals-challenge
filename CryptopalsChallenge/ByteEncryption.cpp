@@ -94,6 +94,7 @@ void ByteEncryption::aes_cbc_encrypt(ByteVector *bv, ByteVector *key, ByteVector
 
 }
 
+// for challenge 11
 bool ByteEncryption::aes_random_encrypt(ByteVector *bv, ByteVector *output) {
 
 	// just going to use 128-bit keys for this test
@@ -140,6 +141,27 @@ bool ByteEncryption::aes_random_encrypt(ByteVector *bv, ByteVector *output) {
 
 	// returning this for testing purposes.
 	return mode;
+}
+
+// for challenge 12
+bool ByteEncryption::aes_append_encrypt(ByteVector *bv, ByteVector *appendBv, ByteVector *key, ByteVector *output) {
+	// append appendVector to ciphertext, pad to 16 bytes and encypt in ECB mode with provided key
+	size_t inputlen = bv->length() + appendBv->length();
+	if (inputlen % 16 != 0) {
+		inputlen += 16 - (inputlen % 16);
+	}
+	ByteVector input = ByteVector(inputlen);
+	for (size_t i = 0; i < bv->length(); i++) {
+		input.setAtIndex(bv->atIndex(i), i);
+	}
+	for (size_t i = 0; i < appendBv->length(); i++) {
+		input.setAtIndex(appendBv->atIndex(i), i + bv->length());
+	}
+	for (size_t i = bv->length() + appendBv->length(); i < inputlen; i++) {
+		input.setAtIndex(0, i);
+	}
+	output->resize(inputlen);
+	ByteEncryption::aes_ecb_encrypt(&input, key, output, 0, inputlen - 1, true);
 }
 
 // returns the number of 16-byte blocks in the vector that appear more than once
