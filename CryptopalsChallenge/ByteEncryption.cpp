@@ -144,7 +144,7 @@ bool ByteEncryption::aes_random_encrypt(ByteVector *bv, ByteVector *output) {
 }
 
 // for challenge 12
-bool ByteEncryption::aes_append_encrypt(ByteVector *bv, ByteVector *appendBv, ByteVector *key, ByteVector *output) {
+bool ByteEncryption::aes_append_encrypt(ByteVector *bv, ByteVector *appendBv, ByteVector *key, ByteVector *output, bool verbose) {
 	// append appendVector to ciphertext, pad to 16 bytes and encypt in ECB mode with provided key
 	size_t inputlen = bv->length() + appendBv->length();
 	if (inputlen % 16 != 0) {
@@ -162,6 +162,21 @@ bool ByteEncryption::aes_append_encrypt(ByteVector *bv, ByteVector *appendBv, By
 	}
 	output->resize(inputlen);
 	ByteEncryption::aes_ecb_encrypt(&input, key, output, 0, inputlen - 1, true);
+	
+	if (verbose) {
+		std::cout << "Input breakdown:" << std::endl;
+		for (int i = 0; i < inputlen / 16; i++) {
+			ByteVector inputBlock = ByteVector(16);
+			input.copyBytesByIndex(&inputBlock, i * 16, 16, 0);
+			std::cout << i << ":\t" << inputBlock.toStr(HEX) << std::endl;
+		}
+		std::cout << "Output breakdown:" << std::endl;
+		for (int i = 0; i < inputlen / 16; i++) {
+			ByteVector outputBlock = ByteVector(16);
+			output->copyBytesByIndex(&outputBlock, i * 16, 16, 0);
+			std::cout << i << ":\t" << outputBlock.toStr(HEX) << std::endl;
+		}
+	}
 }
 
 // returns the number of 16-byte blocks in the vector that appear more than once

@@ -14,7 +14,7 @@ public:
 	static void aes_cbc_encrypt(ByteVector *bv, ByteVector *key, ByteVector *output, ByteVector *iv, bool encrypt);
 
 	static bool aes_random_encrypt(ByteVector *bv, ByteVector *output);
-	static bool aes_append_encrypt(ByteVector *bv, ByteVector *appendBv, ByteVector *key, ByteVector *output);
+	static bool aes_append_encrypt(ByteVector *bv, ByteVector *appendBv, ByteVector *key, ByteVector *output, bool verbose = false);
 
 	static int aes_repeated_block_count(ByteVector *bv);
 

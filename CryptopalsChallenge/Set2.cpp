@@ -146,25 +146,24 @@ void Set2Challenge12() {
 			for (size_t j = 0; j < block_size - i; j++) {
 				testInput.setAtIndex(0xff, j);
 			}
-			for (size_t j = 0; j < i; j++) {
-				testInput.setAtIndex(decoded.atIndex(j), block_size - 1 - i + j);
-			}
+			decoded.copyBytesByIndex(&testInput, 0, i, block_size - 1 - i);
 		}
 		else {
 			// copy last blocksize-1 decoded bytes to testInput.
-			for (size_t j = 0; j < block_size - 1; j++) {
-				
-				testInput.setAtIndex(decoded.atIndex(i - block_size + 1 + j), j);
-			}
+			decoded.copyBytesByIndex(&testInput, i - (block_size - 1), block_size - 1, 0);
 		}
 
-		// vary final byte in test input to find a match against the block at blockindex
+		// vary final byte in test input to find a match against the output block at blockindex
+		ByteVector outputComparisonBlock = ByteVector(16);
+		output.copyBytesByIndex(&outputComparisonBlock, block_size * blockindex, block_size, 0);
 		for (int j = 0; j <= 0xff; j++) {
 			ByteVector testOutput = ByteVector();
+			ByteVector firstBlockTestOutput = ByteVector(block_size);
 			testInput.setAtIndex((byte)j, block_size - 1);
 			ByteEncryption::aes_append_encrypt(&testInput, &post, &secretKey, &testOutput);
+			testOutput.copyBytesByIndex(&firstBlockTestOutput, 0, 16, 0);
 			
-			if (output.equalAtIndex(&testOutput, 16 * blockindex, 16, 0)) {
+			if(outputComparisonBlock.equal(&firstBlockTestOutput)) {
 				decoded.setAtIndex((byte)j, i);
 				break;
 			}
