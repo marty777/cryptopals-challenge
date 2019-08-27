@@ -2,6 +2,7 @@
 #include <string>
 #include <map>
 #include <iostream>
+#include "ByteEncryption.h"
 
 using namespace std;
 KeyValueParser::KeyValueParser()
@@ -11,6 +12,15 @@ KeyValueParser::KeyValueParser()
 
 KeyValueParser::~KeyValueParser()
 {
+}
+
+std::string KeyValueParser::valueWithKey(std::string key) {
+	for (size_t i = 0; i < _keyvals.size(); i++) {
+		if (_keyvals[i].first == key) {
+			return _keyvals[i].second;
+		}
+	}
+	return "";
 }
 
 // clear current key/value contents and replace with parsed string
@@ -98,4 +108,22 @@ void KeyValueParser::profile_for(ByteVector *input, ByteVector *output) {
 	for (size_t i = 0; i < outStr.length(); i++) {
 		output->setAtIndex(outStr[i], i);
 	}
+}
+
+void KeyValueParser::encrypt_profile_for(ByteVector *input, ByteVector *key, ByteVector *output) {
+	ByteVector plaintextProfile = ByteVector();
+	this->profile_for(input, &plaintextProfile);
+
+	// pad profile text to blocksize
+	size_t block_size = 16;
+	if (plaintextProfile.length() % block_size != 0) {
+		plaintextProfile.padToLength(plaintextProfile.length() + block_size - (plaintextProfile.length() % block_size), 0);
+	}
+	output->resize(plaintextProfile.length());
+	ByteEncryption::aes_ecb_encrypt(&plaintextProfile, key, output, 0, plaintextProfile.length() - 1, true);
+}
+void KeyValueParser::decrypt_profile_for(ByteVector *input, ByteVector *key) {
+	ByteVector decrypted = ByteVector(input->length());
+	ByteEncryption::aes_ecb_encrypt(input, key, &decrypted, 0, input->length() - 1, false);
+	this->parseDelimited(&decrypted);
 }

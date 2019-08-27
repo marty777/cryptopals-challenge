@@ -175,48 +175,169 @@ void Set2Challenge12() {
 }
 
 void Set2Challenge13() {
+	string user_role = "user";
+	string admin_role = "admin";
 	KeyValueParser parser = KeyValueParser();
-	ByteVector input = ByteVector("foo@bar.com", ASCII);
+	ByteVector email = ByteVector("foo@bar.com", ASCII);
 	ByteVector outputProfile = ByteVector();
-	parser.profile_for(&input, &outputProfile);
-	cout << outputProfile.toStr(ASCII) << endl;
+	// Test parser
+	parser.profile_for(&email, &outputProfile);
+	cout << "Profile parser test:\t" << outputProfile.toStr(ASCII) << endl;
 
 	// random 128-bit AES key
 	ByteVector key = ByteVector(16);
 	key.random();
 
-	size_t block_size = 16;
-	if (outputProfile.length() % block_size != 0) {
-		outputProfile.padToLength(outputProfile.length() + block_size - (outputProfile.length() % block_size), 0);
+	// Test oracle profile_for and parsing decryption
+	ByteVector encryptedProfile = ByteVector();
+	parser.encrypt_profile_for(&email, &key, &encryptedProfile);
+	
+	parser.decrypt_profile_for(&encryptedProfile, &key);
+	cout << "Test profile decrypted role:\t" << parser.valueWithKey("role") << endl;
+
+	// For completeness, determine blocksize
+	ByteVector input = ByteVector();
+	size_t len = 0;
+	size_t last_len = 0;
+	size_t block_size = 0;
+	for (size_t i = 0; i < 255; i++) {
+		input.resize(i);
+		parser.encrypt_profile_for(&input, &key, &encryptedProfile);
+		len = encryptedProfile.length();
+		if (last_len != 0 && len != last_len) {
+			block_size = len - last_len;
+		}
+		last_len = len;
+	}
+	cout << "Detected block size:\t" << block_size << endl;
+	// Not going to bother checking for ECB vs CBC right now.
+
+	// So, we need to figure out a ciphertext that includes role=admin
+	// My function won't work well with multiple values on the same key, so we can't just stick it on the end.
+	// The parsing of the delimiter characters on the input prevents directly inserting "&role=admin" into the ciphertext.
+
+	// if we can push out in input to force the 'admin' part of role=admin to a separate block...
+	// Ah: Pad the input so that we get 0x000000...|admin00000...|rest of profile|
+	// I'm assuming that I know that blocks are padded with 0s. We don't necessarily know how long the field names
+	// or delimters are, so some searching will be required.
+
+	// first -> get ciphertext that isolates 'user' in the final block. Assume we know that's the value.
+
+	// Test input lengths until we can find the right length to isolate the role value
+	len = 0;
+	last_len = 0;
+	size_t isolated_len = 0;
+	ByteVector userEncryptedBlock = ByteVector(block_size);
+	for (size_t i = 0; i < block_size; i++) {
+		input.resize(i);
+		parser.encrypt_profile_for(&input, &key, &encryptedProfile);
+		len = encryptedProfile.length();
+		if (last_len != 0 && len != last_len) {
+			// we've nudged 1 character over the blocksize
+			isolated_len = i - 1 + user_role.length();
+			break;
+		}
+		last_len = len;
+	}
+	input.resize(isolated_len);
+	parser.encrypt_profile_for(&input, &key, &encryptedProfile);
+	// copy last encrypted block
+	size_t roleBlockIndex = encryptedProfile.length() / block_size; // index of last block
+	for (size_t i = 0; i < block_size; i++) {
+		encryptedProfile.copyBytesByIndex(&userEncryptedBlock, encryptedProfile.length() - block_size, block_size, 0);
 	}
 	
-	ByteVector encryptedProfile = ByteVector(outputProfile.length());
-	ByteEncryption::aes_ecb_encrypt(&outputProfile, &key, &encryptedProfile, 0, outputProfile.length() - 1, true);
-	cout << "Encrypted profile: " << encryptedProfile.toStr(HEX) << endl;
+	// Now, set the input to isolate |admin00000...| in a single block
+	// I fiddled around with a more complicated search for right prefix length on the input, but we can 
+	// try this with |user000...| as the payload and wait until we get a match with the block we isolated
+	// above
+
+	ByteVector payloadUser = ByteVector("user", ASCII);
+	ByteVector payloadAdmin = ByteVector("admin", ASCII);
+	payloadUser.padToLength(block_size, 0);
+	payloadAdmin.padToLength(block_size, 0);
+	ByteVector testInput = ByteVector();
+	ByteVector testOutput = ByteVector();
+	ByteVector adminEncryptedBlock = ByteVector(block_size);
+	size_t prefix_len = 0;
+	for (size_t i = 0; i < block_size; i++) {
+		testInput.resize(i + payloadUser.length());
+		for (size_t j = 0; j < i; j++) {
+			testInput.setAtIndex('A', j);
+		}
+		// copy in the payload to the appropriate position
+		for (size_t j = 0; j < block_size; j++) {
+			testInput.setAtIndex(payloadUser.atIndex(j), i + j);
+		}
+		// encrypt with the test input
+		parser.encrypt_profile_for(&testInput, &key, &testOutput);
+
+		// check to see if we have a block that matches our userEncryptedBlock. It won't 
+		// be the first or last block
+		bool found = false;
+		size_t block_index = 0;
+		for (size_t j = 1; j < (testOutput.length() / block_size) - 1; j++) {
+			if (userEncryptedBlock.equalAtIndex(&testOutput, 0, block_size, j*block_size)) {
+				found = true;
+				block_index = j;
+				break;
+			}
+		}
+		if (found) {
+			prefix_len = i;
+
+			// update with admin payload
+			for (size_t j = 0; j < block_size; j++) {
+				testInput.setAtIndex(payloadAdmin.atIndex(j), i + j);
+			}
+
+			// re-encrypt
+			parser.encrypt_profile_for(&testInput, &key, &testOutput);
+			
+			// copy encrypted admin block
+			testOutput.copyBytesByIndex(&adminEncryptedBlock, block_index * block_size, block_size, 0);
+			
+			// copy admin block a new encrypted profile with the correct length of input and see if it works
+			ByteVector finalInput = ByteVector(isolated_len);
+			for (size_t j = 0; j < isolated_len; j++) {
+				finalInput.setAtIndex('A', j); // not really an email address, but I know it's not being checked.
+			}
+			ByteVector finalEncryptedProfile = ByteVector();
+			parser.encrypt_profile_for(&finalInput, &key, &finalEncryptedProfile);
+
+			adminEncryptedBlock.copyBytesByIndex(&finalEncryptedProfile, 0, block_size, ((finalEncryptedProfile.length() / block_size) - 1) * block_size);
+			parser.decrypt_profile_for(&finalEncryptedProfile, &key);
+			cout << (parser.valueWithKey("role") == "admin" ? "Success" : "Failure") << endl;
+			cout << "email:\t" << parser.valueWithKey("email") << endl;
+			cout << "uid:\t" << parser.valueWithKey("uid") << endl;
+			cout << "role:\t" << parser.valueWithKey("role") << endl;
+		}
+	}
+	
 }
 
 int Set2() {
 	cout << "### SET 2 ###" << endl;
-	//cout << "Set 2 Challenge 9" << endl;
-	//Set2Challenge9();
-	//// Pause before continuing
-	//cout << "Press enter to continue..." << endl;
-	//getchar();
-	//cout << "Set 2 Challenge 10" << endl;
-	//Set2Challenge10();
-	//// Pause before continuing
-	//cout << "Press enter to continue..." << endl;
-	//getchar();
-	//cout << "Set 2 Challenge 11" << endl;
-	//Set2Challenge11();
-	//// Pause before continuing
-	//cout << "Press enter to continue..." << endl;
-	//getchar();
-	//cout << "Set 2 Challenge 12" << endl;
-	//Set2Challenge12();
-	//// Pause before continuing
-	//cout << "Press enter to continue..." << endl;
-	//getchar();
+	cout << "Set 2 Challenge 9" << endl;
+	Set2Challenge9();
+	// Pause before continuing
+	cout << "Press enter to continue..." << endl;
+	getchar();
+	cout << "Set 2 Challenge 10" << endl;
+	Set2Challenge10();
+	// Pause before continuing
+	cout << "Press enter to continue..." << endl;
+	getchar();
+	cout << "Set 2 Challenge 11" << endl;
+	Set2Challenge11();
+	// Pause before continuing
+	cout << "Press enter to continue..." << endl;
+	getchar();
+	cout << "Set 2 Challenge 12" << endl;
+	Set2Challenge12();
+	// Pause before continuing
+	cout << "Press enter to continue..." << endl;
+	getchar();
 	cout << "Set 2 Challenge 13" << endl;
 	Set2Challenge13();
 	// Pause before continuing

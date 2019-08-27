@@ -29,6 +29,8 @@ public:
 	void xorByIndex(ByteVector *bv, size_t start_index, size_t length, size_t input_start_index);
 
 	char *toStr(bv_str_format format);
+	void printHexStrByBlocks(size_t blocksize);
+	void printASCIIStrByBlocks(size_t blocksize);
 
 	void copyBytes(byte *dest);
 	void copyBytes(ByteVector *dest);

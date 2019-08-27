@@ -221,11 +221,9 @@ bool ByteVector::equal(ByteVector *bv) {
 	return equal;
 }
 
-
 bool ByteVector::equalAtIndex(ByteVector *bv, size_t start_index, size_t length, size_t input_start_index) {
-	if (start_index + length >= _v.size() || input_start_index + length >= bv->length()) {
-		return false;
-	}
+	assert(start_index + length <= _v.size() && input_start_index + length <= bv->length());
+	
 	bool equal = true;
 	for (size_t i = 0; i < length; i++) {
 		if (bv->atIndex(input_start_index + i) != _v[start_index + i]) {
@@ -402,6 +400,39 @@ char *ByteVector::toStr(bv_str_format format) {
 	return str;
 }
 
+
+void ByteVector::printHexStrByBlocks(size_t blocksize) {
+	const char *hex = "0123456789abcdef";
+	for (size_t i = 0; i <=  _v.size()/blocksize; i++) {
+		std::cout << i << ": ";
+		for (size_t j = i*blocksize; j < (i + 1)*blocksize && j < _v.size(); j++) {
+			byte val = _v[j];
+			byte a = (val & 0xf0) >> 4;
+			byte b = val & 0x0f;
+			std::cout << hex[a] << hex[b];
+		}
+		std::cout << std::endl;
+		if (i*blocksize + blocksize >= _v.size()) {
+			break;
+		}
+	}
+}
+
+void ByteVector::printASCIIStrByBlocks(size_t blocksize) {
+	for (size_t i = 0; i <= _v.size() / blocksize; i++) {
+		std::cout << i << ": ";
+		for (size_t j = i*blocksize; j < (i + 1)*blocksize && j < _v.size(); j++) {
+			byte val = _v[j];
+			
+			std::cout << val;
+		}
+		std::cout << std::endl;
+		if (i*blocksize + blocksize >= _v.size()) {
+			break;
+		}
+	}
+}
+
 // copy to a pre-allocated byte array of appropriate size
 void ByteVector::copyBytes(byte *dest) {
 	for (size_t i = 0; i < _v.size(); i++) {
@@ -440,7 +471,6 @@ void ByteVector::random() {
 		_v[i] = (byte)(rand() % 0x100);
 	}
 }
-
 
 void ByteVector::resize(size_t len) {
 	_v.resize(len);
