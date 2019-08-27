@@ -144,7 +144,7 @@ bool ByteEncryption::aes_random_encrypt(ByteVector *bv, ByteVector *output) {
 }
 
 // for challenge 12
-bool ByteEncryption::aes_append_encrypt(ByteVector *bv, ByteVector *appendBv, ByteVector *key, ByteVector *output, bool verbose) {
+void ByteEncryption::aes_append_encrypt(ByteVector *bv, ByteVector *appendBv, ByteVector *key, ByteVector *output, bool verbose) {
 	// append appendVector to ciphertext, pad to 16 bytes and encypt in ECB mode with provided key
 	size_t inputlen = bv->length() + appendBv->length();
 	if (inputlen % 16 != 0) {
@@ -163,6 +163,45 @@ bool ByteEncryption::aes_append_encrypt(ByteVector *bv, ByteVector *appendBv, By
 	output->resize(inputlen);
 	ByteEncryption::aes_ecb_encrypt(&input, key, output, 0, inputlen - 1, true);
 	
+	if (verbose) {
+		std::cout << "Input breakdown:" << std::endl;
+		for (int i = 0; i < inputlen / 16; i++) {
+			ByteVector inputBlock = ByteVector(16);
+			input.copyBytesByIndex(&inputBlock, i * 16, 16, 0);
+			std::cout << i << ":\t" << inputBlock.toStr(HEX) << std::endl;
+		}
+		std::cout << "Output breakdown:" << std::endl;
+		for (int i = 0; i < inputlen / 16; i++) {
+			ByteVector outputBlock = ByteVector(16);
+			output->copyBytesByIndex(&outputBlock, i * 16, 16, 0);
+			std::cout << i << ":\t" << outputBlock.toStr(HEX) << std::endl;
+		}
+	}
+}
+
+// for challenge 14 - random count of random bytes + bv + appendBv, AES ECB encrypted
+void ByteEncryption::aes_prepend_append_encrypt(ByteVector *prependBv, ByteVector *bv, ByteVector *appendBv, ByteVector *key, ByteVector *output, bool verbose) {
+	
+	size_t inputlen = prependBv->length() + bv->length() + appendBv->length();
+	if (inputlen % 16 != 0) {
+		inputlen += 16 - (inputlen % 16);
+	}
+	ByteVector input = ByteVector(inputlen);
+	for (size_t i = 0; i < prependBv->length(); i++) {
+		input.setAtIndex(prependBv->atIndex(i), i);
+	}
+	for (size_t i = 0; i < bv->length(); i++) {
+		input.setAtIndex(bv->atIndex(i), i + prependBv->length());
+	}
+	for (size_t i = 0; i < appendBv->length(); i++) {
+		input.setAtIndex(appendBv->atIndex(i), i + prependBv->length() + bv->length());
+	}
+	for (size_t i = prependBv->length() + bv->length() + appendBv->length(); i < inputlen; i++) {
+		input.setAtIndex(0, i);
+	}
+	output->resize(inputlen);
+	ByteEncryption::aes_ecb_encrypt(&input, key, output, 0, inputlen - 1, true);
+
 	if (verbose) {
 		std::cout << "Input breakdown:" << std::endl;
 		for (int i = 0; i < inputlen / 16; i++) {
@@ -202,4 +241,25 @@ int ByteEncryption::aes_repeated_block_count(ByteVector *bv) {
 		}
 	}
 	return count;
+}
+
+// returns the highest number of sequentially identical blocks in the vector
+size_t ByteEncryption::aes_seq_repeated_block_count(ByteVector *bv) {
+	size_t high_count = 0;
+	size_t count = 0;
+	for (size_t i = 0; i < bv->length() - 16; i += 16) {
+		if (bv->equalAtIndex(bv, i, 16, i + 16)) {
+			count++;
+		}
+		else {
+			if (count > 0 && count > high_count) {
+				high_count = count;
+			}
+			count = 0;
+		}
+	}
+	if (count > high_count) {
+		high_count = count;
+	}
+	return high_count;
 }

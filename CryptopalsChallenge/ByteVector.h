@@ -38,6 +38,8 @@ public:
 	void padToLength(size_t len, byte padding);
 	void random();
 
+	void append(byte b);
+
 	void resize(size_t len);
 	byte *dataPtr();
 };

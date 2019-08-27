@@ -472,6 +472,10 @@ void ByteVector::random() {
 	}
 }
 
+void ByteVector::append(byte b) {
+	_v.push_back(b);
+}
+
 void ByteVector::resize(size_t len) {
 	_v.resize(len);
 }

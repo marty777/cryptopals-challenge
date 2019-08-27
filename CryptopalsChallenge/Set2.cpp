@@ -316,6 +316,19 @@ void Set2Challenge13() {
 	
 }
 
+void Set2Challenge14() {
+	size_t block_size = 16; // I'm taking this as a given. I know how to determine block size for this challenge.
+	ByteVector post = ByteVector("Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIGRvd24gc28gbXkgaGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBqdXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUgYnkK", BASE64);
+	ByteVector secretKey = ByteVector(16);
+	secretKey.random();
+	// I initially took this part of the challenge to mean a different random prefix applied to each oracle query. That sounds harder.
+	ByteVector pre = ByteVector(rand() % 257);
+	pre.random();
+	
+	ByteVector output = ByteVector();
+	// TBD
+}
+
 int Set2() {
 	cout << "### SET 2 ###" << endl;
 	cout << "Set 2 Challenge 9" << endl;
@@ -340,6 +353,10 @@ int Set2() {
 	getchar();
 	cout << "Set 2 Challenge 13" << endl;
 	Set2Challenge13();
+	// Pause before continuing
+	cout << "Press enter to continue..." << endl;
+	getchar();
+	Set2Challenge14();
 	// Pause before continuing
 	cout << "Press enter to continue..." << endl;
 	getchar();
