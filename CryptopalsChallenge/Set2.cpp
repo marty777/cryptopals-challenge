@@ -318,7 +318,6 @@ void Set2Challenge13() {
 
 void Set2Challenge14() {
 
-	srand(516);
 	size_t block_size = 16; // I'm taking this as a given. I know how to determine block size for this challenge.
 	ByteVector post = ByteVector("Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIGRvd24gc28gbXkgaGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBqdXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUgYnkK", BASE64);
 	ByteVector secretKey = ByteVector(16);
@@ -345,10 +344,7 @@ void Set2Challenge14() {
 		}
 		last_len = len;
 	}
-	// need to figure out approx length of pre bytes. This can be off by a block_size or two with no issues, the value just
-	// needs to be block-aligned.
-	bool pre_length_found = false;
-	size_t zero_offset_pre = 0;
+	// Determine length of pre and post bytes
 	input.resize(block_size + 1);
 	input.allBytes(0);
 	// get the initial output
@@ -369,7 +365,6 @@ void Set2Challenge14() {
 		size_t first_differing_block_index = 0;
 		
 		for (size_t j = 0; j < testOutput.length() / block_size; j++) {
-			//cout << "\t" << j << endl;
 			if (!testOutput.equalAtIndex(&output, block_size * j, block_size, block_size * j)) {
 				first_differing_block_index = j;
 				break; 
@@ -383,20 +378,18 @@ void Set2Challenge14() {
 		prev_differing_block_index = first_differing_block_index;
 	}
 
-	// we know the approximate length of the pre bytes at this point, although we might be off by a block_size. All we
-	// really need is the starting offset to let us insert specific blocks into the encrypted output.
 	size_t pre_len = first_input_block_index * block_size - first_input_offset;
 	size_t target_len = unknown_byte_len - pre_len;
 	cout << "Prepended bytes inferred length:\t\t" << pre_len << endl;
 	cout << "Appended (target) bytes inferred length:\t" << target_len << endl;
 
-	// Decoded will produce the target bytes in correct order, so we insert from the end.
+	// Decoded will produce the target bytes in non-reversed order, so we insert starting from the end.
 	ByteVector decoded = ByteVector(target_len);
 	decoded.allBytes(0);
 
 	// byte-by-byte decoding from the end of the target bytes.
-	// To save time, 256 blocks are inserted into the input 
-	// for oracle purposes, plus the appropriate offsets to 
+	// 256 blocks are inserted into the input for comparison with 
+	// the byte currently being examined, plus the appropriate offsets to 
 	// align the input and target blocks correctly.
 	ByteVector referenceBlock = ByteVector(block_size);
 	ByteVector examineBlock = ByteVector(block_size);
@@ -406,10 +399,8 @@ void Set2Challenge14() {
 		input_len += (zero_offset_post - first_input_offset) % block_size;
 		// push i % block_size bytes into next block
 		input_len += (i + 1 % block_size);
-		
 		input.resize(input_len);
-		// fill in the test blocks on the input with previously decoded bytes
-		
+		// fill in the test blocks on the input with previously decoded bytes		
 		referenceBlock.allBytes(0);
 		// it turns out I'm really bad at thinking about indexing in two different
 		// directions, so doing this carefully.
@@ -435,11 +426,10 @@ void Set2Challenge14() {
 
 		// query the oracle
 		ByteEncryption::aes_prepend_append_encrypt(&pre, &input, &post, &secretKey, &output, false);
-		// the block we're checking in the output
-		size_t block_index = ((output.length() - 1 - i) / 16); // index of block being currently examined
+		size_t block_index = ((output.length() - 1 - i) / 16); // index of block being currently examined in output
 		output.copyBytesByIndex(&examineBlock, (block_index * block_size), block_size, 0);
 		for (size_t j = 0; j <= 0xff; j++) {
-			// each block encrypting the test for the next byte
+			// each block encrypting the test for the next decoded byte
 			output.copyBytesByIndex(&referenceBlock, (j*block_size) + first_input_offset + pre_len, block_size, 0); 
 			if (referenceBlock.equal(&examineBlock)) {
 				decoded.setAtIndex(j, decoded.length() - i - 1);
