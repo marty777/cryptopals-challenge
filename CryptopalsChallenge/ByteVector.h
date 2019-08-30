@@ -37,6 +37,8 @@ public:
 	void copyBytesByIndex(ByteVector * dest, size_t start_index, size_t length, size_t dest_index);
 	void padToLength(size_t len, byte padding);
 	void random();
+	void reverse();
+	void allBytes(byte value);
 
 	void append(byte b);
 

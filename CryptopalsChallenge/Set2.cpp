@@ -5,8 +5,8 @@
 #include <iostream>
 #include <fstream>
 
-using namespace std;
 
+using namespace std;
 void Set2Challenge9() {
 	
 	char * input = "YELLOW SUBMARINE";
@@ -317,16 +317,138 @@ void Set2Challenge13() {
 }
 
 void Set2Challenge14() {
+
+	srand(516);
 	size_t block_size = 16; // I'm taking this as a given. I know how to determine block size for this challenge.
 	ByteVector post = ByteVector("Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIGRvd24gc28gbXkgaGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBqdXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUgYnkK", BASE64);
 	ByteVector secretKey = ByteVector(16);
 	secretKey.random();
-	// I initially took this part of the challenge to mean a different random prefix applied to each oracle query. That sounds harder.
+	// I initially read this part of the challenge to mean a different random prefix applied to each oracle query. That sounds harder.
 	ByteVector pre = ByteVector(rand() % 257);
 	pre.random();
 	
 	ByteVector output = ByteVector();
-	// TBD
+	// Determine input offset to push one byte of target bytes to next block.
+	ByteVector input = ByteVector(2 * block_size);
+	size_t zero_offset_post = 0; // input length that puts target bytes flush with end of a block.
+	size_t unknown_byte_len = 0; // can't infer length of pre and post separately yet, but can get pre + post
+	size_t len = 0;
+	size_t last_len = 0;
+	for (size_t i = 0; i < block_size+1; i++) {
+		input.resize(i);
+		ByteEncryption::aes_prepend_append_encrypt(&pre, &input, &post, &secretKey, &output, false);
+		len = output.length();
+		if (last_len > 0 && len != last_len) {
+			zero_offset_post = input.length() - 1;
+			unknown_byte_len = last_len - zero_offset_post;
+			break;
+		}
+		last_len = len;
+	}
+	// need to figure out approx length of pre bytes. This can be off by a block_size or two with no issues, the value just
+	// needs to be block-aligned.
+	bool pre_length_found = false;
+	size_t zero_offset_pre = 0;
+	input.resize(block_size + 1);
+	input.allBytes(0);
+	// get the initial output
+	ByteEncryption::aes_prepend_append_encrypt(&pre, &input, &post, &secretKey, &output, false);
+	ByteVector testOutput = ByteVector();
+	size_t first_input_block_index = 0;
+	size_t prev_differing_block_index = 0;
+	size_t first_input_offset = 0;
+
+	for (size_t i = 0; i < input.length(); i++) {
+		// modify one byte at a time on the input until the index of the first differing block between initial output and test output
+		// differ
+		if (i > 0) {
+			input.setAtIndex(0x0, i - 1);
+		}
+ 		input.setAtIndex(0xff, i);
+		ByteEncryption::aes_prepend_append_encrypt(&pre, &input, &post, &secretKey, &testOutput, false);
+		size_t first_differing_block_index = 0;
+		
+		for (size_t j = 0; j < testOutput.length() / block_size; j++) {
+			//cout << "\t" << j << endl;
+			if (!testOutput.equalAtIndex(&output, block_size * j, block_size, block_size * j)) {
+				first_differing_block_index = j;
+				break; 
+			}
+		}
+		if (prev_differing_block_index > 0 && first_differing_block_index != prev_differing_block_index) {
+			first_input_block_index = first_differing_block_index;
+			first_input_offset = i;
+			break;
+		}
+		prev_differing_block_index = first_differing_block_index;
+	}
+
+	// we know the approximate length of the pre bytes at this point, although we might be off by a block_size. All we
+	// really need is the starting offset to let us insert specific blocks into the encrypted output.
+	size_t pre_len = first_input_block_index * block_size - first_input_offset;
+	size_t target_len = unknown_byte_len - pre_len;
+	cout << "Prepended bytes inferred length:\t\t" << pre_len << endl;
+	cout << "Appended (target) bytes inferred length:\t" << target_len << endl;
+
+	// Decoded will produce the target bytes in correct order, so we insert from the end.
+	ByteVector decoded = ByteVector(target_len);
+	decoded.allBytes(0);
+
+	// byte-by-byte decoding from the end of the target bytes.
+	// To save time, 256 blocks are inserted into the input 
+	// for oracle purposes, plus the appropriate offsets to 
+	// align the input and target blocks correctly.
+	ByteVector referenceBlock = ByteVector(block_size);
+	ByteVector examineBlock = ByteVector(block_size);
+	for (size_t i = 0 ; i < target_len ; i++) {
+		size_t input_len = first_input_offset + (256 * block_size);
+		// align target bytes to end of block with additional padding
+		input_len += (zero_offset_post - first_input_offset) % block_size;
+		// push i % block_size bytes into next block
+		input_len += (i + 1 % block_size);
+		
+		input.resize(input_len);
+		// fill in the test blocks on the input with previously decoded bytes
+		
+		referenceBlock.allBytes(0);
+		// it turns out I'm really bad at thinking about indexing in two different
+		// directions, so doing this carefully.
+		size_t decoded_start, decoded_end;
+		if (i < block_size - 1) {
+			decoded_end = decoded.length() - 1;
+			decoded_start = decoded_end - i;
+		}
+		else {
+			decoded_start = decoded.length() - 1 - i;
+			decoded_end = decoded_start + block_size - 1;
+		}
+
+		for (size_t j = decoded_start; j <= decoded_end; j++) {
+			referenceBlock.setAtIndex(decoded.atIndex(j), j - decoded_start);
+		}
+
+		// set reference block at each test location with different test byte
+		for (int j = 0; j <= 0xff; j++) {
+			referenceBlock.setAtIndex((byte)j, 0);
+			referenceBlock.copyBytesByIndex(&input, 0, block_size, (j * block_size) + first_input_offset);
+		}
+
+		// query the oracle
+		ByteEncryption::aes_prepend_append_encrypt(&pre, &input, &post, &secretKey, &output, false);
+		// the block we're checking in the output
+		size_t block_index = ((output.length() - 1 - i) / 16); // index of block being currently examined
+		output.copyBytesByIndex(&examineBlock, (block_index * block_size), block_size, 0);
+		for (size_t j = 0; j <= 0xff; j++) {
+			// each block encrypting the test for the next byte
+			output.copyBytesByIndex(&referenceBlock, (j*block_size) + first_input_offset + pre_len, block_size, 0); 
+			if (referenceBlock.equal(&examineBlock)) {
+				decoded.setAtIndex(j, decoded.length() - i - 1);
+			}
+		}
+
+	}
+	cout << "Decoded target bytes:" << endl << decoded.toStr(ASCII) << endl;
+
 }
 
 int Set2() {
@@ -356,6 +478,7 @@ int Set2() {
 	// Pause before continuing
 	cout << "Press enter to continue..." << endl;
 	getchar();
+	cout << "Set 2 Challenge 14" << endl;
 	Set2Challenge14();
 	// Pause before continuing
 	cout << "Press enter to continue..." << endl;

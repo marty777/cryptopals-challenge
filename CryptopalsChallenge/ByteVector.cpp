@@ -199,6 +199,7 @@ size_t ByteVector::length() {
 	return _v.size();
 }
 byte ByteVector::atIndex(size_t index) {
+	assert(index < _v.size());
 	return _v[index];
 }
 byte ByteVector::setAtIndex(byte value, size_t index) {
@@ -469,6 +470,23 @@ void ByteVector::padToLength(size_t len, byte padding) {
 void ByteVector::random() {
 	for (size_t i = 0; i < _v.size(); i++) {
 		_v[i] = (byte)(rand() % 0x100);
+	}
+}
+
+void ByteVector::reverse() {
+	ByteVector temp = ByteVector(_v.size());
+	for (size_t i = temp.length() - 1; i >= 0; i--) {
+		temp.setAtIndex(_v[temp.length() - 1 - i], i);
+	}
+	for (size_t i = 0; i < temp.length(); i++) {
+		_v[i] = temp.atIndex(i);
+	}
+}
+
+// set all bytes in vector to provided
+void ByteVector::allBytes(byte value) {
+	for (size_t i = 0; i < _v.size(); i++) {
+		_v[i] = value;
 	}
 }
 

@@ -228,7 +228,7 @@ int ByteEncryption::aes_repeated_block_count(ByteVector *bv) {
 				continue;
 			}
 			bool match = true;
-			for (size_t k = 0; k < 16; k++) {
+			for (size_t k = 0; k < 16 && i+k < bv->length() && j+k < bv->length(); k++) {
 				if (bv->atIndex(i + k) != bv->atIndex(j + k)) {
 					match = false;
 					break;
