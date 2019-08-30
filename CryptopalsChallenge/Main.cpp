@@ -2,6 +2,6 @@
 #include "Set2.h"
 
 int main() {
-	Set1();
+	//Set1();
 	Set2();
 }

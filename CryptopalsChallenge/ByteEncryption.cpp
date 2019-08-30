@@ -3,7 +3,15 @@
 #include <openssl/aes.h>
 #include <iostream>
 
-
+void ByteEncryptionError::clear() {
+	err = 0;
+	message = "";
+}
+void ByteEncryptionError::print() {
+	if (err != 0) {
+		std::cout << "ByteEncryptionError:\t" << message.c_str() << "(" << err << ")" << std::endl;
+	}
+}
 
 int rand_range(int start, int end) {
 	return start + (rand() % (1 + end - start));
@@ -262,4 +270,39 @@ size_t ByteEncryption::aes_seq_repeated_block_count(ByteVector *bv) {
 		high_count = count;
 	}
 	return high_count;
+}
+
+
+// validate and strip PKCS#7 padding.
+// Returns true if validation passed. If validation fails, output will not be updated and err will be.
+bool ByteEncryption::pk7PaddingValidate(ByteVector *bv, size_t block_size, ByteVector *output, ByteEncryptionError *err) {
+	
+	if (block_size < 2 || block_size >= 256) {
+		err->err = 1;
+		err->message = "Invalid block size";
+		return false;
+	}
+
+	if (bv->length() == 0 || bv->length() % block_size != 0) {
+		err->err = 2;
+		err->message = "Input not padded to block size";
+		return false;
+	}
+
+	byte final = bv->atIndex(bv->length() - 1);
+	for (size_t j = 0; j < final; j++) {
+		if (bv->atIndex(bv->length() - 1 - j) != final) {
+			err->err = 3;
+			err->message = "Invalid padding byte found";
+			return false;
+		}
+	}
+
+	output->resize(bv->length() - (size_t)final);
+	bv->copyBytesByIndex(output, 0, output->length(), 0);
+	return true;
+}
+
+bool ByteEncryption::pk7PaddingValidate(ByteVector *bv, ByteVector *output, ByteEncryptionError *err) {
+	return ByteEncryption::pk7PaddingValidate(bv, 16, output, err);
 }

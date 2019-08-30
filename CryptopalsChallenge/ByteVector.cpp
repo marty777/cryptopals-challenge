@@ -442,6 +442,7 @@ void ByteVector::copyBytes(byte *dest) {
 }
 
 void ByteVector::copyBytes(ByteVector *dest) {
+	assert(_v.size() == dest->length());
 	for (size_t i = 0; i < _v.size(); i++) {
 		dest->setAtIndex(_v[i],i);
 	}
@@ -463,6 +464,17 @@ void ByteVector::padToLength(size_t len, byte padding) {
 	_v.resize(len);
 	for (size_t i = startlen; i < len; i++) {
 		_v[i] = padding;
+	}
+}
+
+void ByteVector::padToLengthPKCS7(size_t len) {
+	assert(len >= _v.size());
+	assert(len - _v.size() <= 0xff);
+	size_t start_len = _v.size();
+	_v.resize(len);
+	byte b = (byte)(len - start_len);
+	for (size_t i = start_len; i < _v.size(); i++) {
+		_v[i] = b;
 	}
 }
 

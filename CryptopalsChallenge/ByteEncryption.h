@@ -1,6 +1,17 @@
 #pragma once
 #include "ByteVector.h"
+
 // handles encryption/decryption operations using ByteVector objects
+
+class ByteEncryptionError 
+{
+public:
+	int err;
+	std::string message;
+
+	void clear();
+	void print();
+};
 
 class ByteEncryption
 {
@@ -19,6 +30,9 @@ public:
 
 	static int aes_repeated_block_count(ByteVector *bv);
 	static size_t aes_seq_repeated_block_count(ByteVector *bv);
+
+	static bool pk7PaddingValidate(ByteVector *bv, size_t block_size, ByteVector *output, ByteEncryptionError *err);
+	static bool pk7PaddingValidate(ByteVector *bv, ByteVector *output, ByteEncryptionError *err);
 	
 };
 

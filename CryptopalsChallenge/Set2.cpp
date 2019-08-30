@@ -13,7 +13,8 @@ void Set2Challenge9() {
 	char * expectedOutput = "YELLOW SUBMARINE\x04\x04\x04\x04";
 	ByteVector bv = ByteVector(input, ASCII);
 	ByteVector expectedBv = ByteVector(expectedOutput, ASCII);
-	bv.padToLength(20, 0x04);
+	bv.padToLengthPKCS7(20);
+	bv.printHexStrByBlocks(20);
 	cout << bv.toStr(ASCII) << endl;
 	cout << (bv.equal(&expectedBv) ? "Output matches expected result\n" : "Output does not match expected") << endl;
 }
@@ -438,7 +439,38 @@ void Set2Challenge14() {
 
 	}
 	cout << "Decoded target bytes:" << endl << decoded.toStr(ASCII) << endl;
+}
 
+void Set2Challenge15() {
+	ByteVector expectedStripped = ByteVector("ICE ICE BABY", ASCII);
+	ByteVector input1 = ByteVector("ICE ICE BABY\x04\x04\x04\x04", ASCII);
+	ByteVector input2 = ByteVector("ICE ICE BABY\x05\x05\x05\x05", ASCII);
+	ByteVector input3 = ByteVector("ICE ICE BABY\x01\x02\x03\x04", ASCII);
+
+	ByteVector output = ByteVector();
+	ByteEncryptionError err;
+	if (!ByteEncryption::pk7PaddingValidate(&input1, &output, &err)) {
+		cout << "Unexpected input 1 error:\t(" << err.err << ") " << err.message << endl;
+	}
+	else {
+		cout << (output.equal(&expectedStripped) ? "Input 1 matches expected" : "Input 1 does not match expected") << endl;
+	}
+	err.clear();
+	
+	if (!ByteEncryption::pk7PaddingValidate(&input2, &output, &err)) {
+		cout << "Expected input 2 error:\t(" << err.err << ") " << err.message << endl;
+	}
+	else {
+		cout << (output.equal(&expectedStripped) ? "Input 2 matches expected" : "Input 2 does not match expected") << endl;
+	}
+	err.clear();
+
+	if (!ByteEncryption::pk7PaddingValidate(&input3, &output, &err)) {
+		cout << "Expected input 3 error:\t(" << err.err << ") " << err.message << endl;
+	}
+	else {
+		cout << (output.equal(&expectedStripped) ? "Input 3 matches expected" : "Input 3 does not match expected") << endl;
+	}
 }
 
 int Set2() {
@@ -470,6 +502,11 @@ int Set2() {
 	getchar();
 	cout << "Set 2 Challenge 14" << endl;
 	Set2Challenge14();
+	// Pause before continuing
+	cout << "Press enter to continue..." << endl;
+	getchar();
+	cout << "Set 2 Challenge 15" << endl;
+	Set2Challenge15();
 	// Pause before continuing
 	cout << "Press enter to continue..." << endl;
 	getchar();
