@@ -28,11 +28,16 @@ public:
 	static void aes_append_encrypt(ByteVector *bv, ByteVector *appendBv, ByteVector *key, ByteVector *output, bool verbose = false);
 	static void aes_prepend_append_encrypt(ByteVector *prependBv, ByteVector *bv, ByteVector *appendBv, ByteVector *key, ByteVector *output, bool verbose = false);
 
+	static void challenge16encrypt(ByteVector *bv, ByteVector *key, ByteVector *output, bool verbose = false);
+	static bool challenge16decrypt(ByteVector *bv, ByteVector *key);
+
 	static int aes_repeated_block_count(ByteVector *bv);
 	static size_t aes_seq_repeated_block_count(ByteVector *bv);
 
-	static bool pk7PaddingValidate(ByteVector *bv, size_t block_size, ByteVector *output, ByteEncryptionError *err);
-	static bool pk7PaddingValidate(ByteVector *bv, ByteVector *output, ByteEncryptionError *err);
+	static void pkcs7Pad(ByteVector *bv, size_t block_size);
+	static void pkcs7ForcePad(ByteVector *bv, size_t block_size, size_t start_len, size_t target_len);
+	static bool pkcs7PaddingValidate(ByteVector *bv, size_t block_size, ByteVector *output, ByteEncryptionError *err);
+	static bool pkcs7PaddingValidate(ByteVector *bv, ByteVector *output, ByteEncryptionError *err);
 	
 };
 

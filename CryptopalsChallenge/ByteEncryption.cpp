@@ -40,10 +40,10 @@ void ByteEncryption::aes_ecb_encrypt(ByteVector *bv, ByteVector *key, ByteVector
 	assert(key->length() == 16 || key->length() == 24 || key->length() == 32);
 	
 	// check the bv has been padded to 16 bytes
-	assert(bv->length() % 16 == 0);
+	assert(bv->length() % AES_BLOCK_SIZE == 0);
 
 	// check start and end indexes are 16-byte aligned within the bounds of the input vector, and the end index is >= the start index
-	assert(start_index % 16 == 0 && (end_index + 1) % 16 == 0 && start_index < bv->length() && end_index < bv->length() && start_index <= end_index);
+	assert(start_index % AES_BLOCK_SIZE == 0 && (end_index + 1) % AES_BLOCK_SIZE == 0 && start_index < bv->length() && end_index < bv->length() && start_index <= end_index);
 
 	// check the output vector matches the input vector in length
 	assert(bv->length() == output->length());
@@ -56,7 +56,7 @@ void ByteEncryption::aes_ecb_encrypt(ByteVector *bv, ByteVector *key, ByteVector
 		AES_set_decrypt_key(key->dataPtr(), (int)key->length() * 8, &aesKey);
 	}
 
-	for (size_t i = start_index; i < end_index; i += 16) {
+	for (size_t i = start_index; i < end_index; i += AES_BLOCK_SIZE) {
 		AES_ecb_encrypt(bv->dataPtr() + i, output->dataPtr() + i, &aesKey, encrypt ? AES_ENCRYPT : AES_DECRYPT);
 	}
 }
@@ -66,37 +66,37 @@ void ByteEncryption::aes_cbc_encrypt(ByteVector *bv, ByteVector *key, ByteVector
 	// key length - 128, 192 or 256 bits
 	assert(key->length() == 16 || key->length() == 24 || key->length() == 32);
 	// check the bv has been padded to 16 bytes
-	assert(bv->length() % 16 == 0);
+	assert(bv->length() % AES_BLOCK_SIZE == 0);
 	// check the output vector matches the input vector in length
 	assert(bv->length() == output->length());
 	// check the iv is 16 bytes
-	assert(iv->length() == 16);
+	assert(iv->length() == AES_BLOCK_SIZE);
 	
 	ByteVector inputIv = ByteVector(iv);
-	ByteVector inputBv = ByteVector(16);
-	ByteVector outputBv = ByteVector(16);
+	ByteVector inputBv = ByteVector(AES_BLOCK_SIZE);
+	ByteVector outputBv = ByteVector(AES_BLOCK_SIZE);
 
-	for (size_t i = 0; i < bv->length() ; i+=16) {
+	for (size_t i = 0; i < bv->length() ; i+= AES_BLOCK_SIZE) {
 		if (encrypt) {
 			// inputBv = inputIv ^ input block
 			inputIv.copyBytes(&inputBv);
-			inputBv.xorByIndex(bv, 0, 16, i);
+			inputBv.xorByIndex(bv, 0, AES_BLOCK_SIZE, i);
 			// encrypt block with key
 			ByteEncryption::aes_ecb_encrypt_block(inputBv.dataPtr(), key->dataPtr(), key->length(), outputBv.dataPtr(), encrypt);
 			// copy outputBv to output and inputIv
 			outputBv.copyBytes(&inputIv);
-			outputBv.copyBytesByIndex(output, 0, 16, i);
+			outputBv.copyBytesByIndex(output, 0, AES_BLOCK_SIZE, i);
 		}
 		else {
 			// inputBv = input block
-			bv->copyBytesByIndex(&inputBv, i, 16, 0);
+			bv->copyBytesByIndex(&inputBv, i, AES_BLOCK_SIZE, 0);
 			// decrypt input block
 			ByteEncryption::aes_ecb_encrypt_block(inputBv.dataPtr(), key->dataPtr(), (int)key->length(), outputBv.dataPtr(), encrypt);
 			// output block = outputBv ^ inputIv
-			outputBv.xorByIndex (&inputIv, 0, 16, 0);
-			outputBv.copyBytesByIndex(output, 0, 16, i);
+			outputBv.xorByIndex (&inputIv, 0, AES_BLOCK_SIZE, 0);
+			outputBv.copyBytesByIndex(output, 0, AES_BLOCK_SIZE, i);
 			// inputIv = input block
-			bv->copyBytesByIndex(&inputIv, i, 16, 0);
+			bv->copyBytesByIndex(&inputIv, i, AES_BLOCK_SIZE, 0);
 		}
 	}
 
@@ -112,7 +112,13 @@ bool ByteEncryption::aes_random_encrypt(ByteVector *bv, ByteVector *output) {
 	// Perform random padding
 	int prepadding = rand_range(5, 10);
 	int postpadding = rand_range(5, 10);
-	ByteVector input = ByteVector(bv->length() + prepadding + postpadding);
+	size_t inputlen = bv->length() + prepadding + postpadding;
+	if (inputlen % 16 != 0) {
+		inputlen += 16 - (inputlen % 16);
+	}
+	ByteVector input = ByteVector();
+	input.reserve(inputlen); // includes space for padding
+	input.resize(bv->length() + prepadding + postpadding);
 	for (size_t i = 0; i < prepadding; i++) {
 		input.setAtIndex(0, i);
 	}
@@ -124,6 +130,7 @@ bool ByteEncryption::aes_random_encrypt(ByteVector *bv, ByteVector *output) {
 	}
 
 	// further pad to 16-byte blocksize
+	/*
 	if (input.length() % 16 != 0) {
 		size_t old_len = input.length();
 		size_t new_len = old_len + (16 - (input.length() % 16));
@@ -131,7 +138,8 @@ bool ByteEncryption::aes_random_encrypt(ByteVector *bv, ByteVector *output) {
 		for (size_t i = old_len; i < new_len; i++) {
 			input.setAtIndex(0, i);
 		}
-	}
+	}*/
+	ByteEncryption::pkcs7Pad(&input, AES_BLOCK_SIZE);
 	output->resize(input.length());
 
 
@@ -142,7 +150,7 @@ bool ByteEncryption::aes_random_encrypt(ByteVector *bv, ByteVector *output) {
 	}
 	else {
 		// CBC
-		ByteVector iv = ByteVector(16);
+		ByteVector iv = ByteVector(AES_BLOCK_SIZE);
 		iv.random();
 		ByteEncryption::aes_cbc_encrypt(&input, &key, output, &iv, true);
 	}
@@ -158,30 +166,34 @@ void ByteEncryption::aes_append_encrypt(ByteVector *bv, ByteVector *appendBv, By
 	if (inputlen % 16 != 0) {
 		inputlen += 16 - (inputlen % 16);
 	}
-	ByteVector input = ByteVector(inputlen);
+	ByteVector input = ByteVector();
+	input.reserve(inputlen); // reserve space for the padding
+	input.resize(bv->length() + appendBv->length());
+	
 	for (size_t i = 0; i < bv->length(); i++) {
 		input.setAtIndex(bv->atIndex(i), i);
 	}
 	for (size_t i = 0; i < appendBv->length(); i++) {
 		input.setAtIndex(appendBv->atIndex(i), i + bv->length());
 	}
-	for (size_t i = bv->length() + appendBv->length(); i < inputlen; i++) {
+	/*for (size_t i = bv->length() + appendBv->length(); i < inputlen; i++) {
 		input.setAtIndex(0, i);
-	}
+	}*/
+	ByteEncryption::pkcs7Pad(&input, AES_BLOCK_SIZE);
 	output->resize(inputlen);
 	ByteEncryption::aes_ecb_encrypt(&input, key, output, 0, inputlen - 1, true);
 	
 	if (verbose) {
 		std::cout << "Input breakdown:" << std::endl;
-		for (int i = 0; i < inputlen / 16; i++) {
-			ByteVector inputBlock = ByteVector(16);
-			input.copyBytesByIndex(&inputBlock, i * 16, 16, 0);
+		for (int i = 0; i < inputlen / AES_BLOCK_SIZE; i++) {
+			ByteVector inputBlock = ByteVector(AES_BLOCK_SIZE);
+			input.copyBytesByIndex(&inputBlock, i * AES_BLOCK_SIZE, AES_BLOCK_SIZE, 0);
 			std::cout << i << ":\t" << inputBlock.toStr(HEX) << std::endl;
 		}
 		std::cout << "Output breakdown:" << std::endl;
-		for (int i = 0; i < inputlen / 16; i++) {
-			ByteVector outputBlock = ByteVector(16);
-			output->copyBytesByIndex(&outputBlock, i * 16, 16, 0);
+		for (int i = 0; i < inputlen / AES_BLOCK_SIZE; i++) {
+			ByteVector outputBlock = ByteVector(AES_BLOCK_SIZE);
+			output->copyBytesByIndex(&outputBlock, i * AES_BLOCK_SIZE, AES_BLOCK_SIZE, 0);
 			std::cout << i << ":\t" << outputBlock.toStr(HEX) << std::endl;
 		}
 	}
@@ -194,7 +206,10 @@ void ByteEncryption::aes_prepend_append_encrypt(ByteVector *prependBv, ByteVecto
 	if (inputlen % 16 != 0) {
 		inputlen += 16 - (inputlen % 16);
 	}
-	ByteVector input = ByteVector(inputlen);
+	ByteVector input = ByteVector();
+	input.reserve(inputlen);
+	input.resize(prependBv->length() + bv->length() + appendBv->length());
+
 	for (size_t i = 0; i < prependBv->length(); i++) {
 		input.setAtIndex(prependBv->atIndex(i), i);
 	}
@@ -204,39 +219,75 @@ void ByteEncryption::aes_prepend_append_encrypt(ByteVector *prependBv, ByteVecto
 	for (size_t i = 0; i < appendBv->length(); i++) {
 		input.setAtIndex(appendBv->atIndex(i), i + prependBv->length() + bv->length());
 	}
-	for (size_t i = prependBv->length() + bv->length() + appendBv->length(); i < inputlen; i++) {
+	/*for (size_t i = prependBv->length() + bv->length() + appendBv->length(); i < inputlen; i++) {
 		input.setAtIndex(0, i);
-	}
+	}*/
+	ByteEncryption::pkcs7Pad(&input, AES_BLOCK_SIZE);
 	output->resize(inputlen);
 	ByteEncryption::aes_ecb_encrypt(&input, key, output, 0, inputlen - 1, true);
 
 	if (verbose) {
 		std::cout << "Input breakdown:" << std::endl;
-		for (int i = 0; i < inputlen / 16; i++) {
-			ByteVector inputBlock = ByteVector(16);
-			input.copyBytesByIndex(&inputBlock, i * 16, 16, 0);
+		for (int i = 0; i < inputlen / AES_BLOCK_SIZE; i++) {
+			ByteVector inputBlock = ByteVector(AES_BLOCK_SIZE);
+			input.copyBytesByIndex(&inputBlock, i * AES_BLOCK_SIZE, AES_BLOCK_SIZE, 0);
 			std::cout << i << ":\t" << inputBlock.toStr(HEX) << std::endl;
 		}
 		std::cout << "Output breakdown:" << std::endl;
-		for (int i = 0; i < inputlen / 16; i++) {
-			ByteVector outputBlock = ByteVector(16);
-			output->copyBytesByIndex(&outputBlock, i * 16, 16, 0);
+		for (int i = 0; i < inputlen / AES_BLOCK_SIZE; i++) {
+			ByteVector outputBlock = ByteVector(AES_BLOCK_SIZE);
+			output->copyBytesByIndex(&outputBlock, i * AES_BLOCK_SIZE, AES_BLOCK_SIZE, 0);
 			std::cout << i << ":\t" << outputBlock.toStr(HEX) << std::endl;
 		}
 	}
+}
+
+
+void ByteEncryption::challenge16encrypt(ByteVector *bv, ByteVector *key, ByteVector *output, bool verbose) {
+	ByteVector pre = ByteVector("comment1=cooking%20MCs;userdata=", ASCII);
+	ByteVector post = ByteVector(";comment2=%20like%20a%20pound%20of%20bacon", ASCII);
+	size_t input_len = 0;
+	for (size_t i = 0; i < bv->length(); i++) {
+		if (bv->atIndex(i) == ';' || bv->atIndex(i) == '=') {
+			input_len += 3;
+		}
+		else {
+			input_len++;
+		}
+	}
+	ByteVector input = ByteVector(input_len);
+	for (size_t i = 0; i < bv->length(); i++) {
+		// urlencode our unsafe characters
+		if (bv->atIndex(i) == ';') {
+			input.append('%');
+			input.append('3');
+			input.append('B');
+		}
+		else if(bv->atIndex(i) == '=') {
+			input.append('%');
+			input.append('3');
+			input.append('D');
+		}
+		else {
+			input.append(bv->atIndex(i));
+		}
+	}
+}
+bool ByteEncryption::challenge16decrypt(ByteVector *bv, ByteVector *key) {
+
 }
 
 // returns the number of 16-byte blocks in the vector that appear more than once
 int ByteEncryption::aes_repeated_block_count(ByteVector *bv) {
 	// probably smarter ways to do this, but eh
 	int count = 0;
-	for (size_t i = 0; i < bv->length(); i+=16) {
+	for (size_t i = 0; i < bv->length(); i+= AES_BLOCK_SIZE) {
 		for (size_t j = 0; j < bv->length(); j++) {
 			if (j == i) {
 				continue;
 			}
 			bool match = true;
-			for (size_t k = 0; k < 16 && i+k < bv->length() && j+k < bv->length(); k++) {
+			for (size_t k = 0; k < AES_BLOCK_SIZE && i+k < bv->length() && j+k < bv->length(); k++) {
 				if (bv->atIndex(i + k) != bv->atIndex(j + k)) {
 					match = false;
 					break;
@@ -255,8 +306,8 @@ int ByteEncryption::aes_repeated_block_count(ByteVector *bv) {
 size_t ByteEncryption::aes_seq_repeated_block_count(ByteVector *bv) {
 	size_t high_count = 0;
 	size_t count = 0;
-	for (size_t i = 0; i < bv->length() - 16; i += 16) {
-		if (bv->equalAtIndex(bv, i, 16, i + 16)) {
+	for (size_t i = 0; i < bv->length() - AES_BLOCK_SIZE; i += AES_BLOCK_SIZE) {
+		if (bv->equalAtIndex(bv, i, AES_BLOCK_SIZE, i + AES_BLOCK_SIZE)) {
 			count++;
 		}
 		else {
@@ -273,9 +324,37 @@ size_t ByteEncryption::aes_seq_repeated_block_count(ByteVector *bv) {
 }
 
 
+void ByteEncryption::pkcs7Pad(ByteVector *bv, size_t block_size) {
+	assert(block_size < 0x100);
+	if (bv->length() % block_size != 0) {
+		size_t init_len = bv->length();
+		bv->resize(init_len + (block_size - (bv->length() % block_size)));
+		byte b = (byte)(bv->length() - init_len);
+		for (size_t i = init_len; i < bv->length(); i++) {
+			bv->setAtIndex(b, i);
+		}
+	}
+}
+
+// regardless of length of bv, treat it as start_len bytes long and pad to target_len
+void ByteEncryption::pkcs7ForcePad(ByteVector *bv, size_t block_size, size_t start_len, size_t target_len) {
+	assert(block_size < 0x100);
+	assert(target_len >= start_len);
+	assert((target_len - start_len) < 0x100);
+	assert(target_len % block_size == 0);
+	assert(start_len < bv->length());
+	if (bv->length() != target_len) {
+		bv->resize(target_len);
+	}
+	byte b = (byte)(target_len - start_len);
+	for (size_t i = start_len; i < target_len; i++) {
+		bv->setAtIndex(b, i);
+	}
+}
+
 // validate and strip PKCS#7 padding.
 // Returns true if validation passed. If validation fails, output will not be updated and err will be.
-bool ByteEncryption::pk7PaddingValidate(ByteVector *bv, size_t block_size, ByteVector *output, ByteEncryptionError *err) {
+bool ByteEncryption::pkcs7PaddingValidate(ByteVector *bv, size_t block_size, ByteVector *output, ByteEncryptionError *err) {
 	
 	if (block_size < 2 || block_size >= 256) {
 		err->err = 1;
@@ -303,6 +382,6 @@ bool ByteEncryption::pk7PaddingValidate(ByteVector *bv, size_t block_size, ByteV
 	return true;
 }
 
-bool ByteEncryption::pk7PaddingValidate(ByteVector *bv, ByteVector *output, ByteEncryptionError *err) {
-	return ByteEncryption::pk7PaddingValidate(bv, 16, output, err);
+bool ByteEncryption::pkcs7PaddingValidate(ByteVector *bv, ByteVector *output, ByteEncryptionError *err) {
+	return ByteEncryption::pkcs7PaddingValidate(bv, AES_BLOCK_SIZE, output, err);
 }

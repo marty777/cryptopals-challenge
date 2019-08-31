@@ -43,6 +43,7 @@ public:
 
 	void append(byte b);
 
+	void reserve(size_t len);
 	void resize(size_t len);
 	byte *dataPtr();
 };

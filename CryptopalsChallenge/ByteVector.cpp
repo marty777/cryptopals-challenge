@@ -506,6 +506,11 @@ void ByteVector::append(byte b) {
 	_v.push_back(b);
 }
 
+
+void ByteVector::reserve(size_t len) {
+	_v.reserve(len);
+}
+
 void ByteVector::resize(size_t len) {
 	_v.resize(len);
 }

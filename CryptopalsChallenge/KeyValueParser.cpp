@@ -59,7 +59,15 @@ bool KeyValueParser::parseDelimited(std::string input) {
 
 }
 bool KeyValueParser::parseDelimited(ByteVector *input) {
-	string inputStr = string(input->toStr(ASCII));
+	ByteVector stripped = ByteVector();
+	ByteEncryptionError err;
+	string inputStr;
+	if (ByteEncryption::pkcs7PaddingValidate(input, &stripped, &err)) {
+		inputStr = string(stripped.toStr(ASCII));
+	}
+	else {
+		inputStr = input->toStr(ASCII);
+	}
 	return parseDelimited(inputStr);
 }
 
@@ -115,10 +123,8 @@ void KeyValueParser::encrypt_profile_for(ByteVector *input, ByteVector *key, Byt
 	this->profile_for(input, &plaintextProfile);
 
 	// pad profile text to blocksize
+	ByteEncryption::pkcs7Pad(&plaintextProfile, 16);
 	size_t block_size = 16;
-	if (plaintextProfile.length() % block_size != 0) {
-		plaintextProfile.padToLength(plaintextProfile.length() + block_size - (plaintextProfile.length() % block_size), 0);
-	}
 	output->resize(plaintextProfile.length());
 	ByteEncryption::aes_ecb_encrypt(&plaintextProfile, key, output, 0, plaintextProfile.length() - 1, true);
 }

@@ -116,7 +116,7 @@ void Set2Challenge12() {
 		}
 		last_len = len;
 	}
-	cout << "Inferred block size:\t" << block_size << endl;
+	cout << "Inferred block size:\t\t" << block_size << endl;
 
 	// Detect ECB vs CBC
 	ByteVector input = ByteVector(1000);
@@ -172,7 +172,7 @@ void Set2Challenge12() {
 		}
 	}
 
-	cout << "Decoded: " << decoded.toStr(ASCII) << endl;
+	cout << "Decoded:" << endl << decoded.toStr(ASCII) << endl;
 }
 
 void Set2Challenge13() {
@@ -183,7 +183,7 @@ void Set2Challenge13() {
 	ByteVector outputProfile = ByteVector();
 	// Test parser
 	parser.profile_for(&email, &outputProfile);
-	cout << "Profile parser test:\t" << outputProfile.toStr(ASCII) << endl;
+	cout << "Profile parser test:\t\t" << outputProfile.toStr(ASCII) << endl;
 
 	// random 128-bit AES key
 	ByteVector key = ByteVector(16);
@@ -210,7 +210,7 @@ void Set2Challenge13() {
 		}
 		last_len = len;
 	}
-	cout << "Detected block size:\t" << block_size << endl;
+	cout << "Detected block size:\t\t" << block_size << endl;
 	// Not going to bother checking for ECB vs CBC right now.
 
 	// So, we need to figure out a ciphertext that includes role=admin
@@ -255,8 +255,8 @@ void Set2Challenge13() {
 
 	ByteVector payloadUser = ByteVector("user", ASCII);
 	ByteVector payloadAdmin = ByteVector("admin", ASCII);
-	payloadUser.padToLength(block_size, 0);
-	payloadAdmin.padToLength(block_size, 0);
+	ByteEncryption::pkcs7Pad(&payloadUser, block_size);
+	ByteEncryption::pkcs7Pad(&payloadAdmin, block_size);
 	ByteVector testInput = ByteVector();
 	ByteVector testOutput = ByteVector();
 	ByteVector adminEncryptedBlock = ByteVector(block_size);
@@ -418,7 +418,11 @@ void Set2Challenge14() {
 		for (size_t j = decoded_start; j <= decoded_end; j++) {
 			referenceBlock.setAtIndex(decoded.atIndex(j), j - decoded_start);
 		}
-
+		// pad reference block
+		if ((decoded_end - decoded_start + 1) % block_size != 0) {
+			ByteEncryption::pkcs7ForcePad(&referenceBlock, block_size, decoded_end - decoded_start + 1, block_size);
+		}
+		
 		// set reference block at each test location with different test byte
 		for (int j = 0; j <= 0xff; j++) {
 			referenceBlock.setAtIndex((byte)j, 0);
@@ -436,7 +440,6 @@ void Set2Challenge14() {
 				decoded.setAtIndex(j, decoded.length() - i - 1);
 			}
 		}
-
 	}
 	cout << "Decoded target bytes:" << endl << decoded.toStr(ASCII) << endl;
 }
@@ -449,7 +452,7 @@ void Set2Challenge15() {
 
 	ByteVector output = ByteVector();
 	ByteEncryptionError err;
-	if (!ByteEncryption::pk7PaddingValidate(&input1, &output, &err)) {
+	if (!ByteEncryption::pkcs7PaddingValidate(&input1, &output, &err)) {
 		cout << "Unexpected input 1 error:\t(" << err.err << ") " << err.message << endl;
 	}
 	else {
@@ -457,7 +460,7 @@ void Set2Challenge15() {
 	}
 	err.clear();
 	
-	if (!ByteEncryption::pk7PaddingValidate(&input2, &output, &err)) {
+	if (!ByteEncryption::pkcs7PaddingValidate(&input2, &output, &err)) {
 		cout << "Expected input 2 error:\t(" << err.err << ") " << err.message << endl;
 	}
 	else {
@@ -465,7 +468,7 @@ void Set2Challenge15() {
 	}
 	err.clear();
 
-	if (!ByteEncryption::pk7PaddingValidate(&input3, &output, &err)) {
+	if (!ByteEncryption::pkcs7PaddingValidate(&input3, &output, &err)) {
 		cout << "Expected input 3 error:\t(" << err.err << ") " << err.message << endl;
 	}
 	else {
