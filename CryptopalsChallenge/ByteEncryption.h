@@ -36,7 +36,6 @@ public:
 
 	static void pkcs7Pad(ByteVector *bv, size_t block_size);
 	static void pkcs7ForcePad(ByteVector *bv, size_t block_size, size_t start_len, size_t target_len);
-	static void pkcs7Strip(ByteVector *bv, size_t block_size);
 	static bool pkcs7PaddingValidate(ByteVector *bv, size_t block_size, ByteVector *output, ByteEncryptionError *err);
 	static bool pkcs7PaddingValidate(ByteVector *bv, ByteVector *output, ByteEncryptionError *err);
 };

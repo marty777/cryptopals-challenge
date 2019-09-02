@@ -120,6 +120,7 @@
     <ClCompile Include="PlaintextEvaluator.cpp" />
     <ClCompile Include="Set1.cpp" />
     <ClCompile Include="Set2.cpp" />
+    <ClCompile Include="Set3.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ByteEncryption.h" />
@@ -128,6 +129,7 @@
     <ClInclude Include="PlaintextEvaluator.h" />
     <ClInclude Include="Set1.h" />
     <ClInclude Include="Set2.h" />
+    <ClInclude Include="Set3.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

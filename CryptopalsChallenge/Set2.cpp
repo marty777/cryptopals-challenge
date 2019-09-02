@@ -504,8 +504,9 @@ void Set2Challenge16() {
 	testDecrypt.printHexStrByBlocks(16);
 
 	// Bitflipping notes: Flipped bits obviously mess up the block in which they were set on decryption. Due to the XORing of
-	// each block's plaintext with the previous block, the modified bits are propagated onto the subsequent block's plaintext. This 
-	// effect doesn't propagate further, since the modified plaintext block isn't used in the CBC chaining on decryption.
+	// each block's plaintext with the previous encrypted block, the modified bits are propagated onto the subsequent block's 
+	// plaintext. This effect doesn't propagate further, since the modified plaintext block isn't used in the CBC chaining on 
+	// decryption.
 
 	cout << "Attempting attack... " << endl;
 	// actual attack with carefully selected plaintext. ; -> :, = -> >
