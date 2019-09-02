@@ -1,4 +1,5 @@
 #include "ByteEncryption.h"
+#include "KeyValueParser.h"
 #include <assert.h>
 #include <openssl/aes.h>
 #include <iostream>
@@ -130,15 +131,6 @@ bool ByteEncryption::aes_random_encrypt(ByteVector *bv, ByteVector *output) {
 	}
 
 	// further pad to 16-byte blocksize
-	/*
-	if (input.length() % 16 != 0) {
-		size_t old_len = input.length();
-		size_t new_len = old_len + (16 - (input.length() % 16));
-		input.resize(new_len);
-		for (size_t i = old_len; i < new_len; i++) {
-			input.setAtIndex(0, i);
-		}
-	}*/
 	ByteEncryption::pkcs7Pad(&input, AES_BLOCK_SIZE);
 	output->resize(input.length());
 
@@ -176,9 +168,6 @@ void ByteEncryption::aes_append_encrypt(ByteVector *bv, ByteVector *appendBv, By
 	for (size_t i = 0; i < appendBv->length(); i++) {
 		input.setAtIndex(appendBv->atIndex(i), i + bv->length());
 	}
-	/*for (size_t i = bv->length() + appendBv->length(); i < inputlen; i++) {
-		input.setAtIndex(0, i);
-	}*/
 	ByteEncryption::pkcs7Pad(&input, AES_BLOCK_SIZE);
 	output->resize(inputlen);
 	ByteEncryption::aes_ecb_encrypt(&input, key, output, 0, inputlen - 1, true);
@@ -200,8 +189,9 @@ void ByteEncryption::aes_append_encrypt(ByteVector *bv, ByteVector *appendBv, By
 }
 
 // for challenge 14 - random count of random bytes + bv + appendBv, AES ECB encrypted
-void ByteEncryption::aes_prepend_append_encrypt(ByteVector *prependBv, ByteVector *bv, ByteVector *appendBv, ByteVector *key, ByteVector *output, bool verbose) {
-	
+void ByteEncryption::aes_prepend_append_encrypt(ByteVector *prependBv, ByteVector *bv, ByteVector *appendBv, ByteVector *key, ByteVector *output, bool verbose, bool cbc, ByteVector *iv) {
+	assert(!cbc || (cbc && iv != NULL));
+
 	size_t inputlen = prependBv->length() + bv->length() + appendBv->length();
 	if (inputlen % 16 != 0) {
 		inputlen += 16 - (inputlen % 16);
@@ -219,12 +209,15 @@ void ByteEncryption::aes_prepend_append_encrypt(ByteVector *prependBv, ByteVecto
 	for (size_t i = 0; i < appendBv->length(); i++) {
 		input.setAtIndex(appendBv->atIndex(i), i + prependBv->length() + bv->length());
 	}
-	/*for (size_t i = prependBv->length() + bv->length() + appendBv->length(); i < inputlen; i++) {
-		input.setAtIndex(0, i);
-	}*/
+	
 	ByteEncryption::pkcs7Pad(&input, AES_BLOCK_SIZE);
 	output->resize(inputlen);
-	ByteEncryption::aes_ecb_encrypt(&input, key, output, 0, inputlen - 1, true);
+	if (cbc) {
+		ByteEncryption::aes_cbc_encrypt(&input, key, output, iv, true);
+	}
+	else {
+		ByteEncryption::aes_ecb_encrypt(&input, key, output, 0, inputlen - 1, true);
+	}
 
 	if (verbose) {
 		std::cout << "Input breakdown:" << std::endl;
@@ -243,7 +236,7 @@ void ByteEncryption::aes_prepend_append_encrypt(ByteVector *prependBv, ByteVecto
 }
 
 
-void ByteEncryption::challenge16encrypt(ByteVector *bv, ByteVector *key, ByteVector *output, bool verbose) {
+void ByteEncryption::challenge16encrypt(ByteVector *bv, ByteVector *key, ByteVector *output, ByteVector *iv, bool verbose) {
 	ByteVector pre = ByteVector("comment1=cooking%20MCs;userdata=", ASCII);
 	ByteVector post = ByteVector(";comment2=%20like%20a%20pound%20of%20bacon", ASCII);
 	size_t input_len = 0;
@@ -255,7 +248,8 @@ void ByteEncryption::challenge16encrypt(ByteVector *bv, ByteVector *key, ByteVec
 			input_len++;
 		}
 	}
-	ByteVector input = ByteVector(input_len);
+	ByteVector input = ByteVector();
+	input.reserve(input_len);
 	for (size_t i = 0; i < bv->length(); i++) {
 		// urlencode our unsafe characters
 		if (bv->atIndex(i) == ';') {
@@ -272,9 +266,25 @@ void ByteEncryption::challenge16encrypt(ByteVector *bv, ByteVector *key, ByteVec
 			input.append(bv->atIndex(i));
 		}
 	}
+	ByteEncryption::aes_prepend_append_encrypt(&pre, &input, &post, key, output, false, true, iv);
 }
-bool ByteEncryption::challenge16decrypt(ByteVector *bv, ByteVector *key) {
-
+bool ByteEncryption::challenge16decrypt(ByteVector *bv, ByteVector *key, ByteVector *iv) {
+	ByteVector output = ByteVector(bv->length());
+	ByteEncryption::aes_cbc_encrypt(bv, key, &output, iv, false);
+	ByteVector stripped = ByteVector();
+	ByteEncryptionError err;
+	ByteEncryption::pkcs7PaddingValidate(&output, AES_BLOCK_SIZE, &stripped, &err);
+	KeyValueParser parser = KeyValueParser();
+	if (err.err > 0) {
+		parser.parseDelimited(&output, ';', '=');
+	}
+	else {
+		parser.parseDelimited(&stripped, ';', '=');
+	}
+	if (parser.valueWithKey("admin") == "true") {
+		return true;
+	}
+	return false;
 }
 
 // returns the number of 16-byte blocks in the vector that appear more than once

@@ -24,11 +24,11 @@ std::string KeyValueParser::valueWithKey(std::string key) {
 }
 
 // clear current key/value contents and replace with parsed string
-bool KeyValueParser::parseDelimited(std::string input) {
+bool KeyValueParser::parseDelimited(std::string input, byte field_delimiter, byte key_value_delimiter) {
 	_keyvals.clear();
 	// ampersand delimited key-val pairs  e.g. foo=bar&baz=qux&zap=zazzle
-	char delimiter = '&';
-	char splitter = '=';
+	char delimiter = field_delimiter;
+	char splitter = key_value_delimiter;
 	// split on &
 	vector<string> pairs;
 	size_t last_pos = 0;
@@ -58,7 +58,7 @@ bool KeyValueParser::parseDelimited(std::string input) {
 	return true; 
 
 }
-bool KeyValueParser::parseDelimited(ByteVector *input) {
+bool KeyValueParser::parseDelimited(ByteVector *input, byte field_delimiter, byte key_value_delimiter) {
 	ByteVector stripped = ByteVector();
 	ByteEncryptionError err;
 	string inputStr;
@@ -68,13 +68,13 @@ bool KeyValueParser::parseDelimited(ByteVector *input) {
 	else {
 		inputStr = input->toStr(ASCII);
 	}
-	return parseDelimited(inputStr);
+	return parseDelimited(inputStr, field_delimiter, key_value_delimiter);
 }
 
-std::string KeyValueParser::toDelimitedString() {
+std::string KeyValueParser::toDelimitedString(byte field_delimiter, byte key_value_delimiter) {
 	
-	char delimiter = '&';
-	char splitter = '=';
+	char delimiter = field_delimiter;
+	char splitter = key_value_delimiter;
 	size_t len = 0;
 
 	for (size_t i = 0; i < _keyvals.size(); i++) {

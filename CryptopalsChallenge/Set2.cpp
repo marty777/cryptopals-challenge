@@ -476,6 +476,62 @@ void Set2Challenge15() {
 	}
 }
 
+void Set2Challenge16() {
+	// Bitflipping attack investigation.
+	ByteVector test = ByteVector(256); // 16 blocks
+	for (size_t i = 0; i < test.length(); i++) {
+		test.setAtIndex((byte)i, i);
+	}
+	cout << "Test input: " << endl;
+	test.printHexStrByBlocks(16);
+	ByteVector testEncrypt = ByteVector(test.length());
+	ByteVector testKey = ByteVector(16);
+	ByteVector testIv = ByteVector(16);
+	testKey.random();
+	testIv.random();
+	
+	ByteEncryption::aes_cbc_encrypt(&test, &testKey, &testEncrypt, &testIv, true);
+	
+	cout << "Flipping bits... " << endl;
+	// flip lowest bit of first byte
+	testEncrypt.setAtIndex(testEncrypt.atIndex(0) ^ 0x01,0);
+	// flip lowest bit of second byte
+	testEncrypt.setAtIndex(testEncrypt.atIndex(1) ^ 0x01, 1);
+	ByteVector testDecrypt = ByteVector(testEncrypt.length());
+	ByteEncryption::aes_cbc_encrypt(&testEncrypt, &testKey, &testDecrypt, &testIv, false);
+
+	cout << "Test decryption: " << endl;
+	testDecrypt.printHexStrByBlocks(16);
+
+	// Bitflipping notes: Flipped bits obviously mess up the block in which they were set on decryption. Due to the XORing of
+	// each block's plaintext with the previous block, the modified bits are propagated onto the subsequent block's plaintext. This 
+	// effect doesn't propagate further, since the modified plaintext block isn't used in the CBC chaining on decryption.
+
+	cout << "Attempting attack... " << endl;
+	// actual attack with carefully selected plaintext. ; -> :, = -> >
+	ByteVector payload = ByteVector("THISISSOMEJUNK!!:admin<true:AAAA", ASCII);
+	ByteVector output = ByteVector();
+	ByteVector key = ByteVector(16);
+	ByteVector iv = ByteVector(16);
+	key.random();
+	iv.random();
+	ByteEncryption::challenge16encrypt(&payload, &key, &output, &iv, false);
+
+	// flip some bits - assume we don't know the position of our payload in the encrypted string
+	bool found = false;
+	for (size_t i = 0; i < output.length() - 11; i++) {
+		ByteVector modifiedOutput = ByteVector(output);
+		modifiedOutput.setAtIndex(output.atIndex(i + 0) ^ 0x01, i + 0);
+		modifiedOutput.setAtIndex(output.atIndex(i + 6) ^ 0x01, i + 6);
+		modifiedOutput.setAtIndex(output.atIndex(i + 11) ^ 0x01, i + 11);
+		if (ByteEncryption::challenge16decrypt(&modifiedOutput, &key, &iv)) {
+			found = true;
+			break;
+		}
+	}
+	cout << (found ? "Success" : "Failure") << endl;
+}
+
 int Set2() {
 	cout << "### SET 2 ###" << endl;
 	cout << "Set 2 Challenge 9" << endl;
@@ -510,6 +566,11 @@ int Set2() {
 	getchar();
 	cout << "Set 2 Challenge 15" << endl;
 	Set2Challenge15();
+	// Pause before continuing
+	cout << "Press enter to continue..." << endl;
+	getchar();
+	cout << "Set 2 Challenge 16" << endl;
+	Set2Challenge16();
 	// Pause before continuing
 	cout << "Press enter to continue..." << endl;
 	getchar();
