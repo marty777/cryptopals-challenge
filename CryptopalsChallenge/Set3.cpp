@@ -1,5 +1,6 @@
 #include "Set3.h"
 #include "ByteVector.h"
+#include "ByteEncryption.h"
 #include <iostream>
 
 
@@ -24,7 +25,11 @@ void Set3Challenge17() {
 	secretKey.random();
 	iv.random();
 	
-		
+	ByteVector output = ByteVector();
+	ByteEncryption::challenge17encrypt(&strings, &secretKey, &output, &iv, false);
+	output.printHexStrByBlocks(16);
+	cout << "Decryption padding valid: " << (ByteEncryption::challenge17paddingvalidate(&output, &secretKey, &iv) ? "true" : "false") << endl ;
+
 }
 
 int Set3() {

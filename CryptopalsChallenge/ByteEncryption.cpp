@@ -14,6 +14,10 @@ void ByteEncryptionError::print() {
 	}
 }
 
+bool ByteEncryptionError::hasErr() {
+	return (err == 0);
+}
+
 int rand_range(int start, int end) {
 	return start + (rand() % (1 + end - start));
 }
@@ -286,6 +290,24 @@ bool ByteEncryption::challenge16decrypt(ByteVector *bv, ByteVector *key, ByteVec
 	}
 	return false;
 }
+
+void ByteEncryption::challenge17encrypt(std::vector<ByteVector> *inputs, ByteVector *key, ByteVector *output, ByteVector *iv, bool verbose) {
+	int inputIndex = rand_range(0, inputs->size() - 1);
+	ByteVector input = ByteVector(inputs->at((size_t)inputIndex));
+	ByteEncryption::pkcs7Pad(&input, AES_BLOCK_SIZE);
+	output->resize(input.length());
+	ByteEncryption::aes_cbc_encrypt(&input, key, output, iv, true);
+}
+
+bool ByteEncryption::challenge17paddingvalidate(ByteVector *bv, ByteVector *key, ByteVector *iv) {
+	ByteEncryptionError err = ByteEncryptionError();
+	ByteVector output = ByteVector(bv->length());
+	ByteEncryption::aes_cbc_encrypt(bv, key, &output, iv, false);
+	ByteVector stripped = ByteVector();
+	ByteEncryption::pkcs7PaddingValidate(&output, &stripped, &err);
+	return err.hasErr();
+}
+
 
 // returns the number of 16-byte blocks in the vector that appear more than once
 int ByteEncryption::aes_repeated_block_count(ByteVector *bv) {

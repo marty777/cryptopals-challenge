@@ -11,6 +11,7 @@ public:
 
 	void clear();
 	void print();
+	bool hasErr();
 };
 
 class ByteEncryption
@@ -30,6 +31,9 @@ public:
 
 	static void challenge16encrypt(ByteVector *bv, ByteVector *key, ByteVector *output, ByteVector *iv, bool verbose = false);
 	static bool challenge16decrypt(ByteVector *bv, ByteVector *key, ByteVector *iv);
+
+	static void challenge17encrypt(std::vector<ByteVector> *inputs, ByteVector *key, ByteVector *output, ByteVector *iv, bool verbose = false);
+	static bool challenge17paddingvalidate(ByteVector *bv, ByteVector *key, ByteVector *iv);
 
 	static int aes_repeated_block_count(ByteVector *bv);
 	static size_t aes_seq_repeated_block_count(ByteVector *bv);
