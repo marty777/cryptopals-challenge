@@ -409,6 +409,11 @@ bool ByteEncryption::pkcs7PaddingValidate(ByteVector *bv, size_t block_size, Byt
 	}
 
 	byte final = bv->atIndex(bv->length() - 1);
+	if (final == 0) {
+		err->err = 3;
+		err->message = "Invalid padding byte found";
+		return false;
+	}
 	for (size_t j = 0; j < final; j++) {
 		if (bv->atIndex(bv->length() - 1 - j) != final) {
 			err->err = 3;

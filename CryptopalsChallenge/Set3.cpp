@@ -7,6 +7,7 @@
 using namespace std;
 
 void Set3Challenge17() {
+	const size_t block_size = 16; // I hope we can take as given
 	vector<ByteVector> strings;
 	strings.resize(10);
 	strings[0] = ByteVector("MDAwMDAwTm93IHRoYXQgdGhlIHBhcnR5IGlzIGp1bXBpbmc=", BASE64);
@@ -29,6 +30,72 @@ void Set3Challenge17() {
 	ByteEncryption::challenge17encrypt(&strings, &secretKey, &output, &iv, false);
 	output.printHexStrByBlocks(16);
 	cout << "Decryption padding valid: " << (ByteEncryption::challenge17paddingvalidate(&output, &secretKey, &iv) ? "true" : "false") << endl ;
+
+	ByteVector decoded = ByteVector(output.length());
+	for (size_t i = output.length() - 1; i >= 0; i--) {
+		size_t block_index = i / block_size;
+		size_t byte_index = (i % block_size);
+		ByteVector testOutput = ByteVector(block_size * (block_index + 1));
+		ByteVector testIv = ByteVector(iv);
+		bool found = false;
+		byte foundByte = 0;
+		byte paddingByte = (byte)(block_size - byte_index);
+		byte currentCipheredXORByte = 0;
+		if (block_index == 0) {
+			currentCipheredXORByte = iv.atIndex(byte_index);
+		}
+		else {
+			currentCipheredXORByte = output.atIndex(block_size * (block_index - 1) + byte_index);
+		}
+		for (int j = 0; j <= 0xff; j++) {
+			output.copyBytesByIndex(&testOutput, 0, testOutput.length(), 0);
+			iv.copyBytes(&testIv);
+
+			if (block_index == 0) {
+				if (testIv.atIndex(byte_index) == (byte)j) {
+					continue;
+				}
+				for (size_t k = block_size - 1; k > byte_index; k--) {
+					// modify IV to generate valid padding with known decoded bytes
+					byte mask = decoded.atIndex(k) ^ paddingByte;
+					testIv.setAtIndex(iv.atIndex(k) ^ mask, k);
+				}
+				testIv.setAtIndex((byte)j, byte_index);
+			}
+			else {
+				if (testOutput.atIndex(((block_index - 1) * block_size) + byte_index) == (byte)j) {
+					continue;
+				}
+				for (size_t k = block_size - 1; k > byte_index; k--) {
+					// modify ciphered bytes to generate valid padding with known decoded bytes
+					size_t index = ((block_index)* block_size) + k;
+					byte mask = decoded.atIndex(index) ^ paddingByte;
+					testOutput.setAtIndex(output.atIndex(index - block_size) ^ mask, index - block_size);
+				}
+				testOutput.setAtIndex((byte)j, ((block_index - 1) * block_size) + byte_index);
+			}
+
+			if (ByteEncryption::challenge17paddingvalidate(&testOutput, &secretKey, &testIv)) {
+				found = true;
+				foundByte = j;
+			}
+
+		}
+		if (found) {
+			byte preXor = foundByte ^ paddingByte;
+			decoded.setAtIndex(currentCipheredXORByte ^ preXor, i);
+		}
+		else {
+			// must have already been valid
+			decoded.setAtIndex(paddingByte, i);
+		}
+		if (i <= 15) {
+			break;
+		}
+
+	}
+	decoded.printHexStrByBlocks(block_size);
+	decoded.printASCIIStrByBlocks(block_size);
 
 }
 
