@@ -358,10 +358,18 @@ size_t ByteEncryption::aes_seq_repeated_block_count(ByteVector *bv) {
 
 void ByteEncryption::pkcs7Pad(ByteVector *bv, size_t block_size) {
 	assert(block_size < 0x100);
+	size_t init_len = bv->length();
 	if (bv->length() % block_size != 0) {
-		size_t init_len = bv->length();
+		
 		bv->resize(init_len + (block_size - (bv->length() % block_size)));
 		byte b = (byte)(bv->length() - init_len);
+		for (size_t i = init_len; i < bv->length(); i++) {
+			bv->setAtIndex(b, i);
+		}
+	}
+	else {
+		byte b = (byte)block_size;
+		bv->resize(init_len + block_size);
 		for (size_t i = init_len; i < bv->length(); i++) {
 			bv->setAtIndex(b, i);
 		}
