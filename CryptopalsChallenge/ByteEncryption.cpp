@@ -465,3 +465,40 @@ bool ByteEncryption::pkcs7PaddingValidate(ByteVector *bv, size_t block_size, Byt
 bool ByteEncryption::pkcs7PaddingValidate(ByteVector *bv, ByteVector *output, ByteEncryptionError *err) {
 	return ByteEncryption::pkcs7PaddingValidate(bv, AES_BLOCK_SIZE, output, err);
 }
+
+// load nonce and counter into output block (16 bytes) as
+// 64 bit unsigned little endian nonce, 64 bit little endian block count
+void ByteEncryption::ctr_generate_counter(unsigned long long nonce, unsigned long long count, ByteVector *output) {
+	assert(output->length() == 16);
+	for (int i = 0; i < 8; i++) {
+		byte n = (byte)(0xff & (nonce >> i*8));
+		byte c = (byte)(0xff & (count >> i*8));
+		output->setAtIndex(n, i);
+		output->setAtIndex(c, 8 + i);
+	}
+}
+
+// might modify this to take a function pointer if we're likely to switch counter methods
+// note that we don't switch behaviour between encryption and decryption
+// May want this to allow random access, it's a stream cipher after all.
+void ByteEncryption::aes_ctr_encrypt(ByteVector *bv, ByteVector *key, ByteVector *output, unsigned long long nonce) {
+	// key length - 128, 192 or 256 bits
+	assert(key->length() == 16 || key->length() == 24 || key->length() == 32);
+	// check input and output are same length
+	assert(bv->length() == output->length());
+	
+	ByteVector ctr = ByteVector(16);
+	ByteVector enciphered = ByteVector(16);
+	unsigned long long count = 0;
+	size_t index = 0;
+	while (index < bv->length()) {
+		ByteEncryption::ctr_generate_counter(nonce, count, &ctr);
+		ByteEncryption::aes_ecb_encrypt(&ctr, key, &enciphered, 0, AES_BLOCK_SIZE-1, true);
+		count++;
+		
+		for (size_t i = index; i < index + AES_BLOCK_SIZE && i < bv->length(); i++) {
+			output->setAtIndex(bv->atIndex(i) ^ enciphered.atIndex(i % AES_BLOCK_SIZE), i);
+		}
+		index += AES_BLOCK_SIZE;
+	}
+}

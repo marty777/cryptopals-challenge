@@ -103,10 +103,27 @@ void Set3Challenge17() {
 	}
 }
 
+void Set3Challenge18() {
+	ByteVector input = ByteVector("L77na/nrFsKvynd6HzOoG7GHTLXsTVu9qvY/2syLXzhPweyyMTJULu/6/kXX0KSvoOLSFQ==", BASE64);
+	ByteVector key = ByteVector("YELLOW SUBMARINE", ASCII);
+	ByteVector counter = ByteVector(16);
+	unsigned long long nonce = 0;
+	unsigned long long count = 0;
+	
+	ByteVector output = ByteVector(input.length());
+	ByteEncryption::aes_ctr_encrypt(&input, &key, &output, nonce);
+	cout << "Decrypted string: " << output.toStr(ASCII) << endl;
+}
+
 int Set3() {
 	cout << "### SET 3 ###" << endl;
 	cout << "Set 3 Challenge 17" << endl;
 	Set3Challenge17();
+	// Pause before continuing
+	cout << "Press enter to continue..." << endl;
+	getchar();
+	cout << "Set 3 Challenge 18" << endl;
+	Set3Challenge18();
 	// Pause before continuing
 	cout << "Press enter to continue..." << endl;
 	getchar();
