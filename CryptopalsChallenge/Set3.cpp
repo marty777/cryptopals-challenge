@@ -2,6 +2,7 @@
 #include "ByteVector.h"
 #include "ByteEncryption.h"
 #include <iostream>
+#include <fstream>
 
 
 using namespace std;
@@ -115,6 +116,63 @@ void Set3Challenge18() {
 	cout << "Decrypted string: " << output.toStr(ASCII) << endl;
 }
 
+void Set3Challenge19() {
+	unsigned long long secretNonce = rand();
+	ByteVector secretKey = ByteVector(16);
+	secretKey.random();
+
+	vector<ByteVector> inputs;
+
+	char *filePath = "../challenge-files/set3/19.txt";
+	ifstream in(filePath);
+	if (!in) {
+		cout << "Cannot open input file.\n";
+		return;
+	}
+	char line[255];
+	int linecount = 0;
+	while (in) {
+		in.getline(line, 255);
+		// read in line and seperately CTR encrypt using secret key and nonce
+		if (strlen(line) > 0) {
+			ByteVector bv = ByteVector(line, BASE64);
+			ByteVector output = ByteVector(bv.length());
+			ByteEncryption::aes_ctr_encrypt(&bv, &secretKey, &output, secretNonce);
+			inputs.push_back(&output);
+			linecount++;
+		}
+	}
+	in.close();
+
+	// This is going to be trial and error, which is sort of the point of the exersise.
+
+	// 1) Let's look for possible line starters. "The ", "the ",  "A " and "a " (include spaces)
+	ByteVector testA = ByteVector("A ", ASCII);
+	ByteVector testa = ByteVector("a ", ASCII);
+	ByteVector testThe = ByteVector("The ", ASCII);
+	ByteVector testthe = ByteVector("the ", ASCII);
+	for (size_t i = 0; i < inputs.size(); i++) {
+		// assume the line starts with "A "
+		
+		ByteVector trial = ByteVector(inputs[i]);
+		trial.xorByIndex(&testA, 0, testA.length(), 0);
+		ByteVector xorBytes = ByteVector(testA.length());
+		trial.copyBytesByIndex(&xorBytes, 0, xorBytes.length(), 0);
+		xorBytes.xorByIndex(&testA, 0, xorBytes.length(), 0);
+		// try these bytes as the first part of the keystream for each line
+		// print for inspection.
+		cout << "Trial " << testA.toStr(ASCII) << " " << i << endl;
+		for (size_t j = 0; j < inputs.size(); j++) {
+			ByteVector trial2 = ByteVector(inputs[j]);
+			trial2.xorByIndex(&xorBytes, 0, xorBytes.length(), 0);
+			cout << j << " " << trial2.toStr(ASCII) << endl;
+		}
+
+		getchar(); // wait for enter key
+	}
+	
+}
+
 int Set3() {
 	cout << "### SET 3 ###" << endl;
 	cout << "Set 3 Challenge 17" << endl;
@@ -124,6 +182,11 @@ int Set3() {
 	getchar();
 	cout << "Set 3 Challenge 18" << endl;
 	Set3Challenge18();
+	// Pause before continuing
+	cout << "Press enter to continue..." << endl;
+	getchar();
+	cout << "Set 3 Challenge 19" << endl;
+	Set3Challenge19();
 	// Pause before continuing
 	cout << "Press enter to continue..." << endl;
 	getchar();
