@@ -15,7 +15,7 @@ void ByteEncryptionError::print() {
 }
 
 bool ByteEncryptionError::hasErr() {
-	return (err == 0);
+	return (err != 0);
 }
 
 int rand_range(int start, int end) {
@@ -81,6 +81,7 @@ void ByteEncryption::aes_cbc_encrypt(ByteVector *bv, ByteVector *key, ByteVector
 	ByteVector inputBv = ByteVector(AES_BLOCK_SIZE);
 	ByteVector outputBv = ByteVector(AES_BLOCK_SIZE);
 
+	
 	for (size_t i = 0; i < bv->length() ; i+= AES_BLOCK_SIZE) {
 		if (encrypt) {
 			// inputBv = inputIv ^ input block
@@ -105,6 +106,40 @@ void ByteEncryption::aes_cbc_encrypt(ByteVector *bv, ByteVector *key, ByteVector
 		}
 	}
 
+}
+
+void ByteEncryption::aes_cbc_encrypt_check(ByteVector *bv, ByteVector *key, ByteVector *output, ByteVector *iv, bool encrypt) {
+	// key length - 128, 192 or 256 bits
+	assert(key->length() == 16 || key->length() == 24 || key->length() == 32);
+	// check the bv has been padded to 16 bytes
+	assert(bv->length() % AES_BLOCK_SIZE == 0);
+	// check the output vector matches the input vector in length
+	assert(bv->length() == output->length());
+	// check the iv is 16 bytes
+	assert(iv->length() == AES_BLOCK_SIZE);
+
+	ByteVector inputIv = ByteVector(iv);
+
+	AES_KEY aesKey;
+	if (encrypt) {
+		AES_set_encrypt_key(key->dataPtr(), (int)key->length() * 8, &aesKey);
+	}
+	else {
+		AES_set_decrypt_key(key->dataPtr(), (int)key->length() * 8, &aesKey);
+	}
+
+	std::cout << "CBC Encrypt TEST " << (encrypt ? "encrypt" : "decrypt") << std::endl;
+	std::cout << "Input: " << std::endl;
+	bv->printHexStrByBlocks(16);
+	std::cout << "IV: " << std::endl;
+	iv->printHexStrByBlocks(16);
+	std::cout << "inputIV: " << std::endl;
+	inputIv.printHexStrByBlocks(16);
+
+	AES_cbc_encrypt(bv->dataPtr(), output->dataPtr(), bv->length(), &aesKey, inputIv.dataPtr(), (encrypt ? AES_ENCRYPT : AES_DECRYPT ));
+
+	std::cout << "Output: " << std::endl;
+	output->printHexStrByBlocks(16);
 }
 
 // for challenge 11
@@ -305,7 +340,7 @@ bool ByteEncryption::challenge17paddingvalidate(ByteVector *bv, ByteVector *key,
 	ByteEncryption::aes_cbc_encrypt(bv, key, &output, iv, false);
 	ByteVector stripped = ByteVector();
 	ByteEncryption::pkcs7PaddingValidate(&output, &stripped, &err);
-	return err.hasErr();
+	return !err.hasErr();
 }
 
 

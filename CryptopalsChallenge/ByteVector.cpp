@@ -174,7 +174,7 @@ ByteVector::ByteVector(char *input, bv_str_format format) {
 ByteVector::ByteVector(ByteVector *bv) {
 	_v.resize(bv->length());
 	for (int i = 0; i < bv->length(); i++) {
-		_v[0] = bv->atIndex(i);
+		_v[i] = bv->atIndex(i);
 	}
 }
 ByteVector::ByteVector(byte *source, size_t len) {

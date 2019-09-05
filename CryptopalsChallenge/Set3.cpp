@@ -32,7 +32,8 @@ void Set3Challenge17() {
 	cout << "Decryption padding valid: " << (ByteEncryption::challenge17paddingvalidate(&output, &secretKey, &iv) ? "true" : "false") << endl ;
 
 	ByteVector decoded = ByteVector(output.length());
-	for (size_t i = output.length() - 1; i >= 0; i--) {
+	// overflow condition at -1 due to unsigned hence odd break condition
+	for (size_t i = output.length() - 1; i >= 0 && i < output.length(); i--) {
 		size_t block_index = i / block_size;
 		size_t byte_index = (i % block_size);
 		ByteVector testOutput = ByteVector(block_size * (block_index + 1));
@@ -89,14 +90,17 @@ void Set3Challenge17() {
 			// must have already been valid
 			decoded.setAtIndex(paddingByte, i);
 		}
-		if (i <= 15) {
-			break;
-		}
-
 	}
-	decoded.printHexStrByBlocks(block_size);
-	decoded.printASCIIStrByBlocks(block_size);
-
+	
+	ByteVector stripped = ByteVector();
+	ByteEncryptionError err = ByteEncryptionError();
+	ByteEncryption::pkcs7PaddingValidate(&decoded, &stripped, &err);
+	if (err.hasErr()) {
+		cout << "Padding could not be stripped from decoded string:" << decoded.toStr(ASCII) << endl;
+	}
+	else {
+		cout << "Decoded string: " << stripped.toStr(ASCII) << endl;
+	}
 }
 
 int Set3() {
