@@ -469,7 +469,7 @@ bool ByteEncryption::pkcs7PaddingValidate(ByteVector *bv, ByteVector *output, By
 // load nonce and counter into output block (16 bytes) as
 // 64 bit unsigned little endian nonce, 64 bit little endian block count
 void ByteEncryption::ctr_generate_counter(unsigned long long nonce, unsigned long long count, ByteVector *output) {
-	assert(output->length() == 16);
+	assert(output->length() == AES_BLOCK_SIZE);
 	for (int i = 0; i < 8; i++) {
 		byte n = (byte)(0xff & (nonce >> i*8));
 		byte c = (byte)(0xff & (count >> i*8));
@@ -487,8 +487,8 @@ void ByteEncryption::aes_ctr_encrypt(ByteVector *bv, ByteVector *key, ByteVector
 	// check input and output are same length
 	assert(bv->length() == output->length());
 	
-	ByteVector ctr = ByteVector(16);
-	ByteVector enciphered = ByteVector(16);
+	ByteVector ctr = ByteVector(AES_BLOCK_SIZE);
+	ByteVector enciphered = ByteVector(AES_BLOCK_SIZE);
 	unsigned long long count = 0;
 	size_t index = 0;
 	while (index < bv->length()) {
