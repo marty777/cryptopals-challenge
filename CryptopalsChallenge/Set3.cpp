@@ -122,6 +122,7 @@ void Set3Challenge19() {
 	secretKey.random();
 
 	vector<ByteVector> inputs;
+	size_t max_keylen = 0; // length of longest string in inputs.
 
 	char *filePath = "../challenge-files/set3/19.txt";
 	ifstream in(filePath);
@@ -139,6 +140,9 @@ void Set3Challenge19() {
 			ByteVector output = ByteVector(bv.length());
 			ByteEncryption::aes_ctr_encrypt(&bv, &secretKey, &output, secretNonce);
 			inputs.push_back(&output);
+			if (output.length() > max_keylen) {
+				max_keylen = output.length();
+			}
 			linecount++;
 		}
 	}
@@ -147,29 +151,41 @@ void Set3Challenge19() {
 	// This is going to be trial and error, which is sort of the point of the exersise.
 
 	// 1) Let's look for possible line starters. "The ", "the ",  "A " and "a " (include spaces)
-	ByteVector testA = ByteVector("A ", ASCII);
-	ByteVector testa = ByteVector("a ", ASCII);
-	ByteVector testThe = ByteVector("The ", ASCII);
-	ByteVector testthe = ByteVector("the ", ASCII);
-	for (size_t i = 0; i < inputs.size(); i++) {
-		// assume the line starts with "A "
-		
-		ByteVector trial = ByteVector(inputs[i]);
-		trial.xorByIndex(&testA, 0, testA.length(), 0);
-		ByteVector xorBytes = ByteVector(testA.length());
-		trial.copyBytesByIndex(&xorBytes, 0, xorBytes.length(), 0);
-		xorBytes.xorByIndex(&testA, 0, xorBytes.length(), 0);
-		// try these bytes as the first part of the keystream for each line
-		// print for inspection.
-		cout << "Trial " << testA.toStr(ASCII) << " " << i << endl;
-		for (size_t j = 0; j < inputs.size(); j++) {
-			ByteVector trial2 = ByteVector(inputs[j]);
-			trial2.xorByIndex(&xorBytes, 0, xorBytes.length(), 0);
-			cout << j << " " << trial2.toStr(ASCII) << endl;
+	vector<ByteVector> initialTests;
+	initialTests.push_back(ByteVector("A ", ASCII));
+	initialTests.push_back(ByteVector("a ", ASCII));
+	initialTests.push_back(ByteVector("The ", ASCII));
+	initialTests.push_back(ByteVector("the ", ASCII));
+	initialTests.push_back(ByteVector("I ", ASCII));
+	initialTests.push_back(ByteVector("i ", ASCII));
+	initialTests.push_back(ByteVector("This ", ASCII));
+	initialTests.push_back(ByteVector("this ", ASCII));
+	
+	int initialTestIndex = 0;
+	ByteVector keystream = ByteVector(max_keylen);
+	keystream.allBytes(0);
+	
+	while (initialTestIndex < initialTests.size()) {
+		ByteVector testText = ByteVector(initialTests[initialTestIndex]);
+		for (size_t i = 0; i < inputs.size(); i++) {
+			ByteVector trial = ByteVector(inputs[i]);
+			ByteVector xorBytes = ByteVector(testText.length());
+			trial.copyBytesByIndex(&xorBytes, 0, xorBytes.length(), 0);
+			xorBytes.xorByIndex(&testText, 0, xorBytes.length(), 0);
+			// try against each input for inspection
+			for (size_t j = 0; j < inputs.size(); j++) {
+				ByteVector temp = ByteVector(inputs[j]);
+				temp.xorByIndex(&xorBytes, 0, xorBytes.length(), 0);
+				cout << j << "\t" << temp.toStr(ASCII) << endl;
+				// I'm thinking about a basic interactive system to
+				// examine and slot in keystream bytes. TBD
+			}
+			break;
 		}
-
-		getchar(); // wait for enter key
+		break;
 	}
+
+	
 	
 }
 
