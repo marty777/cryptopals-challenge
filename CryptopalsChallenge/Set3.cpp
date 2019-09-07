@@ -192,7 +192,7 @@ void Set3Challenge19() {
 	bool initialFound = false;
 	size_t lockedIndex = 0;
 
-	cout << "A set of possible line beginnings will be tested against all inputs. Keep hitting enter until you see all Latin characters appearing in the section of each line denoted by | characters." << endl;
+	cout << "A set of possible line beginnings will be tested against all inputs.\nKeep hitting enter until you see all Latin characters appearing in the section of each line denoted by | characters." << endl;
 	cout << "Once you've found a possible set of starting decryption bytes, type 'lock' to continue to stage 2" << endl;
 	cout << "Press enter to continue..." << endl;
 	getchar();
@@ -211,14 +211,11 @@ void Set3Challenge19() {
 				ByteVector temp = ByteVector(inputs[j]);
 				temp.xorByIndex(&xorBytes, 0, xorBytes.length(), 0);
 				printAttemptedPartial(&temp, 0, xorBytes.length() - 1, true, j);
-				// I'm thinking about a basic interactive system to
-				// examine and slot in keystream bytes. TBD
 			}
 			cout << xorBytes.toStr(HEX) << endl;
 			cout << "Press enter to continue or type lock:";
 			
 			string inputStr;
-			//cin >> inputStr;
 			std::getline(std::cin, inputStr);
 
 			if (inputStr == "lock" || inputStr == "Lock" || inputStr == "LOCK") {
@@ -254,7 +251,6 @@ void Set3Challenge19() {
 		cout << "Key bytes: " << keystream.toStr(HEX) << endl;
 		cout << "Enter possible next characters on a line to test them. Type 'lock' to lock in a guess. Type 'back' to remove a byte from the locked keystream:";
 		string inputStr;
-		//cin >> inputStr;
 		getline(cin, inputStr);
 		if (inputStr == "lock" || inputStr == "Lock" || inputStr == "LOCK") {
 			trialKeyStream.copyBytesByIndex(&keystream, 0, keystream.length(), 0);
@@ -264,8 +260,6 @@ void Set3Challenge19() {
 			if (lockedIndex == keystream.length()) {
 				decoded = true;
 			}
-			cout << lockedIndex << endl;
-			cout << keystream.length() << endl;
 		}
 		else if (inputStr == "back" || inputStr == "Back" || inputStr == "BACK") {
 			keystream.setAtIndex(0, lockedIndex-1);
@@ -399,10 +393,15 @@ int Set3() {
 	cout << "Press enter to continue..." << endl;
 	getchar();
 	cout << "Set 3 Challenge 19" << endl;
-	//Set3Challenge19();
-	//// Pause before continuing
-	//cout << "Press enter to continue..." << endl;
-	//getchar();
+	Set3Challenge19();
+	// Pause before continuing
+	cout << "Press enter to continue..." << endl;
+	getchar();
+	cout << "Set 3 Challenge 20" << endl;
+	Set3Challenge20();
+	// Pause before continuing
+	cout << "Press enter to continue..." << endl;
+	getchar();
 
 	return 0;
 }

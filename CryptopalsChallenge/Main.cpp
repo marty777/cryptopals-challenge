@@ -31,7 +31,7 @@ int main() {
 	}
 
 	int set = (challenge / 8) + 1;
-	cout << "### SET " << set << " CHALLENGE " << challenge << endl;
+	cout << "### SET " << set << " CHALLENGE " << challenge << " ###" << endl;
 
 	switch (challenge) {
 	case 1:
