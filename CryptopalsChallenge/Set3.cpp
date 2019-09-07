@@ -200,7 +200,7 @@ void Set3Challenge19() {
 		ByteVector testText = ByteVector(initialTests[initialTestIndex]);
 		initialTestIndex++;
 		for (size_t i = 0; i < inputs.size() && !initialFound; i++) {
-			cout << "Testing " << testText.toStr(ASCII) << " at index " << i << endl;
+			cout << "Testing '" << testText.toStr(ASCII) << "' at index " << i << endl;
 			ByteVector trial = ByteVector(inputs[i]);
 			ByteVector xorBytes = ByteVector(testText.length());
 			trial.copyBytesByIndex(&xorBytes, 0, xorBytes.length(), 0);
@@ -233,37 +233,41 @@ void Set3Challenge19() {
 	size_t trialIndex = 0;
 	while (!decoded) {
 		ByteVector trialInput = ByteVector();
+		ByteVector trialKeyStream = ByteVector(keystream);
 		ByteVector xorBytes = ByteVector();
 		if (trialBytes.length() > 0) {
 			trialInput = ByteVector(inputs[trialIndex]);
 			xorBytes = ByteVector(trialBytes.length());
-			trialInput.copyBytesByIndex(&xorBytes, lockedIndex, xorBytes.length(), 0);
-			xorBytes.xorByIndex(&trialBytes, 0, xorBytes.length(), 0);
+			for (size_t i = lockedIndex; i < trialInput.length() && i < trialBytes.length() + lockedIndex; i++) {
+				xorBytes.setAtIndex(trialInput.atIndex(i) ^ trialBytes.atIndex(i - lockedIndex), i - lockedIndex);
+			}
+			for(size_t i = lockedIndex; i < trialKeyStream.length() && i < lockedIndex + xorBytes.length(); i++) {
+				trialKeyStream.setAtIndex(xorBytes.atIndex(i - lockedIndex), i);
+			}
 		}
 		for (size_t i = 0; i < inputs.size(); i++) {
 			ByteVector partial = ByteVector(inputs[i]);
-			if (partial.length() < lockedIndex+1 + trialBytes.length()) {
-				//continue;
-			}
-			partial.xorByIndex(&keystream, 0, minsize(lockedIndex+1, partial.length()), 0);
-			if (trialBytes.length() > 0) {
-				partial.xorByIndex(&xorBytes, lockedIndex, minsize(xorBytes.length(), partial.length() - lockedIndex-1), 0);
-			}
-			//cout << i << "\t" << partial.toStr(ASCII) << endl;
+			partial.xorWithStream(&trialKeyStream);
 			printAttemptedPartial(&partial, 0, lockedIndex -1, true, i);
 		}
-		//printAttemptedPartial(&keystream, lockedIndex, lockedIndex + trialBytes.length(), false, 0);
 		cout << "Key bytes: " << keystream.toStr(HEX) << endl;
 		cout << "Enter possible next characters on a line to test them. Type 'lock' to lock in a guess. Type 'back' to remove a byte from the locked keystream:";
 		string inputStr;
-		cin >> inputStr;
+		//cin >> inputStr;
+		getline(cin, inputStr);
 		if (inputStr == "lock" || inputStr == "Lock" || inputStr == "LOCK") {
-			xorBytes.copyBytesByIndex(&keystream, 0, xorBytes.length(), lockedIndex);
+			trialKeyStream.copyBytesByIndex(&keystream, 0, keystream.length(), 0);
+			//xorBytes.copyBytesByIndex(&keystream, 0, xorBytes.length(), lockedIndex);
 			lockedIndex += xorBytes.length();
 			trialBytes.resize(0);
+			if (lockedIndex == keystream.length()) {
+				decoded = true;
+			}
+			cout << lockedIndex << endl;
+			cout << keystream.length() << endl;
 		}
 		else if (inputStr == "back" || inputStr == "Back" || inputStr == "BACK") {
-			keystream.setAtIndex(0, lockedIndex);
+			keystream.setAtIndex(0, lockedIndex-1);
 			lockedIndex--;
 			trialBytes.resize(0);
 		}
@@ -276,12 +280,24 @@ void Set3Challenge19() {
 			trialBytes = ByteVector(in, ASCII);
 			delete[] in;
 			cout << "Enter input index to test:";
+			string inputStr2;
 			int nextIndex;
-			cin >> nextIndex;
+			getline(cin, inputStr2);
+			// not bothering with exception handling
+			nextIndex = stoi(inputStr2);
 			trialIndex = nextIndex;
 		}
 	}
 	
+	cout << "Determined XOR bytes: " << endl;
+	keystream.printHexStrByBlocks(16);
+	cout << "Actual XOR bytes:" << endl;
+	ByteVector xorActualIn = ByteVector(keystream.length());
+	xorActualIn.allBytes(0);
+	ByteVector xorActualOut = ByteVector(keystream.length());
+	ByteEncryption::aes_ctr_encrypt(&xorActualIn, &secretKey, &xorActualOut, secretNonce);
+	xorActualOut.printHexStrByBlocks(16);
+
 	
 }
 

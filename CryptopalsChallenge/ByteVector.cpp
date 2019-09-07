@@ -304,6 +304,12 @@ ByteVector ByteVector:: xor (ByteVector *bv) {
 	return bv2;
 }
 
+// xor this vector with input vector starting at index 0, stopping when either vector runs out of bytes
+void ByteVector::xorWithStream(ByteVector *bv) {
+	for (size_t i = 0; i < bv->length() && i < _v.size(); i++) {
+		_v[i] ^= bv->atIndex(i);
+	}
+}
 
 // XOR input vector with this one starting and ending at specified indexes
 void ByteVector:: xorByIndex(ByteVector *bv, size_t start_index, size_t length, size_t input_start_index) {
