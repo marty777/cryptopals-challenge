@@ -3,9 +3,32 @@
 #include "ByteEncryption.h"
 #include <iostream>
 #include <fstream>
+#include <string>
 
 
 using namespace std;
+
+void printAttemptedPartial(ByteVector *bv, size_t partial_index_start, size_t partial_index_end, bool ascii, size_t index) {
+	cout << index << "\t";
+	for (size_t i = 0; i < bv->length(); i++) {
+		if (i == partial_index_start) {
+			cout << "|";
+		}
+		if (ascii) {
+			cout << bv->atIndex(i);
+		}
+		else {
+			cout << std::hex << (int)bv->atIndex(i) << std::dec;
+		}
+		if (i == partial_index_end) {
+			cout << "|";
+		}
+	}
+	cout << endl;
+}
+
+size_t minsize(size_t a, size_t b) { return (a < b ? a : b); }
+size_t maxsize(size_t a, size_t b) { return (a > b ? a : b); }
 
 void Set3Challenge17() {
 	const size_t block_size = 16; // I hope we can take as given
@@ -165,9 +188,19 @@ void Set3Challenge19() {
 	ByteVector keystream = ByteVector(max_keylen);
 	keystream.allBytes(0);
 	
-	while (initialTestIndex < initialTests.size()) {
+	bool initialFound = false;
+	size_t lockedIndex = 0;
+
+	cout << "A set of possible line beginnings will be tested against all inputs. Keep hitting enter until you see all Latin characters appearing in the section of each line denoted by | characters." << endl;
+	cout << "Once you've found a possible set of starting decryption bytes, type 'lock' to continue to stage 2" << endl;
+	cout << "Press enter to continue..." << endl;
+	getchar();
+
+	while (initialTestIndex < initialTests.size() && !initialFound) {
 		ByteVector testText = ByteVector(initialTests[initialTestIndex]);
-		for (size_t i = 0; i < inputs.size(); i++) {
+		initialTestIndex++;
+		for (size_t i = 0; i < inputs.size() && !initialFound; i++) {
+			cout << "Testing " << testText.toStr(ASCII) << " at index " << i << endl;
 			ByteVector trial = ByteVector(inputs[i]);
 			ByteVector xorBytes = ByteVector(testText.length());
 			trial.copyBytesByIndex(&xorBytes, 0, xorBytes.length(), 0);
@@ -176,15 +209,78 @@ void Set3Challenge19() {
 			for (size_t j = 0; j < inputs.size(); j++) {
 				ByteVector temp = ByteVector(inputs[j]);
 				temp.xorByIndex(&xorBytes, 0, xorBytes.length(), 0);
-				cout << j << "\t" << temp.toStr(ASCII) << endl;
+				printAttemptedPartial(&temp, 0, xorBytes.length() - 1, true, j);
 				// I'm thinking about a basic interactive system to
 				// examine and slot in keystream bytes. TBD
 			}
-			break;
+			cout << xorBytes.toStr(HEX) << endl;
+			cout << "Press enter to continue or type lock:";
+			
+			string inputStr;
+			//cin >> inputStr;
+			std::getline(std::cin, inputStr);
+
+			if (inputStr == "lock" || inputStr == "Lock" || inputStr == "LOCK") {
+				xorBytes.copyBytesByIndex(&keystream, 0, xorBytes.length(), 0);
+				initialFound = true;
+				lockedIndex = xorBytes.length();
+			}
 		}
-		break;
 	}
 
+	bool decoded = false;
+	ByteVector trialBytes = ByteVector();
+	size_t trialIndex = 0;
+	while (!decoded) {
+		ByteVector trialInput = ByteVector();
+		ByteVector xorBytes = ByteVector();
+		if (trialBytes.length() > 0) {
+			trialInput = ByteVector(inputs[trialIndex]);
+			xorBytes = ByteVector(trialBytes.length());
+			trialInput.copyBytesByIndex(&xorBytes, lockedIndex, xorBytes.length(), 0);
+			xorBytes.xorByIndex(&trialBytes, 0, xorBytes.length(), 0);
+		}
+		for (size_t i = 0; i < inputs.size(); i++) {
+			ByteVector partial = ByteVector(inputs[i]);
+			if (partial.length() < lockedIndex+1 + trialBytes.length()) {
+				//continue;
+			}
+			partial.xorByIndex(&keystream, 0, minsize(lockedIndex+1, partial.length()), 0);
+			if (trialBytes.length() > 0) {
+				partial.xorByIndex(&xorBytes, lockedIndex, minsize(xorBytes.length(), partial.length() - lockedIndex-1), 0);
+			}
+			//cout << i << "\t" << partial.toStr(ASCII) << endl;
+			printAttemptedPartial(&partial, 0, lockedIndex -1, true, i);
+		}
+		//printAttemptedPartial(&keystream, lockedIndex, lockedIndex + trialBytes.length(), false, 0);
+		cout << "Key bytes: " << keystream.toStr(HEX) << endl;
+		cout << "Enter possible next characters on a line to test them. Type 'lock' to lock in a guess. Type 'back' to remove a byte from the locked keystream:";
+		string inputStr;
+		cin >> inputStr;
+		if (inputStr == "lock" || inputStr == "Lock" || inputStr == "LOCK") {
+			xorBytes.copyBytesByIndex(&keystream, 0, xorBytes.length(), lockedIndex);
+			lockedIndex += xorBytes.length();
+			trialBytes.resize(0);
+		}
+		else if (inputStr == "back" || inputStr == "Back" || inputStr == "BACK") {
+			keystream.setAtIndex(0, lockedIndex);
+			lockedIndex--;
+			trialBytes.resize(0);
+		}
+		else {
+			std::vector<char> cstr(inputStr.c_str(), inputStr.c_str() + inputStr.size() + 1);
+			char *in = (char *)malloc(cstr.size());
+			for (size_t i = 0; i < cstr.size(); i++) {
+				in[i] = cstr[i];
+			}
+			trialBytes = ByteVector(in, ASCII);
+			delete[] in;
+			cout << "Enter input index to test:";
+			int nextIndex;
+			cin >> nextIndex;
+			trialIndex = nextIndex;
+		}
+	}
 	
 	
 }

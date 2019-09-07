@@ -307,7 +307,10 @@ ByteVector ByteVector:: xor (ByteVector *bv) {
 
 // XOR input vector with this one starting and ending at specified indexes
 void ByteVector:: xorByIndex(ByteVector *bv, size_t start_index, size_t length, size_t input_start_index) {
-	assert(bv->length() > input_start_index && bv->length() >= input_start_index + length && _v.size() > start_index && _v.size() >= start_index + length);
+	assert(bv->length() > input_start_index);
+	assert(bv->length() >= input_start_index + length);
+	assert( _v.size() > start_index);
+	assert(_v.size() >= start_index + length);
 
 	for (size_t i = 0; i < length; i++) {
 		_v[start_index + i] = _v[start_index + i] ^ bv->atIndex(input_start_index + i);
