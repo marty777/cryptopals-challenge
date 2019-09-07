@@ -1,6 +1,7 @@
 #include "Set3.h"
 #include "ByteVector.h"
 #include "ByteEncryption.h"
+#include "PlaintextEvaluator.h"
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -301,6 +302,90 @@ void Set3Challenge19() {
 	
 }
 
+void Set3Challenge20() {
+	unsigned long long secretNonce = rand();
+	ByteVector secretKey = ByteVector(16);
+	secretKey.random();
+
+	vector<ByteVector> inputs;
+	size_t max_keylen = 0; // length of longest string in inputs.
+	size_t min_keylen = 1024;
+
+	char *filePath = "../challenge-files/set3/20.txt";
+	ifstream in(filePath);
+	if (!in) {
+		cout << "Cannot open input file.\n";
+		return;
+	}
+	char line[255];
+	int linecount = 0;
+	while (in) {
+		in.getline(line, 255);
+		// read in line and seperately CTR encrypt using secret key and nonce
+		if (strlen(line) > 0) {
+			ByteVector bv = ByteVector(line, BASE64);
+			ByteVector output = ByteVector(bv.length());
+			ByteEncryption::aes_ctr_encrypt(&bv, &secretKey, &output, secretNonce);
+			inputs.push_back(&output);
+			if (output.length() > max_keylen) {
+				max_keylen = output.length();
+			}
+			if (output.length() < min_keylen) {
+				min_keylen = output.length();
+			}
+			linecount++;
+		}
+	}
+	in.close();
+
+	// truncate all inputs to the minimum length
+	for (size_t i = 0; i < inputs.size(); i++) {
+		inputs[i].resize(min_keylen);
+	}
+
+	ByteVector keystream = ByteVector(min_keylen);
+
+	// solve statistically
+	for (size_t i = 0; i < keystream.length(); i++) {
+		float bestScore = 100000.0f;
+		int bestByte = 0;
+		ByteVector slice = ByteVector(inputs.size());
+		for (int j = 0x0; j <= 0xff; j++) {
+			for (size_t k = 0; k < inputs.size(); k++) {
+				slice.setAtIndex(inputs[k].atIndex(i) ^ (byte)j, k);
+			}
+			float score = PlaintextEvaluator::score(&slice);
+			if (score < bestScore) {
+				bestScore = score;
+				bestByte = j;
+			}
+		}
+		keystream.setAtIndex((byte)bestByte, i);
+	}
+
+	cout << "Determined XOR bytes:" << endl;
+	keystream.printHexStrByBlocks(16);
+
+	cout << "Actual XOR bytes:" << endl;
+	ByteVector xorActualIn = ByteVector(keystream.length());
+	xorActualIn.allBytes(0);
+	ByteVector xorActualOut = ByteVector(keystream.length());
+	ByteEncryption::aes_ctr_encrypt(&xorActualIn, &secretKey, &xorActualOut, secretNonce);
+	xorActualOut.printHexStrByBlocks(16);
+
+	cout << "Difference:" << endl;
+	ByteVector diff = ByteVector(keystream);
+	diff.xorWithStream(&xorActualOut);
+	diff.printHexStrByBlocks(16);
+
+	cout << "Decryption: " << endl;
+	for (size_t i = 0; i < inputs.size(); i++) {
+		ByteVector decode = ByteVector(inputs[i]);
+		decode.xorWithStream(&keystream);
+		cout << i << "\t" << decode.toStr(ASCII) << endl;
+	}
+}
+
 int Set3() {
 	cout << "### SET 3 ###" << endl;
 	cout << "Set 3 Challenge 17" << endl;
@@ -314,9 +399,10 @@ int Set3() {
 	cout << "Press enter to continue..." << endl;
 	getchar();
 	cout << "Set 3 Challenge 19" << endl;
-	Set3Challenge19();
-	// Pause before continuing
-	cout << "Press enter to continue..." << endl;
-	getchar();
+	//Set3Challenge19();
+	//// Pause before continuing
+	//cout << "Press enter to continue..." << endl;
+	//getchar();
+
 	return 0;
 }

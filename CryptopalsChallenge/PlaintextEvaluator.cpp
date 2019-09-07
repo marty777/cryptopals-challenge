@@ -81,3 +81,8 @@ float PlaintextEvaluator::score(std::string input) {
 
 	return score;
 }
+
+float PlaintextEvaluator::score(ByteVector *input) {
+	std::string str = input->toStr(ASCII);
+	return PlaintextEvaluator::score(str);
+}
