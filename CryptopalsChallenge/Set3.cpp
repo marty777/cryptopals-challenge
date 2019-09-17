@@ -1,6 +1,7 @@
 #include "Set3.h"
 #include "ByteVector.h"
 #include "ByteEncryption.h"
+#include "ByteRandom.h"
 #include "PlaintextEvaluator.h"
 #include <iostream>
 #include <fstream>
@@ -9,7 +10,7 @@
 
 using namespace std;
 
-void printAttemptedPartial(ByteVector *bv, size_t partial_index_start, size_t partial_index_end, bool ascii, size_t index) {
+void printAttemptedPartial(ByteVector *bv, size_t partial_index_start, size_t partial_index_end, bool ascii, size_t index, size_t partial_index2) {
 	cout << index << "\t";
 	for (size_t i = 0; i < bv->length(); i++) {
 		if (i == partial_index_start) {
@@ -22,6 +23,9 @@ void printAttemptedPartial(ByteVector *bv, size_t partial_index_start, size_t pa
 			cout << std::hex << (int)bv->atIndex(i) << std::dec;
 		}
 		if (i == partial_index_end) {
+			cout << "|";
+		}
+		if (i == partial_index2 && partial_index2 != partial_index_end) {
 			cout << "|";
 		}
 	}
@@ -172,18 +176,19 @@ void Set3Challenge19() {
 	}
 	in.close();
 
-	// This is going to be trial and error, which is sort of the point of the exersise.
+	// This is going to be trial and error, which is sort of the point of the exercise.
 
-	// 1) Let's look for possible line starters. "The ", "the ",  "A " and "a " (include spaces)
+	// 1) Let's look for possible line starters/cribs.
 	vector<ByteVector> initialTests;
+	initialTests.push_back(ByteVector("This ", ASCII));
+	initialTests.push_back(ByteVector("this ", ASCII));
 	initialTests.push_back(ByteVector("A ", ASCII));
 	initialTests.push_back(ByteVector("a ", ASCII));
 	initialTests.push_back(ByteVector("The ", ASCII));
 	initialTests.push_back(ByteVector("the ", ASCII));
 	initialTests.push_back(ByteVector("I ", ASCII));
 	initialTests.push_back(ByteVector("i ", ASCII));
-	initialTests.push_back(ByteVector("This ", ASCII));
-	initialTests.push_back(ByteVector("this ", ASCII));
+	
 	
 	int initialTestIndex = 0;
 	ByteVector keystream = ByteVector(max_keylen);
@@ -192,7 +197,7 @@ void Set3Challenge19() {
 	bool initialFound = false;
 	size_t lockedIndex = 0;
 
-	cout << "A set of possible line beginnings will be tested against all inputs.\nKeep hitting enter until you see all Latin characters appearing in the section of each line denoted by | characters." << endl;
+	cout << "A set of possible line beginnings will be tested against all inputs.\nKeep hitting enter until you see plausible line beginnings appearing in the section of each line denoted by | characters." << endl;
 	cout << "Once you've found a possible set of starting decryption bytes, type 'lock' to continue to stage 2" << endl;
 	cout << "Press enter to continue..." << endl;
 	getchar();
@@ -210,9 +215,10 @@ void Set3Challenge19() {
 			for (size_t j = 0; j < inputs.size(); j++) {
 				ByteVector temp = ByteVector(inputs[j]);
 				temp.xorByIndex(&xorBytes, 0, xorBytes.length(), 0);
-				printAttemptedPartial(&temp, 0, xorBytes.length() - 1, true, j);
+				printAttemptedPartial(&temp, 0, xorBytes.length() - 1, true, j, xorBytes.length() - 1);
 			}
-			cout << xorBytes.toStr(HEX) << endl;
+			cout << "Key bytes: " << endl;
+			xorBytes.printHexStrByBlocks(HEX);
 			cout << "Press enter to continue or type lock:";
 			
 			string inputStr;
@@ -246,9 +252,10 @@ void Set3Challenge19() {
 		for (size_t i = 0; i < inputs.size(); i++) {
 			ByteVector partial = ByteVector(inputs[i]);
 			partial.xorWithStream(&trialKeyStream);
-			printAttemptedPartial(&partial, 0, lockedIndex -1, true, i);
+			printAttemptedPartial(&partial, 0, lockedIndex -1, true, i, lockedIndex - 1 + (trialBytes.length()));
 		}
-		cout << "Key bytes: " << keystream.toStr(HEX) << endl;
+		cout << "Key bytes: " << endl;
+		keystream.printHexStrByBlocks(16);
 		cout << "Enter possible next characters on a line to test them. Type 'lock' to lock in a guess. Type 'back' to remove a byte from the locked keystream:";
 		string inputStr;
 		getline(cin, inputStr);
@@ -380,6 +387,15 @@ void Set3Challenge20() {
 	}
 }
 
+void Set3Challenge21() {
+	ByteRandom random = ByteRandom();
+	random.m_seed(5489);
+	for (int i = 0; i < 10; i++) {
+		int rand = random.m_rand();
+		cout << std::hex << rand << std::dec << endl;
+	}
+}
+
 int Set3() {
 	cout << "### SET 3 ###" << endl;
 	cout << "Set 3 Challenge 17" << endl;
@@ -402,6 +418,10 @@ int Set3() {
 	// Pause before continuing
 	cout << "Press enter to continue..." << endl;
 	getchar();
-
+	cout << "Set 3 Challenge 21" << endl;
+	Set3Challenge21();
+	// Pause before continuing
+	cout << "Press enter to continue..." << endl;
+	getchar();
 	return 0;
 }

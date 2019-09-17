@@ -42,6 +42,9 @@
     <ClCompile Include="Set3.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ByteRandom.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ByteVector.h">
@@ -63,6 +66,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Set3.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ByteRandom.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
