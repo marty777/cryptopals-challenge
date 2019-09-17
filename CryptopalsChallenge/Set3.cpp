@@ -6,6 +6,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <ctime>
 
 
 using namespace std;
@@ -427,6 +428,39 @@ void Set3Challenge21() {
 	cout << "Test of seed 777 " << (failed ? "failed" : "succeeded") << endl;
 }
 
+void Set3Challenge22() {
+	ByteRandom random;
+	int wait1 = random.rand_range(40, 1000);
+	std::time_t start = std::time(nullptr);
+	cout << "Simulating waiting " << wait1 << " seconds..." << endl;
+	cout << "Seeding..." << endl;
+	std::time_t now = start + wait1;
+	random.m_seed((int)now);
+	int wait2 = random.rand_range(40, 1000);
+	cout << "Simulating waiting " << wait2 << " seconds..." << endl;
+	int result = random.m_rand();
+	std:time_t final = start + wait1 + wait2;
+	cout << "First result: " << result << endl;
+
+	// seed recovery
+	std::time_t now2 = final;
+	cout << "Recovering seed..." << endl;
+	bool found = false;
+	int epoch_range = 10000; // how many seconds back we want to go to test timestamps
+	for (std::time_t i = now2; i >= now2 - epoch_range; i--) {
+		random.m_seed((int)i);
+		if (random.m_rand() == result) {
+			cout << "Recovered seed " << (int) i << endl;
+			cout << "Actual seed " << (int)now << endl;
+			found = true;
+			break;
+		}
+	}
+	if (!found) {
+		cout << "Failed to recover seed between " << now2 - epoch_range << " and " << now2 << endl;
+	}
+}
+
 int Set3() {
 	cout << "### SET 3 ###" << endl;
 	cout << "Set 3 Challenge 17" << endl;
@@ -451,6 +485,11 @@ int Set3() {
 	getchar();
 	cout << "Set 3 Challenge 21" << endl;
 	Set3Challenge21();
+	// Pause before continuing
+	cout << "Press enter to continue..." << endl;
+	getchar();
+	cout << "Set 3 Challenge 22" << endl;
+	Set3Challenge22();
 	// Pause before continuing
 	cout << "Press enter to continue..." << endl;
 	getchar();

@@ -32,6 +32,8 @@ public:
 	ByteRandom();
 	~ByteRandom();
 
+	int rand_range(int start, int end);
+
 	void m_seed(int seed);
 	uint32_t m_rand();
 	int test_rand(int in);

@@ -1,5 +1,6 @@
 #include "ByteRandom.h"
 #include <iostream>
+#include <assert.h>
 
 
 ByteRandom::ByteRandom()
@@ -14,6 +15,12 @@ ByteRandom::ByteRandom()
 ByteRandom::~ByteRandom()
 {
 	this->MT.clear();
+}
+
+// random signed int between start and end using rand()
+int ByteRandom::rand_range(int start, int end) {
+	assert(end > start);
+	return start + (rand() % (1 + end - start));
 }
 
 
