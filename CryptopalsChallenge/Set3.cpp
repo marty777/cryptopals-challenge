@@ -388,12 +388,43 @@ void Set3Challenge20() {
 }
 
 void Set3Challenge21() {
+	int results5489[] = { -795755684, 581869302, -404620562, -708632711, 545404204, -133711905, -372047867, 949333985, -1579004998, 1323567403 };
+	int results42[] = { 1608637542, -873841229, -211680420, 787846414, -1151077270, -946219961, -1723748676, -1731515372, 670094950, 1914837113 };
+	int results777[] = { 655685735, -1518486737, 1298611771, 862112678, 266444375, -1562275919, 1975085127, 1065408157, -707581313, -1874628492 };
+
 	ByteRandom random = ByteRandom();
 	random.m_seed(5489);
+	bool failed = false;
 	for (int i = 0; i < 10; i++) {
 		int rand = random.m_rand();
-		cout << std::hex << rand << std::dec << endl;
+		if (rand != results5489[i]) {
+			failed = true;
+			break;
+		}
 	}
+	cout << "Test of seed 5489 " << (failed ? "failed" : "succeeded") << endl;
+
+	random.m_seed(42);
+	failed = false;
+	for (int i = 0; i < 10; i++) {
+		int rand = random.m_rand();
+		if (rand != results42[i]) {
+			failed = true;
+			break;
+		}
+	}
+	cout << "Test of seed 42 " << (failed ? "failed" : "succeeded") << endl;
+
+	random.m_seed(777);
+	failed = false;
+	for (int i = 0; i < 10; i++) {
+		int rand = random.m_rand();
+		if (rand != results777[i]) {
+			failed = true;
+			break;
+		}
+	}
+	cout << "Test of seed 777 " << (failed ? "failed" : "succeeded") << endl;
 }
 
 int Set3() {
