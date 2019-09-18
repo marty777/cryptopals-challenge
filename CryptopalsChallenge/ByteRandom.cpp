@@ -17,13 +17,6 @@ ByteRandom::~ByteRandom()
 	this->MT.clear();
 }
 
-// random signed int between start and end using rand()
-int ByteRandom::rand_range(int start, int end) {
-	assert(end > start);
-	return start + (rand() % (1 + end - start));
-}
-
-
 // seed and integer extraction implementation based on pseudocode from https://en.wikipedia.org/wiki/Mersenne_Twister#Pseudocode 
 void ByteRandom::m_seed(int seed) {
 	this->index = BYTERANDOM_MT19937_N;
@@ -63,4 +56,80 @@ void ByteRandom::m_twist() {
 		this->MT[i] = this->MT[(i + BYTERANDOM_MT19937_M) % BYTERANDOM_MT19937_N] ^ bitsA;
 	}
 	this->index = 0;
+}
+
+
+// random signed int between start and end using rand()
+int ByteRandom::rand_range(int start, int end) {
+	assert(end > start);
+	return start + (rand() % (1 + end - start));
+}
+
+
+// reverses the operation input = output ^ (output >> shift)
+// see http://krypt05.blogspot.com/2015/10/reversing-shift-xor-operation.html
+uint32_t ByteRandom::m_untemper_rshift_xor(uint32_t input, uint32_t shift) {
+
+	// break up the input value into chunks of shift bytes (or the remainder, for the last chunk)
+	int numchunks = 32 / shift;
+	if (numchunks * shift < 32) {
+		numchunks++;
+	}
+	uint32_t *chunks = (uint32_t *)malloc(sizeof(uint32_t) * numchunks);
+	for (int i = 0; i < numchunks; i++) {
+		int numbits = shift;
+		if (i == numchunks - 1 && 32 % shift != 0) {
+			numbits = 32 - ((32 / shift) * shift);
+		}
+		uint32_t mask = 0;
+		for (int j = 0; j < numbits; j++) {
+			mask = (mask << 1) | 0x01;
+		}
+		if (i < numchunks - 1) {
+			chunks[i] = mask & (input >> (32 - (shift * (i + 1))));
+		}
+		else {
+			chunks[i] = input & mask;
+		}
+	}
+
+	// operating on each chunk in sequence, xor with previous chunk to obtain output bits
+	for (int i = 1; i < numchunks; i++) {
+		uint32_t mask = 0;
+		int numbits = shift;
+		int offset = 0;
+		if (i == numchunks - 1 && 32 % shift != 0) {
+			numbits = 32 - ((32 / shift) * shift);
+			offset = shift - numbits;
+		}
+		for (int j = 0; j < numbits; j++) {
+			mask = (mask << 1) | 0x01;
+		}
+		chunks[i] = (chunks[i] ^ (chunks[i - 1] >> offset)) & mask;
+	}
+
+	// stitch the bits back together
+	uint32_t output = 0;
+	for (int i = 0; i < numchunks; i++) {
+		uint32_t mask = 0;
+		int numbits = shift;
+		int offset = (32 - ((i + 1)* shift));
+		if (i == numchunks - 1 && 32 % shift != 0) {
+			numbits = 32 - ((32 / shift) * shift);
+			offset = 0;
+		}
+		for (int j = 0; j < numbits; j++) {
+			mask = (mask << 1) | 0x01;
+		}
+		output |= (chunks[i] & mask) << offset;
+	}
+
+	free(chunks);
+
+	return output;
+}
+
+// reverses the operation input = output ^ ((output << shift) & and)
+uint32_t ByteRandom::m_untemper_lshift_and_xor(uint32_t input, uint32_t shift, uint32_t and) {
+
 }

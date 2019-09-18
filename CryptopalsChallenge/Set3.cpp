@@ -461,6 +461,10 @@ void Set3Challenge22() {
 	}
 }
 
+void Set3Challenge23() {
+	cout << ByteRandom::m_untemper_rshift_xor(3009615726, 10) << endl;
+}
+
 int Set3() {
 	cout << "### SET 3 ###" << endl;
 	cout << "Set 3 Challenge 17" << endl;
@@ -490,6 +494,11 @@ int Set3() {
 	getchar();
 	cout << "Set 3 Challenge 22" << endl;
 	Set3Challenge22();
+	// Pause before continuing
+	cout << "Press enter to continue..." << endl;
+	getchar();
+	cout << "Set 3 Challenge 23" << endl;
+	Set3Challenge23();
 	// Pause before continuing
 	cout << "Press enter to continue..." << endl;
 	getchar();

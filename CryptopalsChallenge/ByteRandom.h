@@ -32,11 +32,13 @@ public:
 	ByteRandom();
 	~ByteRandom();
 
-	int rand_range(int start, int end);
-
 	void m_seed(int seed);
 	uint32_t m_rand();
-	int test_rand(int in);
+
+	static int rand_range(int start, int end);
+
+	static uint32_t m_untemper_rshift_xor(uint32_t input, uint32_t shift);
+	static uint32_t m_untemper_lshift_and_xor(uint32_t input, uint32_t shift, uint32_t and);
 
 private:
 	void m_twist();
