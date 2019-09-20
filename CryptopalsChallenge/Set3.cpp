@@ -462,7 +462,26 @@ void Set3Challenge22() {
 }
 
 void Set3Challenge23() {
-	cout << ByteRandom::m_untemper_rshift_xor(3009615726, 10) << endl;
+	
+	ByteRandom rand = ByteRandom();
+	rand.m_seed(1000);
+	ByteRandom clonedRand = ByteRandom();
+	cout << "Cloning previously initialized MT19937..." << endl;
+	for (int i = 0; i < BYTERANDOM_MT19937_N; i++) {
+		clonedRand.MT[i] = ByteRandom::m_untemper(rand.m_rand());
+	}
+	clonedRand.index = BYTERANDOM_MT19937_N;
+	cout << "Cloning complete." << endl;
+	bool failed = false;
+	int numtests = 10000;
+	cout << "Running " << numtests << " trial(s) to compare twisters..." << endl;
+	for (int i = 0; i < numtests; i++) {
+		if (clonedRand.m_rand() != rand.m_rand()) {
+			failed = true;
+			cout << "Exited at trial " << i << endl;
+		}
+	}
+	cout << "Clone of MT19937: " << (failed ? "failed" : "succeeded") << endl;
 }
 
 int Set3() {

@@ -65,71 +65,69 @@ int ByteRandom::rand_range(int start, int end) {
 	return start + (rand() % (1 + end - start));
 }
 
+// inverts output from an M19937 twister to obtain the original element of the state array.
+uint32_t ByteRandom::m_untemper(uint32_t input) {
 
-// reverses the operation input = output ^ (output >> shift)
-// see http://krypt05.blogspot.com/2015/10/reversing-shift-xor-operation.html
-uint32_t ByteRandom::m_untemper_rshift_xor(uint32_t input, uint32_t shift) {
-
-	// break up the input value into chunks of shift bytes (or the remainder, for the last chunk)
-	int numchunks = 32 / shift;
-	if (numchunks * shift < 32) {
-		numchunks++;
-	}
-	uint32_t *chunks = (uint32_t *)malloc(sizeof(uint32_t) * numchunks);
-	for (int i = 0; i < numchunks; i++) {
-		int numbits = shift;
-		if (i == numchunks - 1 && 32 % shift != 0) {
-			numbits = 32 - ((32 / shift) * shift);
-		}
-		uint32_t mask = 0;
-		for (int j = 0; j < numbits; j++) {
-			mask = (mask << 1) | 0x01;
-		}
-		if (i < numchunks - 1) {
-			chunks[i] = mask & (input >> (32 - (shift * (i + 1))));
-		}
-		else {
-			chunks[i] = input & mask;
-		}
-	}
-
-	// operating on each chunk in sequence, xor with previous chunk to obtain output bits
-	for (int i = 1; i < numchunks; i++) {
-		uint32_t mask = 0;
-		int numbits = shift;
-		int offset = 0;
-		if (i == numchunks - 1 && 32 % shift != 0) {
-			numbits = 32 - ((32 / shift) * shift);
-			offset = shift - numbits;
-		}
-		for (int j = 0; j < numbits; j++) {
-			mask = (mask << 1) | 0x01;
-		}
-		chunks[i] = (chunks[i] ^ (chunks[i - 1] >> offset)) & mask;
-	}
-
-	// stitch the bits back together
-	uint32_t output = 0;
-	for (int i = 0; i < numchunks; i++) {
-		uint32_t mask = 0;
-		int numbits = shift;
-		int offset = (32 - ((i + 1)* shift));
-		if (i == numchunks - 1 && 32 % shift != 0) {
-			numbits = 32 - ((32 / shift) * shift);
-			offset = 0;
-		}
-		for (int j = 0; j < numbits; j++) {
-			mask = (mask << 1) | 0x01;
-		}
-		output |= (chunks[i] & mask) << offset;
-	}
-
-	free(chunks);
-
-	return output;
+	uint32_t x = input;
+	x = ByteRandom::m_untemper_shift_xor_mask(x, BYTERANDOM_MT19937_L, true, 0xffffffff);
+	x = ByteRandom::m_untemper_shift_xor_mask(x, BYTERANDOM_MT19937_T, false, BYTERANDOM_MT19937_C);
+	x = ByteRandom::m_untemper_shift_xor_mask(x, BYTERANDOM_MT19937_S, false, BYTERANDOM_MT19937_B);
+	x = ByteRandom::m_untemper_shift_xor_mask(x, BYTERANDOM_MT19937_U, true, BYTERANDOM_MT19937_D);
+	return x;
 }
 
-// reverses the operation input = output ^ ((output << shift) & and)
-uint32_t ByteRandom::m_untemper_lshift_and_xor(uint32_t input, uint32_t shift, uint32_t and) {
+uint32_t ByteRandom::m_untemper_shift_xor_mask(uint32_t input, uint32_t shift, bool right, uint32_t mask) {
 
+	bool in[32];
+	bool msk[32];
+	bool out[32];
+	for (int i = 0; i < 32; i++) {
+		in[i] = (((input >> 31 - i) & 0x01) == 0) ? false : true;
+		msk[i] = (((mask >> 31 - i) & 0x01) == 0) ? false : true;
+	}
+	// reverse the bit arrays if left shift
+	if (!right) {
+		bool in2[32];
+		bool msk2[32];
+		for (int i = 0; i < 32; i++) {
+			in2[i] = in[31 - i];
+			msk2[i] = msk[31 - i];
+		}
+		for (int i = 0; i < 32; i++) {
+			in[i] = in2[i];
+			msk[i] = msk2[i];
+		}
+	}
+
+	for (int i = 0; i < 32; i++) {
+		if (i < shift) {
+			out[i] = in[i];
+		}
+		else {
+			out[i] = in[i] ^ (msk[i] & out[i - shift] );
+		}
+	}
+
+	// reverse if left shift
+	if (!right) {
+		bool out2[32];
+		for (int i = 0; i < 32; i++) {
+			out2[i] = out[31 - i];
+		}
+		for (int i = 0; i < 32; i++) {
+			out[i] = out2[i];
+		}
+	}
+
+	uint32_t output = 0;
+	for (int i = 0; i < 32; i++) {
+		output = output << 1;
+		output |= (out[i] ? 0x1 : 0x0);
+		
+		//std::cout << out[i] << std::endl;
+	}
+	
+	//std::cout << std::hex << output << std::dec << std::endl;
+
+	return output;
 }

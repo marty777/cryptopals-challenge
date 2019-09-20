@@ -37,8 +37,8 @@ public:
 
 	static int rand_range(int start, int end);
 
-	static uint32_t m_untemper_rshift_xor(uint32_t input, uint32_t shift);
-	static uint32_t m_untemper_lshift_and_xor(uint32_t input, uint32_t shift, uint32_t and);
+	static uint32_t m_untemper(uint32_t input);
+	static uint32_t m_untemper_shift_xor_mask(uint32_t input, uint32_t shift, bool direction, uint32_t mask);
 
 private:
 	void m_twist();
