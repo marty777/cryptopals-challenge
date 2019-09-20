@@ -85,6 +85,7 @@ uint32_t ByteRandom::m_untemper_shift_xor_mask(uint32_t input, uint32_t shift, b
 		in[i] = (((input >> 31 - i) & 0x01) == 0) ? false : true;
 		msk[i] = (((mask >> 31 - i) & 0x01) == 0) ? false : true;
 	}
+
 	// reverse the bit arrays if left shift
 	if (!right) {
 		bool in2[32];
@@ -123,11 +124,7 @@ uint32_t ByteRandom::m_untemper_shift_xor_mask(uint32_t input, uint32_t shift, b
 	for (int i = 0; i < 32; i++) {
 		output = output << 1;
 		output |= (out[i] ? 0x1 : 0x0);
-		
-		//std::cout << out[i] << std::endl;
 	}
-	
-	//std::cout << std::hex << output << std::dec << std::endl;
 
 	return output;
 }
