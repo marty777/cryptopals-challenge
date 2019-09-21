@@ -65,6 +65,15 @@ int ByteRandom::rand_range(int start, int end) {
 	return start + (rand() % (1 + end - start));
 }
 
+// Convert uint32_t to 4 byte ByteVector
+void ByteRandom::uint32_to_ByteVector(uint32_t input, ByteVector *output) {
+	assert(output->length() == 4);
+	output->setAtIndex((input >> 24) & 0xff, 0);
+	output->setAtIndex((input >> 16) & 0xff, 1);
+	output->setAtIndex((input >> 8) & 0xff, 2);
+	output->setAtIndex(input & 0xff, 3);
+}
+
 // inverts output from an M19937 twister to obtain the original element of the state array.
 uint32_t ByteRandom::m_untemper(uint32_t input) {
 

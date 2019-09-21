@@ -1,5 +1,7 @@
 #pragma once
+#include "ByteVector.h"
 #include <vector>
+
 
 // MT19937 parameters
 #define BYTERANDOM_MT19937_W 32				// word size (bits)
@@ -36,6 +38,7 @@ public:
 	uint32_t m_rand();
 
 	static int rand_range(int start, int end);
+	static void uint32_to_ByteVector(uint32_t input, ByteVector *output);
 
 	static uint32_t m_untemper(uint32_t input);
 	static uint32_t m_untemper_shift_xor_mask(uint32_t input, uint32_t shift, bool direction, uint32_t mask);

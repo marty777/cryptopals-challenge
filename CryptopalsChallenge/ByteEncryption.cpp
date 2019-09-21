@@ -1,5 +1,6 @@
 #include "ByteEncryption.h"
 #include "KeyValueParser.h"
+#include "ByteRandom.h"
 #include <assert.h>
 #include <openssl/aes.h>
 #include <iostream>
@@ -16,10 +17,6 @@ void ByteEncryptionError::print() {
 
 bool ByteEncryptionError::hasErr() {
 	return (err != 0);
-}
-
-int rand_range(int start, int end) {
-	return start + (rand() % (1 + end - start));
 }
 
 ByteEncryption::ByteEncryption()
@@ -150,8 +147,8 @@ bool ByteEncryption::aes_random_encrypt(ByteVector *bv, ByteVector *output) {
 	key.random();
 
 	// Perform random padding
-	int prepadding = rand_range(5, 10);
-	int postpadding = rand_range(5, 10);
+	int prepadding = ByteRandom::rand_range(5, 10);
+	int postpadding = ByteRandom::rand_range(5, 10);
 	size_t inputlen = bv->length() + prepadding + postpadding;
 	if (inputlen % 16 != 0) {
 		inputlen += 16 - (inputlen % 16);
@@ -327,7 +324,7 @@ bool ByteEncryption::challenge16decrypt(ByteVector *bv, ByteVector *key, ByteVec
 }
 
 void ByteEncryption::challenge17encrypt(std::vector<ByteVector> *inputs, ByteVector *key, ByteVector *output, ByteVector *iv, bool verbose) {
-	int inputIndex = rand_range(0, inputs->size() - 1);
+	int inputIndex = ByteRandom::rand_range(0, inputs->size() - 1);
 	ByteVector input = ByteVector(inputs->at((size_t)inputIndex));
 	ByteEncryption::pkcs7Pad(&input, AES_BLOCK_SIZE);
 	output->resize(input.length());
@@ -500,5 +497,21 @@ void ByteEncryption::aes_ctr_encrypt(ByteVector *bv, ByteVector *key, ByteVector
 			output->setAtIndex(bv->atIndex(i) ^ enciphered.atIndex(i % AES_BLOCK_SIZE), i);
 		}
 		index += AES_BLOCK_SIZE;
+	}
+}
+
+// encrypts/decrypts input vector by XORing with keystream produced by MT19937 mersenne twister and writing to output vector
+void ByteEncryption::mt19937_stream_encrypt(ByteVector *bv, uint16_t seed, ByteVector *output) {
+	assert(bv->length() == output->length());
+
+	ByteRandom random = ByteRandom();
+	random.m_seed(seed);
+	ByteVector keyStream = ByteVector(4);
+	for (size_t i = 0; i < bv->length(); i++) {
+		if (i % 4 == 0) {
+			// convert a 32 bit value from the twister into 4 bytes in the keyStream vector
+			ByteRandom::uint32_to_ByteVector(random.m_rand(), &keyStream);
+		}
+		output->setAtIndex(bv->atIndex(i) ^ keyStream.atIndex(i % 4) , i);
 	}
 }

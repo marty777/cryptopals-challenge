@@ -484,6 +484,52 @@ void Set3Challenge23() {
 	cout << "Clone of MT19937: " << (failed ? "failed" : "succeeded") << endl;
 }
 
+void Set3Challenge24() {
+
+	// Part 1. Test encryption and decryption using a stream cipher generated via MT19937
+	cout << "Part 1: Test encryption and decryption using MT19937-derived keystream." << endl;
+	ByteVector testPlaintext = ByteVector("I am the very model of a modern Major-General\nI've information vegetable, animal, and mineral\nI know the kings of England, and I quote the fights historical\nFrom Marathon to Waterloo, in order categorical", ASCII);
+	ByteVector testCiphertext = ByteVector(testPlaintext.length());
+	uint16_t seed = (uint16_t)ByteRandom::rand_range(0, 65535);
+	ByteEncryption::mt19937_stream_encrypt(&testPlaintext, seed, &testCiphertext);
+	cout << "Testing stream enciphered with MT19937 keystream: " << endl;
+	cout << testCiphertext.toStr(ASCII) << endl;
+	ByteVector testDecryption = ByteVector(testCiphertext.length());
+	ByteEncryption::mt19937_stream_encrypt(&testCiphertext, seed, &testDecryption);
+	cout << "Testing decryption:" << endl;
+	cout << testDecryption.toStr(ASCII) << endl;
+
+	// Part 2. Determine 16 bit seed used to encrypt partially known plaintext.
+	cout << "Part 2: Recover 16-bit seed from MT19937 keystream using partially known plaintext." << endl;
+	size_t secretRandomPrefixLen = ByteRandom::rand_range(10, 1000);
+	// plaintext is a prefix of random characters + 14 'A's.
+	ByteVector secretPlainText = ByteVector(secretRandomPrefixLen + 14);
+	for (size_t i = 0; i < secretRandomPrefixLen; i++) {
+		secretPlainText.setAtIndex((byte)ByteRandom::rand_range(0, 255), i);
+	}
+	for (size_t i = secretRandomPrefixLen; i < secretRandomPrefixLen + 14; i++) {
+		secretPlainText.setAtIndex((byte)'A', i);
+	}
+	ByteVector encryption = ByteVector(secretPlainText.length());
+	ByteEncryption::mt19937_stream_encrypt(&secretPlainText, seed, &encryption);
+
+	// with only a 16 bit seed, we can just bruteforce this
+	cout << "Testing seeds..." << endl;
+	ByteVector decryption = ByteVector(secretPlainText.length());
+	ByteVector comparison = ByteVector("AAAAAAAAAAAAAA", ASCII);
+	for (uint32_t testSeed = 0; testSeed <= 65535; testSeed++) {
+		ByteEncryption::mt19937_stream_encrypt(&encryption, (uint32_t)testSeed, &decryption);
+		if (comparison.equalAtIndex(&decryption, 0, comparison.length(), decryption.length() - comparison.length())) {
+			cout << "Found decrypting seed at " << testSeed << endl;
+			cout << "Actual seed is " << seed << endl;
+		}
+	}
+
+	// Part 3. Password reset token testing.
+	// TBD
+
+}
+
 int Set3() {
 	cout << "### SET 3 ###" << endl;
 	cout << "Set 3 Challenge 17" << endl;
@@ -518,6 +564,11 @@ int Set3() {
 	getchar();
 	cout << "Set 3 Challenge 23" << endl;
 	Set3Challenge23();
+	// Pause before continuing
+	cout << "Press enter to continue..." << endl;
+	getchar();
+	cout << "Set 3 Challenge 24" << endl;
+	Set3Challenge24();
 	// Pause before continuing
 	cout << "Press enter to continue..." << endl;
 	getchar();
