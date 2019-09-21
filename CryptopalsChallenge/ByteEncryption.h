@@ -46,6 +46,7 @@ public:
 
 	static void ctr_generate_counter(unsigned long long nonce, unsigned long long count, ByteVector *output);
 	static void aes_ctr_encrypt(ByteVector *bv, ByteVector *key, ByteVector *output, unsigned long long nonce);
+	static void aes_ctr_edit(ByteVector *bv, ByteVector *key, unsigned long long nonce, size_t offset, ByteVector *newBytes);
 
 	static void mt19937_stream_encrypt(ByteVector *bv, uint16_t seed, ByteVector *output);
 };

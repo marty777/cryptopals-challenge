@@ -500,6 +500,30 @@ void ByteEncryption::aes_ctr_encrypt(ByteVector *bv, ByteVector *key, ByteVector
 	}
 }
 
+// overwrite bv with CTR encrypted newBytes using key and nonce at specified offset
+void ByteEncryption::aes_ctr_edit(ByteVector *bv, ByteVector *key, unsigned long long nonce, size_t offset, ByteVector *newBytes) {
+	assert(offset + newBytes->length() <= bv->length());
+	
+	ByteVector ctr = ByteVector(AES_BLOCK_SIZE);
+	ByteVector enciphered = ByteVector(AES_BLOCK_SIZE);
+
+	size_t index = AES_BLOCK_SIZE * (offset / AES_BLOCK_SIZE);
+	size_t count = (offset / AES_BLOCK_SIZE);
+
+	while (index < offset + newBytes->length()) {
+		ByteEncryption::ctr_generate_counter(nonce, count, &ctr);
+		ByteEncryption::aes_ecb_encrypt(&ctr, key, &enciphered, 0, AES_BLOCK_SIZE - 1, true);
+		count++;
+
+		for (size_t i = index; i < index + AES_BLOCK_SIZE && i < bv->length(); i++) {
+			if(i >= offset && i < offset+newBytes->length()) {
+				bv->setAtIndex(newBytes->atIndex(i-offset) ^ enciphered.atIndex(i % AES_BLOCK_SIZE), i);
+			}
+		}
+		index += AES_BLOCK_SIZE;
+	}
+}
+
 // encrypts/decrypts input vector by XORing with keystream produced by MT19937 mersenne twister and writing to output vector
 void ByteEncryption::mt19937_stream_encrypt(ByteVector *bv, uint16_t seed, ByteVector *output) {
 	assert(bv->length() == output->length());
