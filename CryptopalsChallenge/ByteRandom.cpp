@@ -1,6 +1,7 @@
 #include "ByteRandom.h"
 #include <iostream>
 #include <assert.h>
+#include <ctime>
 
 
 ByteRandom::ByteRandom()
@@ -42,6 +43,18 @@ uint32_t ByteRandom::m_rand() {
 	y ^= (y >> BYTERANDOM_MT19937_L);
 
 	return (BYTERANDOM_MT19937_W_MASK & y);
+}
+
+
+void ByteRandom::m_rand_bytes(ByteVector *output, size_t length) {
+	assert(length <= output->length());
+	ByteVector bytes = ByteVector(4);
+	for (size_t i = 0; i < length; i++) {
+		if (i % 4 == 0) {
+			ByteRandom::uint32_to_ByteVector(this->m_rand(), &bytes);
+		}
+		output->setAtIndex(bytes.atIndex(i%4), i);
+	}
 }
 
 // twist implemenation informed by https://create.stephan-brumme.com/mersenne-twister/
@@ -136,4 +149,21 @@ uint32_t ByteRandom::m_untemper_shift_xor_mask(uint32_t input, uint32_t shift, b
 	}
 
 	return output;
+}
+
+
+// given a sequence of bytes in the token, determine if it was produced by
+// MT19937 initialized with current epoch +- epoch_range
+bool ByteRandom::test_token(ByteVector *token, uint32_t epoch_range) {
+	std::time_t now = std::time(nullptr);
+	ByteVector token2 = ByteVector(token->length());
+	ByteRandom random = ByteRandom();
+	for (uint32_t i = now - epoch_range; i <= now + epoch_range; i++) {
+		random.m_seed(i);
+		random.m_rand_bytes(&token2, token2.length());
+		if (token->equal(&token2)) {
+			return true;
+		}
+	}
+	return false;
 }

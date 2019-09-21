@@ -37,11 +37,17 @@ public:
 	void m_seed(int seed);
 	uint32_t m_rand();
 
+	void m_rand_bytes(ByteVector *output, size_t length);
+
 	static int rand_range(int start, int end);
 	static void uint32_to_ByteVector(uint32_t input, ByteVector *output);
 
+	// for challenge 23
 	static uint32_t m_untemper(uint32_t input);
 	static uint32_t m_untemper_shift_xor_mask(uint32_t input, uint32_t shift, bool direction, uint32_t mask);
+
+	// for challenge 24
+	static bool test_token(ByteVector *token, uint32_t epoch_range);
 
 private:
 	void m_twist();
