@@ -341,6 +341,59 @@ bool ByteEncryption::challenge17paddingvalidate(ByteVector *bv, ByteVector *key,
 }
 
 
+void ByteEncryption::challenge26encrypt(ByteVector *bv, ByteVector *key, ByteVector *output, unsigned long long nonce) {
+	ByteVector pre = ByteVector("comment1=cooking%20MCs;userdata=", ASCII);
+	ByteVector post = ByteVector(";comment2=%20like%20a%20pound%20of%20bacon", ASCII);
+	size_t input_len = 0;
+	for (size_t i = 0; i < bv->length(); i++) {
+		if (bv->atIndex(i) == ';' || bv->atIndex(i) == '=') {
+			input_len += 3;
+		}
+		else {
+			input_len++;
+		}
+	}
+	input_len += pre.length();
+	input_len += post.length();
+	ByteVector input = ByteVector();
+	input.reserve(input_len);
+	for (size_t i = 0; i < pre.length(); i++) {
+		input.append(pre.atIndex(i));
+	}
+	for(size_t i = 0; i < bv->length(); i++) {
+		// urlencode our unsafe characters
+		if (bv->atIndex(i) == ';') {
+			input.append('%');
+			input.append('3');
+			input.append('B');
+		}
+		else if (bv->atIndex(i) == '=') {
+			input.append('%');
+			input.append('3');
+			input.append('D');
+		}
+		else {
+			input.append(bv->atIndex(i));
+		}
+	}
+	for (size_t i = 0; i < post.length(); i++) {
+		input.append(post.atIndex(i));
+	}
+	output->resize(input.length());
+	ByteEncryption::aes_ctr_encrypt(&input, key, output, nonce);
+}
+bool ByteEncryption::challenge26decrypt(ByteVector *bv, ByteVector *key, unsigned long long nonce) {
+	ByteVector output = ByteVector(bv->length());
+	ByteEncryption::aes_ctr_encrypt(bv, key, &output, nonce);
+	KeyValueParser parser = KeyValueParser();
+	parser.parseDelimited(&output, ';', '=');
+	
+	if (parser.valueWithKey("admin") == "true") {
+		return true;
+	}
+	return false;
+}
+
 // returns the number of 16-byte blocks in the vector that appear more than once
 int ByteEncryption::aes_repeated_block_count(ByteVector *bv) {
 	// probably smarter ways to do this, but eh

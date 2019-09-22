@@ -51,15 +51,67 @@ void Set4Challenge25() {
 		output.setAtIndex(encrypted.atIndex(i) ^ encryptedCopy.atIndex(i), i);
 	}
 
-	cout << "Recoved plaintext:" << endl;
+	cout << "Recovered plaintext:" << endl;
 	cout << output.toStr(ASCII) << endl;
+}
 
+void Set4Challenge26() {
+	// Test bitflipping - Yikes. This is both vulurable to easy replacement of known plaintext even in
+	// the first block, and I think you can recover unknown plaintext if you can compare flipped and 
+	// unflipped decryptions (several times?)
+	ByteVector test = ByteVector(256); // 16 blocks
+	for (size_t i = 0; i < test.length(); i++) {
+		test.setAtIndex((byte)i, i);
+	}
+	cout << "Bitflipping test input for CTR stream: " << endl;
+	test.printHexStrByBlocks(16);
+	ByteVector testKey = ByteVector(16);
+	testKey.random();
+	unsigned long long testNonce = rand();
+	ByteVector testEncrypt = ByteVector(test.length());
+	ByteVector testDecrypt = ByteVector(test.length());
+	ByteEncryption::aes_ctr_encrypt(&test, &testKey, &testEncrypt, testNonce);
+	cout << "Flipping bits to inject 0x" <<std::hex << 0xc0ffeedecade << std::dec << endl;
+	testEncrypt.setAtIndex(testEncrypt.atIndex(0) ^ (0x00 ^ 0xc0), 0);
+	testEncrypt.setAtIndex(testEncrypt.atIndex(1) ^ (0x01 ^ 0xff), 1);
+	testEncrypt.setAtIndex(testEncrypt.atIndex(2) ^ (0x02 ^ 0xee), 2);
+	testEncrypt.setAtIndex(testEncrypt.atIndex(3) ^ (0x03 ^ 0xde), 3);
+	testEncrypt.setAtIndex(testEncrypt.atIndex(4) ^ (0x04 ^ 0xca), 4);
+	testEncrypt.setAtIndex(testEncrypt.atIndex(5) ^ (0x05 ^ 0xde), 5);
+	ByteEncryption::aes_ctr_encrypt(&testEncrypt, &testKey, &testDecrypt, testNonce);
+	cout << "Bitflipped decryption:" << endl;
+	testDecrypt.printHexStrByBlocks(16);
+
+	cout << "Attempting bitflipping to inject admin credentials...";
+	ByteVector payload = ByteVector("THISISSOMEJUNK!!:admin<true:AAAA", ASCII);
+	ByteVector output = ByteVector();
+	ByteVector secretKey = ByteVector(16);
+	unsigned long long secretNonce = rand();
+	secretKey.random();
+	ByteEncryption::challenge26encrypt(&payload, &secretKey, &output, secretNonce);
+	// flip some bits - assume we don't know the position of our payload in the encrypted string
+	bool found = false;
+	for (size_t i = 0; i < output.length() - 11; i++) {
+		ByteVector modifiedOutput = ByteVector(output);
+		modifiedOutput.setAtIndex(output.atIndex(i + 0) ^ 0x01, i + 0);
+		modifiedOutput.setAtIndex(output.atIndex(i + 6) ^ 0x01, i + 6);
+		modifiedOutput.setAtIndex(output.atIndex(i + 11) ^ 0x01, i + 11);
+		if (ByteEncryption::challenge26decrypt(&modifiedOutput, &secretKey, secretNonce)) {
+			found = true;
+			break;
+		}
+	}
+	cout << (found ? "Success" : "Failure") << endl;
 }
 
 int Set4() {
 	cout << "### SET 4 ###" << endl;
 	cout << "Set 4 Challenge 25" << endl;
 	Set4Challenge25();
+	// Pause before continuing
+	cout << "Press enter to continue..." << endl;
+	cout << "Set 4 Challenge 26" << endl;
+	Set4Challenge26();
 	// Pause before continuing
 	cout << "Press enter to continue..." << endl;
 	getchar();

@@ -36,6 +36,9 @@ public:
 	static void challenge17encrypt(std::vector<ByteVector> *inputs, ByteVector *key, ByteVector *output, ByteVector *iv, bool verbose = false);
 	static bool challenge17paddingvalidate(ByteVector *bv, ByteVector *key, ByteVector *iv);
 
+	static void challenge26encrypt(ByteVector *bv, ByteVector *key, ByteVector *output, unsigned long long nonce);
+	static bool challenge26decrypt(ByteVector *bv, ByteVector *key, unsigned long long nonce);
+
 	static int aes_repeated_block_count(ByteVector *bv);
 	static size_t aes_seq_repeated_block_count(ByteVector *bv);
 
