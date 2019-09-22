@@ -56,10 +56,8 @@ void Set4Challenge25() {
 }
 
 void Set4Challenge26() {
-	// Test bitflipping - Yikes. This is both vulurable to easy replacement of known plaintext even in
-	// the first block, and I think you can recover unknown plaintext if you can compare flipped and 
-	// unflipped decryptions (several times?)
-	ByteVector test = ByteVector(256); // 16 blocks
+	// Test bitflipping
+	ByteVector test = ByteVector(32); // 2 blocks
 	for (size_t i = 0; i < test.length(); i++) {
 		test.setAtIndex((byte)i, i);
 	}
@@ -104,6 +102,42 @@ void Set4Challenge26() {
 	cout << (found ? "Success" : "Failure") << endl;
 }
 
+void Set4Challenge27() {
+	ByteVector payload = ByteVector("THISISSOMEJUNK!!:admin<true:AAAA", ASCII);
+	ByteVector output = ByteVector();
+	ByteVector secretKey = ByteVector(16);
+	secretKey.random();
+	cout << "Passing input for encryption..." << endl;
+	ByteEncryption::challenge27encrypt(&payload, &secretKey, &output);
+	// zero second 16-byte block in encrypted output
+	// and copy block 0 to block 2
+	cout << "Modifying encrypted message blocks..." << endl;
+	for (size_t i = 0; i < 16; i++) {
+		output.setAtIndex(0, i+16);
+		output.setAtIndex(output.atIndex(i), i + 32);
+	}
+	cout << "Passing modified encrypted message for decryption..." << endl;
+	ByteEncryptionError err;
+	ByteEncryption::challenge27decrypt(&output, &secretKey, &err);
+	if (err.hasErr()) {
+		cout << "Decryption returns error message." << endl;
+		ByteVector vec = ByteVector((char *)err.message.c_str(), ASCII);
+		vec.printASCIIStrByBlocks(16);
+		size_t offset = strlen("Noncompliant values: ");
+		ByteVector extraction = ByteVector(vec.length() - offset);
+		for (size_t i = 0; i < extraction.length(); i++) {
+			extraction.setAtIndex(vec.atIndex(i + offset), i);
+		}
+		ByteVector extractedKey = ByteVector(16);
+		for (size_t i = 0; i < 16; i++) {
+			extractedKey.setAtIndex(extraction.atIndex(i) ^ extraction.atIndex(i + 32) , i);
+		}
+		cout << "Recovered key:\t" << extractedKey.toStr(HEX) << endl;
+		cout << "Original key:\t" << secretKey.toStr(HEX) << endl;
+		cout << "Recovered key " << (extractedKey.equal(&secretKey) ? "matches" : "does not match") << " original key." << endl;
+	}
+}
+
 int Set4() {
 	cout << "### SET 4 ###" << endl;
 	cout << "Set 4 Challenge 25" << endl;
@@ -112,6 +146,11 @@ int Set4() {
 	cout << "Press enter to continue..." << endl;
 	cout << "Set 4 Challenge 26" << endl;
 	Set4Challenge26();
+	// Pause before continuing
+	cout << "Press enter to continue..." << endl;
+	getchar();
+	cout << "Set 4 Challenge 27" << endl;
+	Set4Challenge27();
 	// Pause before continuing
 	cout << "Press enter to continue..." << endl;
 	getchar();

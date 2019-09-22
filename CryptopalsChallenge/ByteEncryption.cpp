@@ -394,6 +394,63 @@ bool ByteEncryption::challenge26decrypt(ByteVector *bv, ByteVector *key, unsigne
 	return false;
 }
 
+
+void ByteEncryption::challenge27encrypt(ByteVector *bv, ByteVector *key, ByteVector *output) {
+	ByteVector pre = ByteVector("comment1=cooking%20MCs;userdata=", ASCII);
+	ByteVector post = ByteVector(";comment2=%20like%20a%20pound%20of%20bacon", ASCII);
+	size_t input_len = 0;
+	for (size_t i = 0; i < bv->length(); i++) {
+		if (bv->atIndex(i) == ';' || bv->atIndex(i) == '=') {
+			input_len += 3;
+		}
+		else {
+			input_len++;
+		}
+	}
+	ByteVector input = ByteVector();
+	input.reserve(input_len);
+	for (size_t i = 0; i < bv->length(); i++) {
+		// urlencode our unsafe characters
+		if (bv->atIndex(i) == ';') {
+			input.append('%');
+			input.append('3');
+			input.append('B');
+		}
+		else if (bv->atIndex(i) == '=') {
+			input.append('%');
+			input.append('3');
+			input.append('D');
+		}
+		else {
+			input.append(bv->atIndex(i));
+		}
+	}
+	ByteEncryption::aes_prepend_append_encrypt(&pre, &input, &post, key, output, false, true, key);
+}
+bool ByteEncryption::challenge27decrypt(ByteVector *bv, ByteVector *key, ByteEncryptionError *err) {
+	ByteVector output = ByteVector(bv->length());
+	ByteEncryption::aes_cbc_encrypt(bv, key, &output, key, false);
+	// check for high-ASCII first before padding validation
+	bool high_ascii_present = false;
+	for (size_t i = 0; i < output.length(); i++) {
+		if (output.atIndex(i) > 127) {
+			high_ascii_present = true;
+			break;
+		}
+	}
+	if (high_ascii_present || true) {
+		err->err = 1;
+		err->message = std::string("Noncompliant values: ") + std::string((output.toStr(ASCII)));
+		return false;
+	}
+	ByteVector stripped = ByteVector();
+	ByteEncryption::pkcs7PaddingValidate(&output, AES_BLOCK_SIZE, &stripped, err);
+	if (err->hasErr()) {
+		return false;
+	}
+	return true;
+}
+
 // returns the number of 16-byte blocks in the vector that appear more than once
 int ByteEncryption::aes_repeated_block_count(ByteVector *bv) {
 	// probably smarter ways to do this, but eh

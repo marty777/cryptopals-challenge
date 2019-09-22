@@ -39,6 +39,9 @@ public:
 	static void challenge26encrypt(ByteVector *bv, ByteVector *key, ByteVector *output, unsigned long long nonce);
 	static bool challenge26decrypt(ByteVector *bv, ByteVector *key, unsigned long long nonce);
 
+	static void challenge27encrypt(ByteVector *bv, ByteVector *key, ByteVector *output);
+	static bool challenge27decrypt(ByteVector *bv, ByteVector *key, ByteEncryptionError *err);
+
 	static int aes_repeated_block_count(ByteVector *bv);
 	static size_t aes_seq_repeated_block_count(ByteVector *bv);
 
