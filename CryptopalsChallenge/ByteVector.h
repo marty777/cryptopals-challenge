@@ -19,7 +19,7 @@ public:
 	~ByteVector();
 
 	byte operator[] (size_t n) const;
-	byte& operator [] (size_t i);
+	byte& operator [] (size_t n);
 
 	size_t length();
 	byte atIndex(size_t index);

@@ -139,9 +139,16 @@ void Set4Challenge27() {
 }
 
 void Set4Challenge28() {
-	ByteVector test = ByteVector("Hello", ASCII);
+	ByteVector test = ByteVector("The quick brown fox jumps over the lazy dog", ASCII);
+	ByteVector test2 = ByteVector("The quick brown fox jumps over the lazy cog", ASCII);
+	ByteVector test3 = ByteVector("", ASCII);
 	ByteVector output = ByteVector();
 	ByteEncryption::sha1(&test, &output);
+	output.printHexStrByBlocks(16);
+	ByteEncryption::sha1(&test2, &output);
+	output.printHexStrByBlocks(16);
+	ByteEncryption::sha1(&test3, &output);
+	output.printHexStrByBlocks(16);
 }
 
 int Set4() {

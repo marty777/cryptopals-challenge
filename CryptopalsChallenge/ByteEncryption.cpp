@@ -5,6 +5,22 @@
 #include <openssl/aes.h>
 #include <iostream>
 
+byte byterotateleft(byte b, int shift) {
+	return (b << shift) | (b >> 8 - shift);
+}
+
+byte byterotateright(byte b, int shift) {
+	return (b >> shift) | (b << 8 - shift);
+}
+
+uint32_t int32rotateleft(uint32_t b, int shift) {
+	return (b << shift) | (b >> 32 - shift);
+}
+
+byte int32rotateright(uint32_t b, int shift) {
+	return (b >> shift) | (b << 32 - shift);
+}
+
 void ByteEncryptionError::clear() {
 	err = 0;
 	message = "";
@@ -652,11 +668,17 @@ void ByteEncryption::mt19937_stream_encrypt(ByteVector *bv, uint16_t seed, ByteV
 
 
 void ByteEncryption::sha1(ByteVector *bv, ByteVector *output) {
-	ByteVector h0 = ByteVector("67452301", HEX);
+	/*ByteVector h0 = ByteVector("67452301", HEX);
 	ByteVector h1 = ByteVector("EFCDAB89", HEX);
 	ByteVector h2 = ByteVector("98BADCFE", HEX);
 	ByteVector h3 = ByteVector("10325476", HEX);
-	ByteVector h4 = ByteVector("C3D2E1F0", HEX);
+	ByteVector h4 = ByteVector("C3D2E1F0", HEX);*/
+
+	uint32_t h0 = 0x67452301;
+	uint32_t h1 = 0xEFCDAB89;
+	uint32_t h2 = 0x98BADCFE;
+	uint32_t h3 = 0x10325476;
+	uint32_t h4 = 0xC3D2E1F0;
 
 	size_t m1 = bv->length() * 8;
 	size_t message_len = m1 + ((512 - m1 % 512));
@@ -668,5 +690,84 @@ void ByteEncryption::sha1(ByteVector *bv, ByteVector *output) {
 		message[message_len - 8 + i] = len_chunk;
 	}
 
-	message.printHexStrByBlocks(8);
+	size_t message_chunk_index = 0;
+	for (size_t i = 0; i < message_len; i += 64) {
+		uint32_t w[80];
+		for (size_t j = 0; j < 80; j++) {
+			w[j] = 0;
+		}
+		// break chunk into 16 initial 32-bit words
+		for (size_t j = i; j < i + 64; j++) {
+			size_t w_i = (j - i) / 4;
+			w[w_i] = w[w_i] | (message[j] << (3 - (j % 4)));
+		}
+		// next 64 32-bit words are produced as:
+		for (size_t j = 16; j < 80; j++) {
+			w[j] = int32rotateleft((w[j - 3] ^ w[j - 8] ^ w[j - 14] ^ w[j - 16]), 1);
+		}
+		// initialize hash value for chunk
+		uint32_t a = h0;
+		uint32_t b = h1;
+		uint32_t c = h2;
+		uint32_t d = h3;
+		uint32_t e = h4;
+
+		for (size_t n = 0; n < 80; n++) {
+			size_t f = 0;
+			size_t k = 0;
+			if (n >= 0 && n <= 19) {
+				f = (b & c) | ((~b) & d);
+				k = 0x5A827999;
+			}
+			else if (n >= 20 && n <= 39) {
+				f = b ^ c ^ d;
+				k = 0x6ED9EBA1;
+			}
+			else if (n >= 40 && n <= 59) {
+				f = (b & c) | (b & d) | (c & d);
+				k = 0x8F1BBCDC;
+			}
+			else if (n >= 60 && n <= 79) {
+				f = b ^ c ^ d;
+				k = 0xCA62C1D6;
+			}
+
+			uint32_t temp = int32rotateleft(a, 5) + f + e + k + w[n];
+			e = d;
+			d = c;
+			c = int32rotateleft(b, 30);
+			b = a;
+			a = temp;
+		}
+		h0 = h0 + a;
+		h1 = h1 + b;
+		h2 = h2 + c;
+		h3 = h3 + d;
+		h4 = h4 + e;
+	}
+
+	//ByteVector output = ByteVector(20); // 160 bits
+	output->resize(20);
+	(*output)[0] = (byte)(h0 >> 24) & 0xff;
+	(*output)[1] = (byte)(h0 >> 16) & 0xff;
+	(*output)[2] = (byte)(h0 >> 8) & 0xff;
+	(*output)[3] = (byte)(h0) & 0xff;
+	(*output)[4] = (byte)(h1 >> 24) & 0xff;
+	(*output)[5] = (byte)(h1 >> 16) & 0xff;
+	(*output)[6] = (byte)(h1 >> 8) & 0xff;
+	(*output)[7] = (byte)(h1) & 0xff;
+	(*output)[8] = (byte)(h2 >> 24) & 0xff;
+	(*output)[9] = (byte)(h2 >> 16) & 0xff;
+	(*output)[10] = (byte)(h2 >> 8) & 0xff;
+	(*output)[11] = (byte)(h2) & 0xff;
+	(*output)[12] = (byte)(h3 >> 24) & 0xff;
+	(*output)[13] = (byte)(h3 >> 16) & 0xff;
+	(*output)[14] = (byte)(h3 >> 8) & 0xff;
+	(*output)[15] = (byte)(h3) & 0xff;
+	(*output)[16] = (byte)(h4 >> 24) & 0xff;
+	(*output)[17] = (byte)(h4 >> 16) & 0xff;
+	(*output)[18] = (byte)(h4 >> 8) & 0xff;
+	(*output)[19] = (byte)(h4) & 0xff;
+
+	
 }
