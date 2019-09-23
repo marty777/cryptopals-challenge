@@ -57,5 +57,6 @@ public:
 	static void mt19937_stream_encrypt(ByteVector *bv, uint16_t seed, ByteVector *output);
 
 	static void sha1(ByteVector *bv, ByteVector *output);
+	static void sha1_MAC(ByteVector *bv, ByteVector *key, ByteVector *output);
 };
 

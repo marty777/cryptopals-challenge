@@ -17,7 +17,7 @@ uint32_t int32rotateleft(uint32_t b, int shift) {
 	return (b << shift) | (b >> 32 - shift);
 }
 
-byte int32rotateright(uint32_t b, int shift) {
+uint32_t int32rotateright(uint32_t b, int shift) {
 	return (b >> shift) | (b << 32 - shift);
 }
 
@@ -666,13 +666,8 @@ void ByteEncryption::mt19937_stream_encrypt(ByteVector *bv, uint16_t seed, ByteV
 	}
 }
 
-
+// based on pseudocode from https://en.wikipedia.org/wiki/SHA-1
 void ByteEncryption::sha1(ByteVector *bv, ByteVector *output) {
-	/*ByteVector h0 = ByteVector("67452301", HEX);
-	ByteVector h1 = ByteVector("EFCDAB89", HEX);
-	ByteVector h2 = ByteVector("98BADCFE", HEX);
-	ByteVector h3 = ByteVector("10325476", HEX);
-	ByteVector h4 = ByteVector("C3D2E1F0", HEX);*/
 
 	uint32_t h0 = 0x67452301;
 	uint32_t h1 = 0xEFCDAB89;
@@ -681,26 +676,31 @@ void ByteEncryption::sha1(ByteVector *bv, ByteVector *output) {
 	uint32_t h4 = 0xC3D2E1F0;
 
 	size_t m1 = bv->length() * 8;
-	size_t message_len = m1 + ((512 - m1 % 512));
-	ByteVector message = ByteVector(message_len);
+	size_t m2 = (bv->length() + 1) * 8;
+	size_t message_len = m2 + ((512 - m2 % 512));
+	if ((m2 % 512) > 448) {
+		message_len += 512;
+	}
+	ByteVector message = ByteVector(message_len/8);
 	message.allBytes(0);
 	bv->copyBytesByIndex(&message, 0, bv->length(), 0);
+	message[bv->length()] = 0x80;
 	for (size_t i = 0; i < 8; i++) {
 		byte len_chunk = (byte)(0xff) & (m1 >> 8 * (8 - 1 - i));
-		message[message_len - 8 + i] = len_chunk;
+		message[(message_len/8) - 8 + i] = len_chunk;
 	}
 
 	size_t message_chunk_index = 0;
-	for (size_t i = 0; i < message_len; i += 64) {
+	for (size_t i = 0; i < message_len/8; i += 64) {
 		uint32_t w[80];
 		for (size_t j = 0; j < 80; j++) {
 			w[j] = 0;
 		}
 		// break chunk into 16 initial 32-bit words
-		for (size_t j = i; j < i + 64; j++) {
-			size_t w_i = (j - i) / 4;
-			w[w_i] = w[w_i] | (message[j] << (3 - (j % 4)));
+		for (size_t j = 0; j < 16; j++) {
+			w[j] = (((uint32_t)message[i + (4 * j) + 0]) << 24) | (((uint32_t)message[i + (4 * j) + 1]) << 16) | (((uint32_t)message[i + (4 * j) + 2]) << 8) | message[i + (4 * j) + 3];
 		}
+
 		// next 64 32-bit words are produced as:
 		for (size_t j = 16; j < 80; j++) {
 			w[j] = int32rotateleft((w[j - 3] ^ w[j - 8] ^ w[j - 14] ^ w[j - 16]), 1);
@@ -768,6 +768,13 @@ void ByteEncryption::sha1(ByteVector *bv, ByteVector *output) {
 	(*output)[17] = (byte)(h4 >> 16) & 0xff;
 	(*output)[18] = (byte)(h4 >> 8) & 0xff;
 	(*output)[19] = (byte)(h4) & 0xff;
+}
 
-	
+// MAC is SHA1( key CONCAT message ) 
+void ByteEncryption::sha1_MAC(ByteVector *bv, ByteVector *key, ByteVector *output) {
+	ByteVector input = ByteVector(key->length() + bv->length());
+	key->copyBytesByIndex(&input, 0, bv->length(), 0);
+	bv->copyBytesByIndex(&input, 0, bv->length(), key->length());
+
+	ByteEncryption::sha1(&input, output);
 }

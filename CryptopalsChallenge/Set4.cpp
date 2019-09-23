@@ -139,16 +139,28 @@ void Set4Challenge27() {
 }
 
 void Set4Challenge28() {
-	ByteVector test = ByteVector("The quick brown fox jumps over the lazy dog", ASCII);
-	ByteVector test2 = ByteVector("The quick brown fox jumps over the lazy cog", ASCII);
-	ByteVector test3 = ByteVector("", ASCII);
-	ByteVector output = ByteVector();
-	ByteEncryption::sha1(&test, &output);
-	output.printHexStrByBlocks(16);
-	ByteEncryption::sha1(&test2, &output);
-	output.printHexStrByBlocks(16);
-	ByteEncryption::sha1(&test3, &output);
-	output.printHexStrByBlocks(16);
+	ByteVector message = ByteVector("The quick brown fox jumps over the lazy dog", ASCII);
+	cout << "Original message: " << message.toStr(ASCII) << endl;
+	ByteVector key = ByteVector("YELLOW SUBMARINE", ASCII);
+	cout << "Original key: " << key.toStr(ASCII) << endl;
+	
+	ByteVector mac = ByteVector();
+	ByteEncryption::sha1_MAC(&message, &key, &mac);
+	cout << "MAC of message: " << mac.toStr(HEX) << endl;
+	
+	cout << "Tampering with message..." << endl;
+	ByteVector message2 = ByteVector("The quick brown fox jumps over the lazy cog", ASCII);
+	ByteVector mac2 = ByteVector();
+	ByteEncryption::sha1_MAC(&message2, &key, &mac2);
+	cout << "Tampered message MAC " << (mac2.equal(&mac) ? "matches" : "does not match") << " original MAC:" << mac2.toStr(HEX) << endl;
+
+	cout << "Testing MAC without knowing key..." << endl;
+	ByteVector key2 = ByteVector(16);
+	key2.allBytes(0);
+	ByteVector mac3 = ByteVector();
+	ByteEncryption::sha1_MAC(&message, &key2, &mac3);
+	cout << "MAC with differing key " << (mac3.equal(&mac) ? "matches" : "does not match") << " original MAC: " << mac3.toStr(HEX) << endl;
+
 }
 
 int Set4() {
