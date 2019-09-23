@@ -649,3 +649,24 @@ void ByteEncryption::mt19937_stream_encrypt(ByteVector *bv, uint16_t seed, ByteV
 		output->setAtIndex(bv->atIndex(i) ^ keyStream.atIndex(i % 4) , i);
 	}
 }
+
+
+void ByteEncryption::sha1(ByteVector *bv, ByteVector *output) {
+	ByteVector h0 = ByteVector("67452301", HEX);
+	ByteVector h1 = ByteVector("EFCDAB89", HEX);
+	ByteVector h2 = ByteVector("98BADCFE", HEX);
+	ByteVector h3 = ByteVector("10325476", HEX);
+	ByteVector h4 = ByteVector("C3D2E1F0", HEX);
+
+	size_t m1 = bv->length() * 8;
+	size_t message_len = m1 + ((512 - m1 % 512));
+	ByteVector message = ByteVector(message_len);
+	message.allBytes(0);
+	bv->copyBytesByIndex(&message, 0, bv->length(), 0);
+	for (size_t i = 0; i < 8; i++) {
+		byte len_chunk = (byte)(0xff) & (m1 >> 8 * (8 - 1 - i));
+		message[message_len - 8 + i] = len_chunk;
+	}
+
+	message.printHexStrByBlocks(8);
+}

@@ -55,5 +55,7 @@ public:
 	static void aes_ctr_edit(ByteVector *bv, ByteVector *key, unsigned long long nonce, size_t offset, ByteVector *newBytes);
 
 	static void mt19937_stream_encrypt(ByteVector *bv, uint16_t seed, ByteVector *output);
+
+	static void sha1(ByteVector *bv, ByteVector *output);
 };
 

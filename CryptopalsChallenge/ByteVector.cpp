@@ -194,6 +194,8 @@ ByteVector::~ByteVector() {
 	_v.~vector();
 }
 
+byte ByteVector::operator[] (size_t n) const { return _v[n]; };
+byte& ByteVector::operator [] (size_t i) { return _v[i]; }
 
 size_t ByteVector::length() {
 	return _v.size();
@@ -513,6 +515,14 @@ void ByteVector::allBytes(byte value) {
 
 void ByteVector::append(byte b) {
 	_v.push_back(b);
+}
+
+void ByteVector::append(ByteVector *bv) {
+	size_t initial_size = _v.size();
+	_v.resize(_v.size() + bv->length());
+	for (size_t i = initial_size; i < _v.size(); i++) {
+		_v[i] = (*bv)[i];
+	}
 }
 
 

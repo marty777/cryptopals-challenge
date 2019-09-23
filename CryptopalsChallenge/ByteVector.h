@@ -18,6 +18,9 @@ public:
 	ByteVector();
 	~ByteVector();
 
+	byte operator[] (size_t n) const;
+	byte& operator [] (size_t i);
+
 	size_t length();
 	byte atIndex(size_t index);
 	byte setAtIndex(byte value, size_t index);
@@ -43,6 +46,7 @@ public:
 	void allBytes(byte value);
 
 	void append(byte b);
+	void append(ByteVector *bv);
 
 	void reserve(size_t len);
 	void resize(size_t len);

@@ -138,6 +138,12 @@ void Set4Challenge27() {
 	}
 }
 
+void Set4Challenge28() {
+	ByteVector test = ByteVector("Hello", ASCII);
+	ByteVector output = ByteVector();
+	ByteEncryption::sha1(&test, &output);
+}
+
 int Set4() {
 	cout << "### SET 4 ###" << endl;
 	cout << "Set 4 Challenge 25" << endl;
@@ -151,6 +157,11 @@ int Set4() {
 	getchar();
 	cout << "Set 4 Challenge 27" << endl;
 	Set4Challenge27();
+	// Pause before continuing
+	cout << "Press enter to continue..." << endl;
+	getchar();
+	cout << "Set 4 Challenge 28" << endl;
+	Set4Challenge28();
 	// Pause before continuing
 	cout << "Press enter to continue..." << endl;
 	getchar();
