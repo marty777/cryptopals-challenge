@@ -166,7 +166,8 @@ void Set4Challenge29() {
 	ByteVector secretKey = ByteVector(256);
 	secretKey.random();
 
-
+	ByteVector aeskey = ByteVector("YELLOW SUBMARINE", ASCII);
+	ByteEncryptionAESKey newKey = ByteEncryptionAESKey(&aeskey);
 }
 
 int Set4() {

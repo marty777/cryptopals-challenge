@@ -22,29 +22,69 @@ uint32_t int32rotateright(uint32_t b, int shift) {
 }
 
 ByteEncryptionAESKey::ByteEncryptionAESKey() {
-	
+	w = NULL;
 }
 
 ByteEncryptionAESKey::ByteEncryptionAESKey(ByteVector *key) {
+	w = NULL;
 	this->setKey(key);
 }
 
 ByteEncryptionAESKey::~ByteEncryptionAESKey() {
-
+	free(w);
 }
 
 void ByteEncryptionAESKey::setKey(ByteVector *key) {
-	assert(key->length() == 16);
+	assert(key->length() == 16 || key->length() == 24 || key->length() == 32);
 	uint32_t temp;
-	for (size_t i = 0; i < 4; i++) {
+	// AES 128 - nk = 4, nr = 10
+	// AES 192 - nk = 6, nr = 12
+	// AES 256 - nk = 8, nr = 14
+	size_t nk = key->length() / 4;
+	size_t nb = 4;
+	size_t nr = nk + 6;
+	if (w != NULL) {
+		free(w);
+	}
+	w = (uint32_t *)malloc(sizeof(uint32_t) * nb * (nr + 1));
+
+	for (size_t i = 0; i < nk; i++) {
 		w[i] = ((*key)[4 * i] << 24) | ((*key)[4 * i + 1] << 16) | ((*key)[4 * i + 3] << 8) | ((*key)[4 * i + 3] << 24);
 	}
-	for (size_t i = 4; i < 44; i++ ) {
+	for (size_t i = nb; i < nb*(nr+1); i++ ) {
 		temp = w[i - 1];
-		if (i % 4 == 0) {
-
+		if (i % nk == 0) {
+			temp = subword(int32rotateleft(temp, 8)) ^ rcon(i / nk);
 		}
+		else if (nk > 6 && i % nk == 4) { // AES 256 modification to expansion
+			temp = subword(temp);
+		}
+		w[i] = w[i - nk] ^ temp;
 	}
+}
+
+uint32_t ByteEncryptionAESKey::subword(uint32_t word) {
+	// replace each byte in word with corresponding byte in sbox lookup table
+	byte w0 = (byte)(word >> 24) & 0xff;
+	byte w1 = (byte)(word >> 16) & 0xff;
+	byte w2 = (byte)(word >> 8) & 0xff;
+	byte w3 = (byte)(word) & 0xff;
+	return ((uint32_t)sbox[w0] << 24) | ((uint32_t)sbox[w1] << 16) | ((uint32_t)sbox[w2] << 8) | ((uint32_t)sbox[w3]);
+}
+
+// could just replace this with a table. AES256 only requires i = 1..29
+byte ByteEncryptionAESKey::rcon(int i) {
+	assert(i >= 1);
+	byte rcon = 0x01;
+	for (int j = 1; j < i; j++) {
+		
+		uint32_t temp = (rcon << 1);
+		if (rcon >> 7 == 1) {
+			temp ^= 0x11b;
+		}
+		rcon = temp;
+	}
+	return rcon;
 }
 
 void ByteEncryptionError::clear() {
