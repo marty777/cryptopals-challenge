@@ -170,10 +170,15 @@ void Set4Challenge29() {
 	aeskey.printHexStrByBlocks(16);
 	//ByteEncryptionAESKey newKey = ByteEncryptionAESKey(&aeskey);
 
-	ByteVector input = ByteVector("This is a test", ASCII);
-	ByteVector output = ByteVector();
+	ByteVector input = ByteVector("This is a test!!", ASCII);
+	ByteVector output = ByteVector(16);
+	ByteVector output2 = ByteVector(16);
 
-	//ByteEncryption::aes_ecb_encrypt_block2(&input, &aeskey, &output, false);
+	ByteEncryption::aes_ecb_encrypt_block2(input.dataPtr(), aeskey.dataPtr(), 16, output.dataPtr(), true);
+	ByteEncryption::aes_ecb_encrypt(&input, &aeskey, &output2, 0, input.length() - 1, true);
+
+	output.printHexStrByBlocks(4);
+	output2.printHexStrByBlocks(4);
 }
 
 int Set4() {

@@ -2,7 +2,7 @@
 #include "ByteVector.h"
 #include <vector>
 
-class ByteEncryptionAESKey {
+class ByteEncryptionAES {
 	uint32_t *w;
 	size_t keysize;
 	const ByteVector sbox = ByteVector("637c777bf26b6fc53001672bfed7ab76"
@@ -23,17 +23,24 @@ class ByteEncryptionAESKey {
 		"8ca1890dbfe6426841992d0fb054bb16", HEX);
 
 public:
-	ByteEncryptionAESKey();
-	ByteEncryptionAESKey(ByteVector *key);
-	~ByteEncryptionAESKey();
+	ByteEncryptionAES();
+	ByteEncryptionAES(ByteVector *key);
+	~ByteEncryptionAES();
 	void setKey(ByteVector *key);
-	int Nr();
-	int Nk();
-
+	int KeyNr();
+	int KeyNk();
+	void aes_encipher(ByteVector *input, ByteVector *output);
+	void shiftrows(ByteVector *b);
 private:
 	uint32_t subword(uint32_t word);
+	void subbytes(ByteVector *b);
+	
+	void mixcolumns(ByteVector *b);
 	// just the non-zero byte of RCON[i]
 	byte rcon(int i);
+	byte gmul(byte a, byte b);
+	// xor each byte of state vector with byte from appropriate word starting at index w_i in w.
+	void addRoundKey(ByteVector *state, size_t w_i);
 };
 
 class ByteEncryptionError 
