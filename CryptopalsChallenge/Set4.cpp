@@ -160,6 +160,12 @@ void Set4Challenge28() {
 	ByteVector mac3 = ByteVector();
 	ByteEncryption::sha1_MAC(&message, &key2, &mac3);
 	cout << "MAC with differing key " << (mac3.equal(&mac) ? "matches" : "does not match") << " original MAC: " << mac3.toStr(HEX) << endl;
+}
+
+void Set4Challenge29() {
+	ByteVector secretKey = ByteVector(256);
+	secretKey.random();
+
 
 }
 
@@ -181,6 +187,11 @@ int Set4() {
 	getchar();
 	cout << "Set 4 Challenge 28" << endl;
 	Set4Challenge28();
+	// Pause before continuing
+	cout << "Press enter to continue..." << endl;
+	getchar();
+	cout << "Set 4 Challenge 29" << endl;
+	Set4Challenge29();
 	// Pause before continuing
 	cout << "Press enter to continue..." << endl;
 	getchar();

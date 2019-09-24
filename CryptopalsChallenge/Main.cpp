@@ -5,7 +5,7 @@
 #include <iostream>
 #include <string>
 
-#define MAX_CHALLENGE_INDEX 28;
+#define MAX_CHALLENGE_INDEX 29;
 using namespace std;
 
 
@@ -118,6 +118,9 @@ int main() {
 		break;
 	case 28:
 		Set4Challenge28();
+		break;
+	case 29:
+		Set4Challenge29();
 		break;
 	default:
 		break;

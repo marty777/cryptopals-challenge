@@ -667,13 +667,13 @@ void ByteEncryption::mt19937_stream_encrypt(ByteVector *bv, uint16_t seed, ByteV
 }
 
 // based on pseudocode from https://en.wikipedia.org/wiki/SHA-1
-void ByteEncryption::sha1(ByteVector *bv, ByteVector *output) {
+void ByteEncryption::sha1(ByteVector *bv, ByteVector *output, uint32_t state0, uint32_t state1, uint32_t state2, uint32_t state3, uint32_t state4) {
 
-	uint32_t h0 = 0x67452301;
-	uint32_t h1 = 0xEFCDAB89;
-	uint32_t h2 = 0x98BADCFE;
-	uint32_t h3 = 0x10325476;
-	uint32_t h4 = 0xC3D2E1F0;
+	uint32_t h0 = state0;
+	uint32_t h1 = state1;
+	uint32_t h2 = state2;
+	uint32_t h3 = state3;
+	uint32_t h4 = state4;
 
 	size_t m1 = bv->length() * 8;
 	size_t m2 = (bv->length() + 1) * 8;
