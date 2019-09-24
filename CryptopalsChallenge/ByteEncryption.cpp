@@ -31,7 +31,9 @@ ByteEncryptionAESKey::ByteEncryptionAESKey(ByteVector *key) {
 }
 
 ByteEncryptionAESKey::~ByteEncryptionAESKey() {
-	free(w);
+	if (w != NULL) {
+		free(w);
+	}
 }
 
 void ByteEncryptionAESKey::setKey(ByteVector *key) {
@@ -40,6 +42,7 @@ void ByteEncryptionAESKey::setKey(ByteVector *key) {
 	// AES 128 - nk = 4, nr = 10
 	// AES 192 - nk = 6, nr = 12
 	// AES 256 - nk = 8, nr = 14
+	keysize = key->length();
 	size_t nk = key->length() / 4;
 	size_t nb = 4;
 	size_t nr = nk + 6;
@@ -49,18 +52,29 @@ void ByteEncryptionAESKey::setKey(ByteVector *key) {
 	w = (uint32_t *)malloc(sizeof(uint32_t) * nb * (nr + 1));
 
 	for (size_t i = 0; i < nk; i++) {
-		w[i] = ((*key)[4 * i] << 24) | ((*key)[4 * i + 1] << 16) | ((*key)[4 * i + 3] << 8) | ((*key)[4 * i + 3] << 24);
+		w[i] = ((*key)[4 * i] << 24) | ((*key)[4 * i + 1] << 16) | ((*key)[4 * i + 2] << 8) | ((*key)[4 * i + 3]);
 	}
 	for (size_t i = nb; i < nb*(nr+1); i++ ) {
 		temp = w[i - 1];
 		if (i % nk == 0) {
-			temp = subword(int32rotateleft(temp, 8)) ^ rcon(i / nk);
+			temp = subword(int32rotateleft(temp, 8)) ^((uint32_t)rcon(i / nk) << 24);
 		}
 		else if (nk > 6 && i % nk == 4) { // AES 256 modification to expansion
 			temp = subword(temp);
 		}
 		w[i] = w[i - nk] ^ temp;
 	}
+
+	for (int i = 0; i < 44; i++) {
+		std::cout << i << "\t" << std::hex << w[i] << std::dec << std::endl;
+	}
+}
+
+int ByteEncryptionAESKey::Nr() {
+	return (keysize / 4) + 6;
+}
+int ByteEncryptionAESKey::Nk() {
+	return (keysize / 4);
 }
 
 uint32_t ByteEncryptionAESKey::subword(uint32_t word) {
@@ -110,18 +124,36 @@ ByteEncryption::~ByteEncryption()
 {
 }
 
-void ByteEncryption::aes_key_expand(ByteVector *inputKey, ByteVector *outputKey) {
+void ByteEncryption::aes_ecb_encrypt_block2(byte *input, byte *key, int keyLengthBytes, byte *output, bool encrypt) {
 
-}
+	ByteVector anotherKey = ByteVector("YELLOW SUBMARINE", ASCII);
+	ByteEncryptionAESKey aesKey = ByteEncryptionAESKey(&anotherKey);
 
-void ByteEncryption::aes_ecb_encrypt_block2(ByteVector *input, ByteVector *key, ByteVector *output, bool encrypt) {
+	ByteVector state = ByteVector(16);
+	for (size_t i = 0; i < state.length(); i++) {
+		state[i] = input[i];
+	}
 
+	//AddRoundKey(state, w[0..3])
+
+	for (int round = 1; round < aesKey.Nr() - 1; round++) {
+		// sub bytes
+		// shift rows
+		// mix columns
+		// add round key
+	}
+
+	// sub bytes
+	// shift fows
+	// add round key
+	// return state
 }
 
 void ByteEncryption::aes_ecb_encrypt_block(byte *input, byte *key, int keyLengthBytes, byte *output, bool encrypt) {
 	// setting up the wrapper this way adds extra steps by re-doing the aes key each block, but eh.
 	AES_KEY aesKey;
 	encrypt ? AES_set_encrypt_key(key, keyLengthBytes * 8, &aesKey) : AES_set_decrypt_key(key, keyLengthBytes * 8, &aesKey);
+	
 	AES_ecb_encrypt(input, output, &aesKey, encrypt ? AES_ENCRYPT : AES_DECRYPT);
 }
 

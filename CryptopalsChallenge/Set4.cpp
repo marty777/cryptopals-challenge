@@ -167,7 +167,13 @@ void Set4Challenge29() {
 	secretKey.random();
 
 	ByteVector aeskey = ByteVector("YELLOW SUBMARINE", ASCII);
-	ByteEncryptionAESKey newKey = ByteEncryptionAESKey(&aeskey);
+	aeskey.printHexStrByBlocks(16);
+	//ByteEncryptionAESKey newKey = ByteEncryptionAESKey(&aeskey);
+
+	ByteVector input = ByteVector("This is a test", ASCII);
+	ByteVector output = ByteVector();
+
+	//ByteEncryption::aes_ecb_encrypt_block2(&input, &aeskey, &output, false);
 }
 
 int Set4() {

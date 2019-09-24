@@ -4,6 +4,7 @@
 
 class ByteEncryptionAESKey {
 	uint32_t *w;
+	size_t keysize;
 	const ByteVector sbox = ByteVector("637c777bf26b6fc53001672bfed7ab76"
 		"ca82c97dfa5947f0add4a2af9ca472c0"
 		"b7fd9326363ff7cc34a5e5f171d83115"
@@ -26,6 +27,8 @@ public:
 	ByteEncryptionAESKey(ByteVector *key);
 	~ByteEncryptionAESKey();
 	void setKey(ByteVector *key);
+	int Nr();
+	int Nk();
 
 private:
 	uint32_t subword(uint32_t word);
@@ -52,9 +55,7 @@ public:
 	ByteEncryption();
 	~ByteEncryption();
 
-
-	static void aes_key_expand(ByteVector *inputKey, ByteVector *outputKey);
-	static void aes_ecb_encrypt_block2(ByteVector *input, ByteVector *key, ByteVector *output, bool encrypt);
+	static void aes_ecb_encrypt_block2(byte *input, byte *key, int keyLengthBytes, byte *output, bool encrypt);
 	// pass false to encrypt to perform decryption.
 	static void aes_ecb_encrypt_block(byte *input, byte *key, int keyLengthBytes, byte *output, bool encrypt);
 	static void aes_ecb_encrypt(ByteVector *bv, ByteVector *key, ByteVector *output, size_t start_index, size_t end_index, bool encrypt);
