@@ -21,6 +21,32 @@ uint32_t int32rotateright(uint32_t b, int shift) {
 	return (b >> shift) | (b << 32 - shift);
 }
 
+ByteEncryptionAESKey::ByteEncryptionAESKey() {
+	
+}
+
+ByteEncryptionAESKey::ByteEncryptionAESKey(ByteVector *key) {
+	this->setKey(key);
+}
+
+ByteEncryptionAESKey::~ByteEncryptionAESKey() {
+
+}
+
+void ByteEncryptionAESKey::setKey(ByteVector *key) {
+	assert(key->length() == 16);
+	uint32_t temp;
+	for (size_t i = 0; i < 4; i++) {
+		w[i] = ((*key)[4 * i] << 24) | ((*key)[4 * i + 1] << 16) | ((*key)[4 * i + 3] << 8) | ((*key)[4 * i + 3] << 24);
+	}
+	for (size_t i = 4; i < 44; i++ ) {
+		temp = w[i - 1];
+		if (i % 4 == 0) {
+
+		}
+	}
+}
+
 void ByteEncryptionError::clear() {
 	err = 0;
 	message = "";
@@ -42,6 +68,14 @@ ByteEncryption::ByteEncryption()
 
 ByteEncryption::~ByteEncryption()
 {
+}
+
+void ByteEncryption::aes_key_expand(ByteVector *inputKey, ByteVector *outputKey) {
+
+}
+
+void ByteEncryption::aes_ecb_encrypt_block2(ByteVector *input, ByteVector *key, ByteVector *output, bool encrypt) {
+
 }
 
 void ByteEncryption::aes_ecb_encrypt_block(byte *input, byte *key, int keyLengthBytes, byte *output, bool encrypt) {
