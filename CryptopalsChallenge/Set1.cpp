@@ -1,19 +1,14 @@
 #include "ByteVector.h"
 #include "PlaintextEvaluator.h"
+#include "ByteEncryption.h"
+#include "ByteEncryptionAES.h"
 #include <iostream>
 #include <fstream>
-
-#include  "openssl/bio.h"
-#include  "openssl/ssl.h"
-#include  "openssl/err.h"
-#include "openssl/aes.h"
 
 using namespace std;
 
 
 void Set1Challenge1() {
-	//char *inputStr = "49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d";
-	//char *inputStr = "f013";
 	char *inputStr = "49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d";
 	char *expectedOutput = "SSdtIGtpbGxpbmcgeW91ciBicmFpbiBsaWtlIGEgcG9pc29ub3VzIG11c2hyb29t";
 	cout << "Input:\t" << inputStr << endl;
@@ -228,6 +223,7 @@ void Set1Challenge6() {
 
 void Set1Challenge7() {
 	char *keyStr = "YELLOW SUBMARINE";
+	ByteVector keyVector = ByteVector("YELLOW SUBMARINE", ASCII);
 	
 	char *filePath = "../challenge-files/set1/7.txt";
 	ifstream f;
@@ -256,12 +252,10 @@ void Set1Challenge7() {
 	memset(outputBytes, 0, inputLen+1);
 	bv.copyBytes(inputBytes);
 
-	AES_KEY aes_key;
-	AES_set_decrypt_key((unsigned char *)keyStr, 128, &aes_key);
 	size_t i = 0;
 
 	while( i < inputLen) {
-		AES_ecb_encrypt(inputBytes + i, outputBytes + i, &aes_key, AES_DECRYPT);
+		ByteEncryption::aes_ecb_encrypt_block(inputBytes + i, (unsigned char *)keyStr, 16, outputBytes + i, false);
 		i += AES_BLOCK_SIZE;
 	}
 	outputBytes[inputLen] = '\0';

@@ -442,6 +442,7 @@ void Set2Challenge14() {
 		}
 	}
 	cout << "Decoded target bytes:" << endl << decoded.toStr(ASCII) << endl;
+	
 }
 
 void Set2Challenge15() {

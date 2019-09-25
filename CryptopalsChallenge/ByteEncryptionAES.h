@@ -1,9 +1,7 @@
 #pragma once
 #include "ByteVector.h"
 
-
-
-
+#define AES_BLOCK_SIZE 16
 
 class ByteEncryptionAES {
 	
