@@ -39,7 +39,6 @@ public:
 
 	void m_rand_bytes(ByteVector *output, size_t length);
 
-	static int rand_range(int start, int end);
 	static void uint32_to_ByteVector(uint32_t input, ByteVector *output);
 
 	// for challenge 23

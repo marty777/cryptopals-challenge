@@ -3,6 +3,7 @@
 #include "ByteEncryption.h"
 #include "ByteRandom.h"
 #include "PlaintextEvaluator.h"
+#include "Utility.h"
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -430,13 +431,13 @@ void Set3Challenge21() {
 
 void Set3Challenge22() {
 	ByteRandom random;
-	int wait1 = random.rand_range(40, 1000);
+	int wait1 = rand_range(40, 1000);
 	std::time_t start = std::time(nullptr);
 	cout << "Simulating waiting " << wait1 << " seconds..." << endl;
 	cout << "Seeding..." << endl;
 	std::time_t now = start + wait1;
 	random.m_seed((int)now);
-	int wait2 = random.rand_range(40, 1000);
+	int wait2 = rand_range(40, 1000);
 	cout << "Simulating waiting " << wait2 << " seconds..." << endl;
 	int result = random.m_rand();
 	std:time_t final = start + wait1 + wait2;
@@ -490,7 +491,7 @@ void Set3Challenge24() {
 	cout << "Part 1: Test encryption and decryption using MT19937-derived keystream." << endl;
 	ByteVector testPlaintext = ByteVector("I am the very model of a modern Major-General\nI've information vegetable, animal, and mineral\nI know the kings of England, and I quote the fights historical\nFrom Marathon to Waterloo, in order categorical", ASCII);
 	ByteVector testCiphertext = ByteVector(testPlaintext.length());
-	uint16_t seed = (uint16_t)ByteRandom::rand_range(0, 65535);
+	uint16_t seed = (uint16_t)rand_range(0, 65535);
 	ByteEncryption::mt19937_stream_encrypt(&testPlaintext, seed, &testCiphertext);
 	cout << "Testing stream enciphered with MT19937 keystream: " << endl;
 	cout << testCiphertext.toStr(ASCII) << endl;
@@ -501,11 +502,11 @@ void Set3Challenge24() {
 
 	// Part 2. Determine 16 bit seed used to encrypt partially known plaintext.
 	cout << endl << "Part 2: Recover 16-bit seed from MT19937 keystream using partially known plaintext." << endl;
-	size_t secretRandomPrefixLen = ByteRandom::rand_range(10, 1000);
+	size_t secretRandomPrefixLen = rand_range(10, 1000);
 	// plaintext is a prefix of random characters + 14 'A's.
 	ByteVector secretPlainText = ByteVector(secretRandomPrefixLen + 14);
 	for (size_t i = 0; i < secretRandomPrefixLen; i++) {
-		secretPlainText.setAtIndex((byte)ByteRandom::rand_range(0, 255), i);
+		secretPlainText.setAtIndex((byte)rand_range(0, 255), i);
 	}
 	for (size_t i = secretRandomPrefixLen; i < secretRandomPrefixLen + 14; i++) {
 		secretPlainText.setAtIndex((byte)'A', i);

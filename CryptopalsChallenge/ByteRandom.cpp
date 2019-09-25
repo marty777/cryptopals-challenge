@@ -71,13 +71,6 @@ void ByteRandom::m_twist() {
 	this->index = 0;
 }
 
-
-// random signed int between start and end using rand()
-int ByteRandom::rand_range(int start, int end) {
-	assert(end > start);
-	return start + (rand() % (1 + end - start));
-}
-
 // Convert uint32_t to 4 byte ByteVector
 void ByteRandom::uint32_to_ByteVector(uint32_t input, ByteVector *output) {
 	assert(output->length() == 4);

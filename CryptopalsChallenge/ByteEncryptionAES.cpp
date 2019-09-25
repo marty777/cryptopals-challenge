@@ -1,0 +1,159 @@
+#include "ByteEncryptionAES.h"
+#include "Utility.h"
+#include <assert.h>
+#include <iostream>
+
+ByteEncryptionAES::ByteEncryptionAES() {
+}
+
+ByteEncryptionAES::~ByteEncryptionAES() {
+}
+
+uint32_t *ByteEncryptionAES::expandKey(ByteVector *key, uint32_t *keysize) {
+	assert(key->length() == 16 || key->length() == 24 || key->length() == 32);
+	uint32_t temp;
+	// AES 128 - nk = 4, nr = 10
+	// AES 192 - nk = 6, nr = 12
+	// AES 256 - nk = 8, nr = 14
+	*keysize = key->length();
+	size_t nk = key->length() / 4;
+	size_t nb = 4;
+	size_t nr = nk + 6;
+	
+	
+
+	uint32_t *w = (uint32_t *)malloc(sizeof(uint32_t) * nb * (nr + 1));
+
+	for (size_t i = 0; i < nk; i++) {
+		w[i] = ((*key)[4 * i] << 24) | ((*key)[4 * i + 1] << 16) | ((*key)[4 * i + 2] << 8) | ((*key)[4 * i + 3]);
+	}
+	for (size_t i = nb; i < nb*(nr + 1); i++) {
+		temp = w[i - 1];
+		if (i % nk == 0) {
+			temp = subword(int32rotateleft(temp, 8)) ^ ((uint32_t)rcon(i / nk) << 24);
+		}
+		else if (nk > 6 && i % nk == 4) { // AES 256 modification to expansion
+			temp = subword(temp);
+		}
+		w[i] = w[i - nk] ^ temp;
+	}
+
+	return w;
+}
+
+int ByteEncryptionAES::KeyNr(uint32_t keysize) {
+	return (keysize / 4) + 6;
+}
+int ByteEncryptionAES::KeyNk(uint32_t keysize) {
+	return (keysize / 4);
+}
+
+void ByteEncryptionAES::aes_encipher(ByteVector *input, uint32_t *expandedKey, uint32_t keysize, ByteVector *output) {
+	ByteVector state = ByteVector(16);
+	for (size_t i = 0; i < state.length(); i++) {
+		state[i] = (*input)[i];
+	}
+
+	int nr = this->KeyNr(keysize);
+	int nb = 4;
+	int nk = this->KeyNk(keysize);
+
+	addRoundKey(&state, expandedKey, 0);
+	shiftrows(&state);
+	for (int round = 1; round < nr; round++) {
+		subbytes(&state);
+		shiftrows(&state);
+		mixcolumns(&state);
+		addRoundKey(&state, expandedKey, round * nb);
+	}
+
+	subbytes(&state);
+	shiftrows(&state);
+	addRoundKey(&state, expandedKey, nr *nb);
+
+	state.copyBytesByIndex(output, 0, state.length(), 0);
+}
+
+uint32_t ByteEncryptionAES::subword(uint32_t word) {
+	// replace each byte in word with corresponding byte in sbox lookup table
+	byte w0 = (byte)(word >> 24) & 0xff;
+	byte w1 = (byte)(word >> 16) & 0xff;
+	byte w2 = (byte)(word >> 8) & 0xff;
+	byte w3 = (byte)(word) & 0xff;
+	return ((uint32_t)sbox[w0] << 24) | ((uint32_t)sbox[w1] << 16) | ((uint32_t)sbox[w2] << 8) | ((uint32_t)sbox[w3]);
+}
+
+void ByteEncryptionAES::subbytes(ByteVector *b) {
+	assert(b->length() == 16);
+	for (size_t i = 0; i < 16; i++) {
+		(*b)[i] = sbox[(*b)[i]];
+	}
+}
+
+
+void ByteEncryptionAES::shiftrows(ByteVector *b) {
+	assert(b->length() == 16);
+	byte row[4];
+	for (size_t i = 0; i < 4; i++) {
+		for (size_t j = 0; j < 4; j++) {
+			row[j] = (*b)[4 * i + j];
+		}
+		// left shift position i places
+		for (size_t j = 0; j < 4; j++) {
+			(*b)[4 * i + j] = row[(j + i) % 4];
+		}
+	}
+}
+
+void ByteEncryptionAES::mixcolumns(ByteVector *b) {
+	ByteVector temp = ByteVector(16);
+	temp.allBytes(0);
+	for (size_t i = 0; i < 4; i++) {
+		temp[0 + i] = (byte)(gmul(0x02, (*b)[0 + i]) ^ gmul(0x03, (*b)[4 + i]) ^ (*b)[8 + i] ^ (*b)[12 + i]);
+		temp[4 + i] = (byte)((*b)[0 + i] ^ gmul(0x02, (*b)[4 + i]) ^ gmul(0x03, (*b)[8 + i]) ^ (*b)[12 + i]);
+		temp[8 + i] = (byte)((*b)[0 + i] ^ (*b)[4 + i] ^ gmul(0x02, (*b)[8 + i]) ^ gmul(0x03, (*b)[12 + i]));
+		temp[12 + i] = (byte)(gmul(0x03, (*b)[0 + i]) ^ (*b)[4 + i] ^ (*b)[8 + i] ^ gmul(0x02, (*b)[12 + i]));
+	}
+	temp.copyBytesByIndex(b, 0, temp.length(), 0);
+}
+
+// could just replace this with a table. AES256 only requires i = 1..29
+byte ByteEncryptionAES::rcon(int i) {
+	assert(i >= 1);
+	byte rcon = 0x01;
+	for (int j = 1; j < i; j++) {
+
+		uint32_t temp = (rcon << 1);
+		if (rcon >> 7 == 1) {
+			temp ^= 0x11b;
+		}
+		rcon = temp;
+	}
+	return rcon;
+}
+
+// Galois Field (256) multiplication. A bit beyond me at the moment. Implementation taken from https://en.wikipedia.org/wiki/Rijndael_MixColumns
+byte ByteEncryptionAES::gmul(byte a, byte b) {
+	byte c = 0;
+	for (int i = 0; i < 8; i++) {
+		if (b & 1 != 0) {
+			c ^= a;
+		}
+
+		bool hi_set = ((a & 0x80) != 0);
+		a <<= 1;
+		if (hi_set) {
+			a ^= 0x11B;
+		}
+		b >>= 1;
+	}
+	return c;
+}
+
+void ByteEncryptionAES::addRoundKey(ByteVector *state, uint32_t *w, size_t w_i) {
+
+	for (size_t i = 0; i < 16; i++) {
+		int offset = i / 4;
+		(*state)[i] ^= (byte)(0xff & (w[w_i + offset] >> (24 - (i % 4) * 8)));
+	}
+}

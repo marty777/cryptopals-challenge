@@ -114,6 +114,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ByteEncryption.cpp" />
+    <ClCompile Include="ByteEncryptionAES.cpp" />
     <ClCompile Include="ByteRandom.cpp" />
     <ClCompile Include="ByteVector.cpp" />
     <ClCompile Include="KeyValueParser.cpp" />
@@ -123,9 +124,11 @@
     <ClCompile Include="Set2.cpp" />
     <ClCompile Include="Set3.cpp" />
     <ClCompile Include="Set4.cpp" />
+    <ClCompile Include="Utility.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ByteEncryption.h" />
+    <ClInclude Include="ByteEncryptionAES.h" />
     <ClInclude Include="ByteRandom.h" />
     <ClInclude Include="ByteVector.h" />
     <ClInclude Include="KeyValueParser.h" />
@@ -134,6 +137,7 @@
     <ClInclude Include="Set2.h" />
     <ClInclude Include="Set3.h" />
     <ClInclude Include="Set4.h" />
+    <ClInclude Include="Utility.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

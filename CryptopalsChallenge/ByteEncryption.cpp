@@ -1,192 +1,13 @@
 #include "ByteEncryption.h"
+#include "ByteEncryptionAES.h"
 #include "KeyValueParser.h"
 #include "ByteRandom.h"
+#include "Utility.h"
 #include <assert.h>
 #include <openssl/aes.h>
 #include <iostream>
 
-byte byterotateleft(byte b, int shift) {
-	return (b << shift) | (b >> 8 - shift);
-}
 
-byte byterotateright(byte b, int shift) {
-	return (b >> shift) | (b << 8 - shift);
-}
-
-uint32_t int32rotateleft(uint32_t b, int shift) {
-	return (b << shift) | (b >> 32 - shift);
-}
-
-uint32_t int32rotateright(uint32_t b, int shift) {
-	return (b >> shift) | (b << 32 - shift);
-}
-
-ByteEncryptionAES::ByteEncryptionAES() {
-	w = NULL;
-}
-
-ByteEncryptionAES::ByteEncryptionAES(ByteVector *key) {
-	w = NULL;
-	this->setKey(key);
-}
-
-ByteEncryptionAES::~ByteEncryptionAES() {
-	if (w != NULL) {
-		free(w);
-	}
-}
-
-void ByteEncryptionAES::setKey(ByteVector *key) {
-	assert(key->length() == 16 || key->length() == 24 || key->length() == 32);
-	uint32_t temp;
-	// AES 128 - nk = 4, nr = 10
-	// AES 192 - nk = 6, nr = 12
-	// AES 256 - nk = 8, nr = 14
-	keysize = key->length();
-	size_t nk = key->length() / 4;
-	size_t nb = 4;
-	size_t nr = nk + 6;
-	if (w != NULL) {
-		free(w);
-	}
-	w = (uint32_t *)malloc(sizeof(uint32_t) * nb * (nr + 1));
-
-	for (size_t i = 0; i < nk; i++) {
-		w[i] = ((*key)[4 * i] << 24) | ((*key)[4 * i + 1] << 16) | ((*key)[4 * i + 2] << 8) | ((*key)[4 * i + 3]);
-	}
-	for (size_t i = nb; i < nb*(nr+1); i++ ) {
-		temp = w[i - 1];
-		if (i % nk == 0) {
-			temp = subword(int32rotateleft(temp, 8)) ^((uint32_t)rcon(i / nk) << 24);
-		}
-		else if (nk > 6 && i % nk == 4) { // AES 256 modification to expansion
-			temp = subword(temp);
-		}
-		w[i] = w[i - nk] ^ temp;
-	}
-
-	for (int i = 0; i < 44; i++) {
-		std::cout << i << "\t" << std::hex << w[i] << std::dec << std::endl;
-	}
-}
-
-int ByteEncryptionAES::KeyNr() {
-	return (keysize / 4) + 6;
-}
-int ByteEncryptionAES::KeyNk() {
-	return (keysize / 4);
-}
-
-void ByteEncryptionAES::aes_encipher(ByteVector *input, ByteVector *output) {
-	assert(w != NULL); // key has been initialized
-	ByteVector state = ByteVector(16);
-	for (size_t i = 0; i < state.length(); i++) {
-		state[i] = (*input)[i];
-	}
-
-	int nr = this->KeyNr();
-	int nb = 4;
-	int nk = this->KeyNk();
-
-	addRoundKey(&state, 0);
-	shiftrows(&state);
-	for (int round = 1; round < nr; round++) {
-		subbytes(&state);
-		shiftrows(&state);
-		mixcolumns(&state);
-		addRoundKey(&state, round * nb);
-	}
-
-	subbytes(&state);
-	shiftrows(&state);
-	addRoundKey(&state, nr *nb);
-
-	state.copyBytesByIndex(output, 0, state.length(), 0);
-}
-
-uint32_t ByteEncryptionAES::subword(uint32_t word) {
-	// replace each byte in word with corresponding byte in sbox lookup table
-	byte w0 = (byte)(word >> 24) & 0xff;
-	byte w1 = (byte)(word >> 16) & 0xff;
-	byte w2 = (byte)(word >> 8) & 0xff;
-	byte w3 = (byte)(word) & 0xff;
-	return ((uint32_t)sbox[w0] << 24) | ((uint32_t)sbox[w1] << 16) | ((uint32_t)sbox[w2] << 8) | ((uint32_t)sbox[w3]);
-}
-
-void ByteEncryptionAES::subbytes(ByteVector *b) {
-	assert(b->length() == 16);
-	for (size_t i = 0; i < 16; i++) {
-		(*b)[i] = sbox[(*b)[i]];
-	}
-}
-
-
-void ByteEncryptionAES::shiftrows(ByteVector *b) {
-	assert(b->length() == 16);
-	byte row[4];
-	for (size_t i = 0; i < 4; i++) {
-		for (size_t j = 0; j < 4; j++) {
-			row[j] = (*b)[4 * i + j];
-		}
-		// left shift position i places
-		for (size_t j = 0; j < 4; j++) {
-			(*b)[4 * i + j] = row[(j + i) % 4];
-		}
-	}
-}
-
-void ByteEncryptionAES::mixcolumns(ByteVector *b) {
-	ByteVector temp = ByteVector(16);
-	temp.allBytes(0);
-	for (size_t i = 0; i < 4; i++) {
-		temp[0 + i] = (byte)(gmul(0x02, (*b)[0 + i]) ^ gmul(0x03, (*b)[4 + i]) ^ (*b)[8 + i] ^ (*b)[12 + i]);
-		temp[4 + i] = (byte)((*b)[0 + i] ^ gmul(0x02, (*b)[4 + i]) ^ gmul(0x03, (*b)[8 + i]) ^ (*b)[12 + i]);
-		temp[8 + i] = (byte)((*b)[0 + i] ^ (*b)[4 + i] ^ gmul(0x02, (*b)[8 + i]) ^ gmul(0x03, (*b)[12 + i]));
-		temp[12 + i] = (byte)(gmul(0x03, (*b)[0 + i]) ^ (*b)[4 + i] ^ (*b)[8 + i] ^ gmul(0x02, (*b)[12 + i]));
-	}
-	temp.copyBytesByIndex(b, 0, temp.length(), 0);
-}
-
-// could just replace this with a table. AES256 only requires i = 1..29
-byte ByteEncryptionAES::rcon(int i) {
-	assert(i >= 1);
-	byte rcon = 0x01;
-	for (int j = 1; j < i; j++) {
-		
-		uint32_t temp = (rcon << 1);
-		if (rcon >> 7 == 1) {
-			temp ^= 0x11b;
-		}
-		rcon = temp;
-	}
-	return rcon;
-}
-
-// Galois Field (256) multiplication. A bit beyond me at the moment. Implementation taken from https://en.wikipedia.org/wiki/Rijndael_MixColumns
-byte ByteEncryptionAES::gmul(byte a, byte b) {
-	byte c = 0;
-	for (int i = 0; i < 8; i++) {
-		if (b & 1 != 0) {
-			c ^= a;
-		}
-
-		bool hi_set = ((a & 0x80) != 0);
-		a <<= 1;
-		if (hi_set) {
-			a ^= 0x11B;
-		}
-		b >>= 1;
-	}
-	return c;
-}
-
-void ByteEncryptionAES::addRoundKey(ByteVector *state, size_t w_i) {
-
-	for (size_t i = 0; i < 16; i++) {
-		int offset = i / 4;
-		(*state)[i] ^=  (byte) (0xff & (w[w_i + offset] >> (24 - (i % 4) * 8)));
-	}
-}
 
 void ByteEncryptionError::clear() {
 	err = 0;
@@ -214,19 +35,22 @@ ByteEncryption::~ByteEncryption()
 void ByteEncryption::aes_ecb_encrypt_block2(byte *input, byte *key, int keyLengthBytes, byte *output, bool encrypt) {
 
 	ByteVector anotherKey = ByteVector("YELLOW SUBMARINE", ASCII);
-	ByteEncryptionAES aes = ByteEncryptionAES(&anotherKey);
+	ByteEncryptionAES aes = ByteEncryptionAES();
+	uint32_t aesKeysize;
+	uint32_t *expandedAESKey = aes.expandKey(&anotherKey, &aesKeysize);
 	ByteVector in = ByteVector(16);
 	ByteVector out = ByteVector(16);
 	for (size_t i = 0; i < 16; i++) {
 		in[i] = input[i];
 	}
 	if (encrypt) {
-		aes.aes_encipher(&in, &out);
+		aes.aes_encipher(&in, expandedAESKey, aesKeysize, &out);
 	}
 
 	for (size_t i = 0; i < 16; i++) {
 		output[i] = out[i];
 	}
+
 
 	//out.printHexStrByBlocks(4);
 
@@ -255,6 +79,8 @@ void ByteEncryption::aes_ecb_encrypt_block2(byte *input, byte *key, int keyLengt
 	testvec.printHexStrByBlocks(4);
 	aes.shiftrows(&testvec);
 	testvec.printHexStrByBlocks(4);*/
+
+	free(expandedAESKey);
 }
 
 void ByteEncryption::aes_ecb_encrypt_block(byte *input, byte *key, int keyLengthBytes, byte *output, bool encrypt) {
@@ -377,8 +203,8 @@ bool ByteEncryption::aes_random_encrypt(ByteVector *bv, ByteVector *output) {
 	key.random();
 
 	// Perform random padding
-	int prepadding = ByteRandom::rand_range(5, 10);
-	int postpadding = ByteRandom::rand_range(5, 10);
+	int prepadding = rand_range(5, 10);
+	int postpadding = rand_range(5, 10);
 	size_t inputlen = bv->length() + prepadding + postpadding;
 	if (inputlen % 16 != 0) {
 		inputlen += 16 - (inputlen % 16);
@@ -554,7 +380,7 @@ bool ByteEncryption::challenge16decrypt(ByteVector *bv, ByteVector *key, ByteVec
 }
 
 void ByteEncryption::challenge17encrypt(std::vector<ByteVector> *inputs, ByteVector *key, ByteVector *output, ByteVector *iv, bool verbose) {
-	int inputIndex = ByteRandom::rand_range(0, inputs->size() - 1);
+	int inputIndex = rand_range(0, inputs->size() - 1);
 	ByteVector input = ByteVector(inputs->at((size_t)inputIndex));
 	ByteEncryption::pkcs7Pad(&input, AES_BLOCK_SIZE);
 	output->resize(input.length());
