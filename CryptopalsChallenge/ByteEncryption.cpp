@@ -66,33 +66,33 @@ void ByteEncryption::aes_ecb_encrypt_block(byte *input, byte *key, int keylength
 //	AES_ecb_encrypt(input, output, &aesKey, encrypt ? AES_ENCRYPT : AES_DECRYPT);
 //}
 
-void ByteEncryption::aes_ecb_encrypt(ByteVector *bv, ByteVector *key, ByteVector *output, size_t start_index, size_t end_index, bool encrypt) {
-	// key length - 128, 192 or 256 bits
-	assert(key->length() == 16 || key->length() == 24 || key->length() == 32);
-	// check the bv has been padded to 16 bytes
-	assert(bv->length() % AES_BLOCK_SIZE == 0);
-	// check start and end indexes are 16-byte aligned within the bounds of the input vector, and the end index is >= the start index
-	assert(start_index % AES_BLOCK_SIZE == 0 && (end_index + 1) % AES_BLOCK_SIZE == 0 && start_index < bv->length() && end_index < bv->length() && start_index <= end_index);
-	// check the output vector matches the input vector in length
-	assert(bv->length() == output->length());
-
-	ByteEncryptionAES aes = ByteEncryptionAES();
-	uint32_t aeskeysize;
-	uint32_t *expandedaeskey = aes.expandKey(key, &aeskeysize);
-	ByteVector in = ByteVector(16);
-	ByteVector out = ByteVector(16);
-	for (size_t i = start_index; i < end_index; i += AES_BLOCK_SIZE) {
-		
-		bv->copyBytesByIndex(&in, start_index, AES_BLOCK_SIZE, 0);
-		if (encrypt) {
-			aes.aes_encipher(&in, expandedaeskey, aeskeysize, &out);
-		}
-		else {
-			aes.aes_decipher(&in, expandedaeskey, aeskeysize, &out);
-		}
-		out.copyBytesByIndex(output, 0, AES_BLOCK_SIZE, start_index);
-	}
-}
+//void ByteEncryption::aes_ecb_encrypt(ByteVector *bv, ByteVector *key, ByteVector *output, size_t start_index, size_t end_index, bool encrypt) {
+//	// key length - 128, 192 or 256 bits
+//	assert(key->length() == 16 || key->length() == 24 || key->length() == 32);
+//	// check the bv has been padded to 16 bytes
+//	assert(bv->length() % AES_BLOCK_SIZE == 0);
+//	// check start and end indexes are 16-byte aligned within the bounds of the input vector, and the end index is >= the start index
+//	assert(start_index % AES_BLOCK_SIZE == 0 && (end_index + 1) % AES_BLOCK_SIZE == 0 && start_index < bv->length() && end_index < bv->length() && start_index <= end_index);
+//	// check the output vector matches the input vector in length
+//	assert(bv->length() == output->length());
+//
+//	ByteEncryptionAES aes = ByteEncryptionAES();
+//	uint32_t aeskeysize;
+//	uint32_t *expandedaeskey = aes.expandKey(key, &aeskeysize);
+//	ByteVector in = ByteVector(16);
+//	ByteVector out = ByteVector(16);
+//	for (size_t i = start_index; i < end_index; i += AES_BLOCK_SIZE) {
+//		
+//		bv->copyBytesByIndex(&in, start_index, AES_BLOCK_SIZE, 0);
+//		if (encrypt) {
+//			aes.aes_encipher(&in, expandedaeskey, aeskeysize, &out);
+//		}
+//		else {
+//			aes.aes_decipher(&in, expandedaeskey, aeskeysize, &out);
+//		}
+//		out.copyBytesByIndex(output, 0, AES_BLOCK_SIZE, start_index);
+//	}
+//}
 
 void ByteEncryption::aes_ecb_encrypt(ByteVector *bv, ByteVector *key, ByteVector *output, size_t start_index, size_t end_index, bool encrypt) {
 	// test a few things
