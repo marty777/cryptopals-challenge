@@ -59,7 +59,7 @@ void ByteEncryptionAES::aes_encipher(ByteVector *input, uint32_t *expandedKey, u
 	int nk = this->KeyNk(keysize);
 
 	addRoundKey(&state, expandedKey, 0);
-	shiftrows(&state);
+
 	for (int round = 1; round < nr; round++) {
 		subbytes(&state);
 		shiftrows(&state);
@@ -70,6 +70,32 @@ void ByteEncryptionAES::aes_encipher(ByteVector *input, uint32_t *expandedKey, u
 	subbytes(&state);
 	shiftrows(&state);
 	addRoundKey(&state, expandedKey, nr *nb);
+
+	state.copyBytesByIndex(output, 0, state.length(), 0);
+}
+
+void ByteEncryptionAES::aes_decipher(ByteVector *input, uint32_t *expandedKey, uint32_t keysize, ByteVector *output) {
+	ByteVector state = ByteVector(16);
+	for (size_t i = 0; i < state.length(); i++) {
+		state[i] = (*input)[i];
+	}
+
+	int nr = this->KeyNr(keysize);
+	int nb = 4;
+	int nk = this->KeyNk(keysize);
+
+	addRoundKey(&state, expandedKey, nr*nb);
+
+	for (int round = nr-1; round >= 1; round--) {
+		invshiftrows(&state);
+		invsubbytes(&state);
+		addRoundKey(&state, expandedKey, round * nb);
+		invmixcolumns(&state);
+	}
+	invshiftrows(&state);
+	invsubbytes(&state);
+	
+	addRoundKey(&state, expandedKey, 0);
 
 	state.copyBytesByIndex(output, 0, state.length(), 0);
 }
@@ -90,17 +116,37 @@ void ByteEncryptionAES::subbytes(ByteVector *b) {
 	}
 }
 
+void ByteEncryptionAES::invsubbytes(ByteVector *b) {
+	assert(b->length() == 16);
+	for (size_t i = 0; i < 16; i++) {
+		(*b)[i] = inv_sbox[(*b)[i]];
+	}
+}
 
 void ByteEncryptionAES::shiftrows(ByteVector *b) {
 	assert(b->length() == 16);
 	byte row[4];
 	for (size_t i = 0; i < 4; i++) {
 		for (size_t j = 0; j < 4; j++) {
-			row[j] = (*b)[4 * i + j];
+			row[j] = (*b)[4 * j + i];
 		}
 		// left shift position i places
 		for (size_t j = 0; j < 4; j++) {
-			(*b)[4 * i + j] = row[(j + i) % 4];
+			(*b)[4 * j + i] = row[(j + i) % 4];
+		}
+	}
+}
+
+void ByteEncryptionAES::invshiftrows(ByteVector *b) {
+	assert(b->length() == 16);
+	byte row[4];
+	for (size_t i = 0; i < 4; i++) {
+		for (size_t j = 0; j < 4; j++) {
+			row[j] = (*b)[4 * j + i];
+		}
+		// left shift position i places
+		for (size_t j = 0; j < 4; j++) {
+			(*b)[4 * j + i] = row[(j - i) % 4];
 		}
 	}
 }
@@ -109,10 +155,22 @@ void ByteEncryptionAES::mixcolumns(ByteVector *b) {
 	ByteVector temp = ByteVector(16);
 	temp.allBytes(0);
 	for (size_t i = 0; i < 4; i++) {
-		temp[0 + i] = (byte)(gmul(0x02, (*b)[0 + i]) ^ gmul(0x03, (*b)[4 + i]) ^ (*b)[8 + i] ^ (*b)[12 + i]);
-		temp[4 + i] = (byte)((*b)[0 + i] ^ gmul(0x02, (*b)[4 + i]) ^ gmul(0x03, (*b)[8 + i]) ^ (*b)[12 + i]);
-		temp[8 + i] = (byte)((*b)[0 + i] ^ (*b)[4 + i] ^ gmul(0x02, (*b)[8 + i]) ^ gmul(0x03, (*b)[12 + i]));
-		temp[12 + i] = (byte)(gmul(0x03, (*b)[0 + i]) ^ (*b)[4 + i] ^ (*b)[8 + i] ^ gmul(0x02, (*b)[12 + i]));
+		temp[4*i + 0] = (byte)(gmul(0x02, (*b)[4 * i + 0]) ^ gmul(0x03, (*b)[4 * i + 1]) ^ (*b)[4 * i + 2] ^ (*b)[4 * i + 3]);
+		temp[4 * i + 1] = (byte)((*b)[4 * i + 0] ^ gmul(0x02, (*b)[4 * i + 1]) ^ gmul(0x03, (*b)[4 * i + 2]) ^ (*b)[4 * i + 3]);
+		temp[4 * i + 2] = (byte)((*b)[4 * i + 0] ^ (*b)[4 * i + 1] ^ gmul(0x02, (*b)[4 * i + 2]) ^ gmul(0x03, (*b)[4 * i + 3]));
+		temp[4 * i + 3] = (byte)(gmul(0x03, (*b)[4 * i + 0]) ^ (*b)[4 * i + 1] ^ (*b)[4 * i + 2] ^ gmul(0x02, (*b)[4 * i + 3]));
+	}
+	temp.copyBytesByIndex(b, 0, temp.length(), 0);
+}
+
+void ByteEncryptionAES::invmixcolumns(ByteVector *b) {
+	ByteVector temp = ByteVector(16);
+	temp.allBytes(0);
+	for (size_t i = 0; i < 4; i++) {
+		temp[4 * i + 0] = (byte)(gmul(0x0e, (*b)[4 * i + 0]) ^ gmul(0x0b, (*b)[4 * i + 1]) ^ gmul(0x0d, (*b)[4 * i + 2]) ^ gmul(0x09, (*b)[4 * i + 3]));
+		temp[4 * i + 1] = (byte)(gmul(0x09, (*b)[4 * i + 0]) ^ gmul(0x0e, (*b)[4 * i + 1]) ^ gmul(0x0b, (*b)[4 * i + 2]) ^ gmul(0x0d, (*b)[4 * i + 3]));
+		temp[4 * i + 2] = (byte)(gmul(0x0d, (*b)[4 * i + 0]) ^ gmul(0x09, (*b)[4 * i + 1]) ^ gmul(0x0e, (*b)[4 * i + 2]) ^ gmul(0x0b, (*b)[4 * i + 3]));
+		temp[4 * i + 3] = (byte)(gmul(0x0b, (*b)[4 * i + 0]) ^ gmul(0x0d, (*b)[4 * i + 1]) ^ gmul(0x09, (*b)[4 * i + 2]) ^ gmul(0x0e, (*b)[4 * i + 3]));
 	}
 	temp.copyBytesByIndex(b, 0, temp.length(), 0);
 }

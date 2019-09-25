@@ -7,8 +7,6 @@
 #include <openssl/aes.h>
 #include <iostream>
 
-
-
 void ByteEncryptionError::clear() {
 	err = 0;
 	message = "";
@@ -32,64 +30,41 @@ ByteEncryption::~ByteEncryption()
 {
 }
 
-void ByteEncryption::aes_ecb_encrypt_block2(byte *input, byte *key, int keyLengthBytes, byte *output, bool encrypt) {
+void ByteEncryption::aes_ecb_encrypt_block(byte *input, byte *key, int keylengthbytes, byte *output, bool encrypt) {
 
-	ByteVector anotherKey = ByteVector("YELLOW SUBMARINE", ASCII);
-	ByteEncryptionAES aes = ByteEncryptionAES();
-	uint32_t aesKeysize;
-	uint32_t *expandedAESKey = aes.expandKey(&anotherKey, &aesKeysize);
+	ByteVector k = ByteVector(16);
 	ByteVector in = ByteVector(16);
 	ByteVector out = ByteVector(16);
 	for (size_t i = 0; i < 16; i++) {
 		in[i] = input[i];
+		k[i] = key[i];
 	}
+	ByteEncryptionAES aes = ByteEncryptionAES();
+	uint32_t aeskeysize;
+	uint32_t *expandedaeskey = aes.expandKey(&k, &aeskeysize);
+	
 	if (encrypt) {
-		aes.aes_encipher(&in, expandedAESKey, aesKeysize, &out);
+		aes.aes_encipher(&in, expandedaeskey, aeskeysize, &out);
 	}
+	else {
+		aes.aes_decipher(&in, expandedaeskey, aeskeysize, &out);
+	}
+
+	free(expandedaeskey);
 
 	for (size_t i = 0; i < 16; i++) {
 		output[i] = out[i];
 	}
-
-
-	//out.printHexStrByBlocks(4);
-
-	/*ByteVector testvec = ByteVector(16);
-	testvec.allBytes(0x01);
-	testvec[0] = 0xdb;
-	testvec[4] = 0x13;
-	testvec[8] = 0x53;
-	testvec[12] = 0x45;
-
-	testvec[1] = 0xf2;
-	testvec[5] = 0x0a;
-	testvec[9] = 0x22;
-	testvec[13] = 0x5c;
-
-	testvec[2] = 0xd4;
-	testvec[6] = 0xd4;
-	testvec[10] = 0xd4;
-	testvec[14] = 0xd5;
-
-	testvec[3] = 0x2d;
-	testvec[7] = 0x26;
-	testvec[11] = 0x31;
-	testvec[15] = 0x4c;
-
-	testvec.printHexStrByBlocks(4);
-	aes.shiftrows(&testvec);
-	testvec.printHexStrByBlocks(4);*/
-
-	free(expandedAESKey);
 }
 
-void ByteEncryption::aes_ecb_encrypt_block(byte *input, byte *key, int keyLengthBytes, byte *output, bool encrypt) {
-	// setting up the wrapper this way adds extra steps by re-doing the aes key each block, but eh.
-	AES_KEY aesKey;
-	encrypt ? AES_set_encrypt_key(key, keyLengthBytes * 8, &aesKey) : AES_set_decrypt_key(key, keyLengthBytes * 8, &aesKey);
-	
-	AES_ecb_encrypt(input, output, &aesKey, encrypt ? AES_ENCRYPT : AES_DECRYPT);
-}
+
+//void ByteEncryption::aes_ecb_encrypt_block(byte *input, byte *key, int keyLengthBytes, byte *output, bool encrypt) {
+//	// setting up the wrapper this way adds extra steps by re-doing the aes key each block, but eh.
+//	AES_KEY aesKey;
+//	encrypt ? AES_set_encrypt_key(key, keyLengthBytes * 8, &aesKey) : AES_set_decrypt_key(key, keyLengthBytes * 8, &aesKey);
+//	
+//	AES_ecb_encrypt(input, output, &aesKey, encrypt ? AES_ENCRYPT : AES_DECRYPT);
+//}
 
 // In the spirit of the challenge, I should probably implement the cipher directly, but I'm using OpenSSL for now
 void ByteEncryption::aes_ecb_encrypt(ByteVector *bv, ByteVector *key, ByteVector *output, size_t start_index, size_t end_index, bool encrypt) {
@@ -261,7 +236,7 @@ void ByteEncryption::aes_append_encrypt(ByteVector *bv, ByteVector *appendBv, By
 		input.setAtIndex(appendBv->atIndex(i), i + bv->length());
 	}
 	ByteEncryption::pkcs7Pad(&input, AES_BLOCK_SIZE);
-	output->resize(inputlen);
+	output->resize(input.length());
 	ByteEncryption::aes_ecb_encrypt(&input, key, output, 0, inputlen - 1, true);
 	
 	if (verbose) {
@@ -303,7 +278,7 @@ void ByteEncryption::aes_prepend_append_encrypt(ByteVector *prependBv, ByteVecto
 	}
 	
 	ByteEncryption::pkcs7Pad(&input, AES_BLOCK_SIZE);
-	output->resize(inputlen);
+	output->resize(input.length());
 	if (cbc) {
 		ByteEncryption::aes_cbc_encrypt(&input, key, output, iv, true);
 	}

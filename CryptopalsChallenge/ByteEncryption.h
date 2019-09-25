@@ -21,7 +21,7 @@ public:
 	ByteEncryption();
 	~ByteEncryption();
 
-	static void aes_ecb_encrypt_block2(byte *input, byte *key, int keyLengthBytes, byte *output, bool encrypt);
+	//static void aes_ecb_encrypt_block2(byte *input, byte *key, int keyLengthBytes, byte *output, bool encrypt);
 	// pass false to encrypt to perform decryption.
 	static void aes_ecb_encrypt_block(byte *input, byte *key, int keyLengthBytes, byte *output, bool encrypt);
 	static void aes_ecb_encrypt(ByteVector *bv, ByteVector *key, ByteVector *output, size_t start_index, size_t end_index, bool encrypt);
