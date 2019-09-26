@@ -39,17 +39,17 @@ void ByteEncryption::aes_ecb_encrypt_block(byte *input, byte *key, int keylength
 		k[i] = key[i];
 	}
 	ByteEncryptionAES aes = ByteEncryptionAES();
-	uint32_t aeskeysize;
-	uint32_t *expandedaeskey = aes.expandKey(&k, &aeskeysize);
+	ByteEncryptionAESExpandedKey expandedKey;
+	aes.expandKey(&k, &expandedKey);
 	
 	if (encrypt) {
-		aes.aes_encipher(&in, expandedaeskey, aeskeysize, &out);
+		aes.aes_encipher(&in, &expandedKey, &out);
 	}
 	else {
-		aes.aes_decipher(&in, expandedaeskey, aeskeysize, &out);
+		aes.aes_decipher(&in, &expandedKey, &out);
 	}
 
-	free(expandedaeskey);
+	free(expandedKey.w);
 
 	for (size_t i = 0; i < 16; i++) {
 		output[i] = out[i];
@@ -67,18 +67,18 @@ void ByteEncryption::aes_ecb_encrypt(ByteVector *bv, ByteVector *key, ByteVector
 	assert(bv->length() == output->length());
 
 	ByteEncryptionAES aes = ByteEncryptionAES();
-	uint32_t aeskeysize;
-	uint32_t *expandedaeskey = aes.expandKey(key, &aeskeysize);
+	ByteEncryptionAESExpandedKey expandedKey;
+	aes.expandKey(key, &expandedKey);
 	ByteVector in = ByteVector(16);
 	ByteVector out = ByteVector(16);
 	for (size_t i = start_index; i < end_index; i += AES_BLOCK_SIZE) {
 		
 		bv->copyBytesByIndex(&in, i, AES_BLOCK_SIZE, 0);
 		if (encrypt) {
-			aes.aes_encipher(&in, expandedaeskey, aeskeysize, &out);
+			aes.aes_encipher(&in, &expandedKey, &out);
 		}
 		else {
-			aes.aes_decipher(&in, expandedaeskey, aeskeysize, &out);
+			aes.aes_decipher(&in, &expandedKey, &out);
 		}
 		out.copyBytesByIndex(output, 0, AES_BLOCK_SIZE, i);
 	}
@@ -231,14 +231,14 @@ void ByteEncryption::aes_prepend_append_encrypt(ByteVector *prependBv, ByteVecto
 	for (size_t i = 0; i < appendBv->length(); i++) {
 		input.setAtIndex(appendBv->atIndex(i), i + prependBv->length() + bv->length());
 	}
-	
 	ByteEncryption::pkcs7Pad(&input, AES_BLOCK_SIZE);
+
 	output->resize(input.length());
 	if (cbc) {
 		ByteEncryption::aes_cbc_encrypt(&input, key, output, iv, true);
 	}
 	else {
-		ByteEncryption::aes_ecb_encrypt(&input, key, output, 0, inputlen - 1, true);
+		ByteEncryption::aes_ecb_encrypt(&input, key, output, 0, input.length() - 1, true);
 	}
 
 	if (verbose) {

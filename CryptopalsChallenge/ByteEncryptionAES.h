@@ -3,6 +3,11 @@
 
 #define AES_BLOCK_SIZE 16
 
+struct ByteEncryptionAESExpandedKey {
+	uint32_t keysize;
+	uint32_t *w;
+};
+
 class ByteEncryptionAES {
 	
 	const byte sbox[256] = {
@@ -79,11 +84,11 @@ public:
 	ByteEncryptionAES();
 	~ByteEncryptionAES();
 	//void setKey(ByteVector *key);
-	uint32_t *expandKey(ByteVector *key, uint32_t *keysize);
+	void expandKey(ByteVector *key, ByteEncryptionAESExpandedKey *expandedKey);
 	int KeyNr(uint32_t keysize);
 	int KeyNk(uint32_t keysize);
-	void aes_encipher(ByteVector *input, uint32_t *expandedKey, uint32_t keysize, ByteVector *output);
-	void aes_decipher(ByteVector *input, uint32_t *expandedKey, uint32_t keysize, ByteVector *output);
+	void aes_encipher(ByteVector *input, ByteEncryptionAESExpandedKey *key, ByteVector *output);
+	void aes_decipher(ByteVector *input, ByteEncryptionAESExpandedKey *key, ByteVector *output);
 
 	
 private:

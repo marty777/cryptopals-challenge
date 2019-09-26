@@ -9,36 +9,34 @@ ByteEncryptionAES::ByteEncryptionAES() {
 ByteEncryptionAES::~ByteEncryptionAES() {
 }
 
-uint32_t *ByteEncryptionAES::expandKey(ByteVector *key, uint32_t *keysize) {
+void ByteEncryptionAES::expandKey(ByteVector *key, ByteEncryptionAESExpandedKey *expandedKey) {
 	assert(key->length() == 16 || key->length() == 24 || key->length() == 32);
 	uint32_t temp;
 	// AES 128 - nk = 4, nr = 10
 	// AES 192 - nk = 6, nr = 12
 	// AES 256 - nk = 8, nr = 14
-	*keysize = key->length();
+	expandedKey->keysize = key->length();
 	size_t nk = key->length() / 4;
 	size_t nb = 4;
 	size_t nr = nk + 6;
 	
 	
 
-	uint32_t *w = (uint32_t *)malloc(sizeof(uint32_t) * nb * (nr + 1));
+	expandedKey->w = (uint32_t *)malloc(sizeof(uint32_t) * nb * (nr + 1));
 
 	for (size_t i = 0; i < nk; i++) {
-		w[i] = ((*key)[4 * i] << 24) | ((*key)[4 * i + 1] << 16) | ((*key)[4 * i + 2] << 8) | ((*key)[4 * i + 3]);
+		expandedKey->w[i] = ((*key)[4 * i] << 24) | ((*key)[4 * i + 1] << 16) | ((*key)[4 * i + 2] << 8) | ((*key)[4 * i + 3]);
 	}
 	for (size_t i = nb; i < nb*(nr + 1); i++) {
-		temp = w[i - 1];
+		temp = expandedKey->w[i - 1];
 		if (i % nk == 0) {
 			temp = subword(int32rotateleft(temp, 8)) ^ ((uint32_t)rcon(i / nk) << 24);
 		}
 		else if (nk > 6 && i % nk == 4) { // AES 256 modification to expansion
 			temp = subword(temp);
 		}
-		w[i] = w[i - nk] ^ temp;
+		expandedKey->w[i] = expandedKey->w[i - nk] ^ temp;
 	}
-
-	return w;
 }
 
 int ByteEncryptionAES::KeyNr(uint32_t keysize) {
@@ -48,54 +46,54 @@ int ByteEncryptionAES::KeyNk(uint32_t keysize) {
 	return (keysize / 4);
 }
 
-void ByteEncryptionAES::aes_encipher(ByteVector *input, uint32_t *expandedKey, uint32_t keysize, ByteVector *output) {
+void ByteEncryptionAES::aes_encipher(ByteVector *input, ByteEncryptionAESExpandedKey *key, ByteVector *output) {
 	ByteVector state = ByteVector(16);
 	for (size_t i = 0; i < state.length(); i++) {
 		state[i] = (*input)[i];
 	}
 
-	int nr = this->KeyNr(keysize);
+	int nr = this->KeyNr(key->keysize);
 	int nb = 4;
-	int nk = this->KeyNk(keysize);
+	int nk = this->KeyNk(key->keysize);
 
-	addRoundKey(&state, expandedKey, 0);
+	addRoundKey(&state, key->w, 0);
 
 	for (int round = 1; round < nr; round++) {
 		subbytes(&state);
 		shiftrows(&state);
 		mixcolumns(&state);
-		addRoundKey(&state, expandedKey, round * nb);
+		addRoundKey(&state, key->w, round * nb);
 	}
 
 	subbytes(&state);
 	shiftrows(&state);
-	addRoundKey(&state, expandedKey, nr *nb);
+	addRoundKey(&state, key->w, nr *nb);
 
 	state.copyBytesByIndex(output, 0, state.length(), 0);
 }
 
-void ByteEncryptionAES::aes_decipher(ByteVector *input, uint32_t *expandedKey, uint32_t keysize, ByteVector *output) {
+void ByteEncryptionAES::aes_decipher(ByteVector *input, ByteEncryptionAESExpandedKey *key, ByteVector *output) {
 	ByteVector state = ByteVector(16);
 	for (size_t i = 0; i < state.length(); i++) {
 		state[i] = (*input)[i];
 	}
 
-	int nr = this->KeyNr(keysize);
+	int nr = this->KeyNr(key->keysize);
 	int nb = 4;
-	int nk = this->KeyNk(keysize);
+	int nk = this->KeyNk(key->keysize);
 
-	addRoundKey(&state, expandedKey, nr*nb);
+	addRoundKey(&state, key->w, nr*nb);
 
 	for (int round = nr-1; round >= 1; round--) {
 		invshiftrows(&state);
 		invsubbytes(&state);
-		addRoundKey(&state, expandedKey, round * nb);
+		addRoundKey(&state, key->w, round * nb);
 		invmixcolumns(&state);
 	}
 	invshiftrows(&state);
 	invsubbytes(&state);
 	
-	addRoundKey(&state, expandedKey, 0);
+	addRoundKey(&state, key->w, 0);
 
 	state.copyBytesByIndex(output, 0, state.length(), 0);
 }
