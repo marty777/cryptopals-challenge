@@ -754,3 +754,38 @@ void ByteEncryption::sha1_MAC(ByteVector *bv, ByteVector *key, ByteVector *outpu
 
 	ByteEncryption::sha1(&input, output);
 }
+
+void ByteEncryption::md4(ByteVector *bv, ByteVector *output, size_t length_offset, uint32_t state0, uint32_t state1, uint32_t state2, uint32_t state3) {
+	uint32_t h0 = state0;
+	uint32_t h1 = state1;
+	uint32_t h2 = state2;
+	uint32_t h3 = state3;
+
+	// padding and length bytes identical to sha1
+	size_t m1 = (bv->length()) * 8;
+	size_t m2 = (bv->length() + 1) * 8; // length in bits including 0x80 padding byte
+	size_t message_len = m2 + ((512 - m2 % 512));
+	if ((m2 % 512) > 448) {
+		message_len += 512;
+	}
+
+	ByteVector message = ByteVector(message_len / 8);
+	message.allBytes(0);
+	bv->copyBytesByIndex(&message, 0, bv->length(), 0);
+	message[bv->length()] = 0x80;
+	for (size_t i = 0; i < 8; i++) {
+		// addition of length_offset for forging hash of appended messages
+		byte len_chunk = (byte)(0xff) & ((m1 + (length_offset * 8)) >> 8 * (8 - 1 - i));
+		message[(message_len / 8) - 8 + i] = len_chunk;
+	}
+
+	// TBD
+}
+
+void ByteEncryption::md4_MAC(ByteVector *bv, ByteVector *key, ByteVector *output) {
+	ByteVector input = ByteVector(key->length() + bv->length());
+	key->copyBytesByIndex(&input, 0, bv->length(), 0);
+	bv->copyBytesByIndex(&input, 0, bv->length(), key->length());
+
+	ByteEncryption::md4(&input, output);
+}

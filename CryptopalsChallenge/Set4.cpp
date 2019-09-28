@@ -236,8 +236,15 @@ void Set4Challenge29() {
 		}
 
 	}
+}
 
-
+void Set4Challenge30() {
+	ByteVector test1 = ByteVector("The quick brown fox jumps over the lazy dog", ASCII);
+	ByteVector expected1 = ByteVector("1bee69a46ba811185c194762abaeae90", HEX);
+	ByteVector test2 = ByteVector("The quick brown fox jumps over the lazy cog", ASCII);
+	ByteVector expected2 = ByteVector("b86e130ce7028da59e672d56ad0113df", HEX);
+	ByteVector test3 = ByteVector("", ASCII);
+	ByteVector expected3 = ByteVector("31d6cfe0d16ae931b73c59d7e0c089c0", HEX);
 }
 
 int Set4() {
