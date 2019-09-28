@@ -430,6 +430,33 @@ void ByteVector::printHexStrByBlocks(size_t blocksize) {
 	}
 }
 
+void ByteVector::printHexStrByBlocksPartial(size_t blocksize, size_t start_index, size_t end_index) {
+	assert(end_index < this->length());
+	assert(start_index <= end_index);
+	const char *hex = "0123456789abcdef";
+	size_t start_block = blocksize * (start_index / blocksize);
+	size_t end_block = blocksize * (end_index / blocksize) + 1;
+	if (end_index % blocksize == 0) {
+		end_block--;
+	}
+	for (size_t i = start_block; i <= end_block; i++) {
+		std::cout << i << ": ";
+		for (size_t j = i*blocksize; j < (i + 1)*blocksize && j < _v.size(); j++) {
+			if (j < start_index || j > end_index) {
+				continue;
+			}
+			byte val = _v[j];
+			byte a = (val & 0xf0) >> 4;
+			byte b = val & 0x0f;
+			std::cout << hex[a] << hex[b];
+		}
+		std::cout << std::endl;
+		if (i*blocksize + blocksize >= _v.size()) {
+			break;
+		}
+	}
+}
+
 void ByteVector::printASCIIStrByBlocks(size_t blocksize) {
 	for (size_t i = 0; i <= _v.size() / blocksize; i++) {
 		std::cout << i << ": ";

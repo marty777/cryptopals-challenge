@@ -339,12 +339,13 @@ void Set2Challenge14() {
 		ByteEncryption::aes_prepend_append_encrypt(&pre, &input, &post, &secretKey, &output, false);
 		len = output.length();
 		if (last_len > 0 && len != last_len) {
-			zero_offset_post = input.length() - 1;
+			zero_offset_post = i; // because of the extra block of padding when the length aligns in pkcs7, it's the current length, not the previous length
 			unknown_byte_len = last_len - zero_offset_post;
 			break;
 		}
 		last_len = len;
 	}
+
 	// Determine length of pre and post bytes
 	input.resize(block_size + 1);
 	input.allBytes(0);
@@ -359,9 +360,9 @@ void Set2Challenge14() {
 		// modify one byte at a time on the input until the index of the first differing block between initial output and test output
 		// differ
 		if (i > 0) {
-			input.setAtIndex(0x0, i - 1);
+			input[i-1] = 0x0;
 		}
- 		input.setAtIndex(0xff, i);
+ 		input[i] = 0xff;
 		ByteEncryption::aes_prepend_append_encrypt(&pre, &input, &post, &secretKey, &testOutput, false);
 		size_t first_differing_block_index = 0;
 		
@@ -416,33 +417,37 @@ void Set2Challenge14() {
 		}
 
 		for (size_t j = decoded_start; j <= decoded_end; j++) {
-			referenceBlock.setAtIndex(decoded.atIndex(j), j - decoded_start);
+			referenceBlock[j - decoded_start] = decoded[j];
 		}
 		// pad reference block
 		if ((decoded_end - decoded_start + 1) % block_size != 0) {
 			ByteEncryption::pkcs7ForcePad(&referenceBlock, block_size, decoded_end - decoded_start + 1, block_size);
 		}
 		
+		
 		// set reference block at each test location with different test byte
 		for (int j = 0; j <= 0xff; j++) {
-			referenceBlock.setAtIndex((byte)j, 0);
+			referenceBlock[0] = (byte)j;
 			referenceBlock.copyBytesByIndex(&input, 0, block_size, (j * block_size) + first_input_offset);
 		}
 
 		// query the oracle
 		ByteEncryption::aes_prepend_append_encrypt(&pre, &input, &post, &secretKey, &output, false);
 		size_t block_index = ((output.length() - 1 - i) / 16); // index of block being currently examined in output
+		// correct for full block of padding in pkcs7
+		if (i > 0 && i % 16 == 15) {
+			block_index--;
+		}
 		output.copyBytesByIndex(&examineBlock, (block_index * block_size), block_size, 0);
 		for (size_t j = 0; j <= 0xff; j++) {
 			// each block encrypting the test for the next decoded byte
 			output.copyBytesByIndex(&referenceBlock, (j*block_size) + first_input_offset + pre_len, block_size, 0); 
 			if (referenceBlock.equal(&examineBlock)) {
-				decoded.setAtIndex(j, decoded.length() - i - 1);
+				decoded[decoded.length() - i - 1] = j;
 			}
 		}
 	}
 	cout << "Decoded target bytes:" << endl << decoded.toStr(ASCII) << endl;
-	
 }
 
 void Set2Challenge15() {

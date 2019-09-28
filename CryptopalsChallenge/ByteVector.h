@@ -34,6 +34,7 @@ public:
 
 	char *toStr(bv_str_format format);
 	void printHexStrByBlocks(size_t blocksize);
+	void printHexStrByBlocksPartial(size_t blocksize, size_t start_index, size_t end_index);
 	void printASCIIStrByBlocks(size_t blocksize);
 
 	void copyBytes(byte *dest);

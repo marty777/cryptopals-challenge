@@ -215,8 +215,11 @@ void ByteEncryption::aes_prepend_append_encrypt(ByteVector *prependBv, ByteVecto
 	assert(!cbc || (cbc && iv != NULL));
 
 	size_t inputlen = prependBv->length() + bv->length() + appendBv->length();
-	if (inputlen % 16 != 0) {
-		inputlen += 16 - (inputlen % 16);
+	if (inputlen % AES_BLOCK_SIZE != 0) {
+		inputlen += AES_BLOCK_SIZE - (inputlen % AES_BLOCK_SIZE);
+	}
+	else {
+		inputlen += AES_BLOCK_SIZE;
 	}
 	ByteVector input = ByteVector();
 	input.reserve(inputlen);
@@ -246,7 +249,7 @@ void ByteEncryption::aes_prepend_append_encrypt(ByteVector *prependBv, ByteVecto
 		for (int i = 0; i < inputlen / AES_BLOCK_SIZE; i++) {
 			ByteVector inputBlock = ByteVector(AES_BLOCK_SIZE);
 			input.copyBytesByIndex(&inputBlock, i * AES_BLOCK_SIZE, AES_BLOCK_SIZE, 0);
-			std::cout << i << ":\t" << inputBlock.toStr(HEX) << std::endl;
+			std::cout << i << ":\t" << inputBlock.toStr(HEX) << std::endl;	
 		}
 		std::cout << "Output breakdown:" << std::endl;
 		for (int i = 0; i < inputlen / AES_BLOCK_SIZE; i++) {
