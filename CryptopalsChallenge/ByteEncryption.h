@@ -56,7 +56,7 @@ public:
 
 	static void mt19937_stream_encrypt(ByteVector *bv, uint16_t seed, ByteVector *output);
 
-	static void sha1(ByteVector *bv, ByteVector *output, uint32_t state0 = 0x67452301, uint32_t state1 = 0xEFCDAB89, uint32_t state2 = 0x98BADCFE, uint32_t state3 = 0x10325476, uint32_t state4 = 0xC3D2E1F0);
+	static void sha1(ByteVector *bv, ByteVector *output, size_t length_offset = 0, uint32_t state0 = 0x67452301, uint32_t state1 = 0xEFCDAB89, uint32_t state2 = 0x98BADCFE, uint32_t state3 = 0x10325476, uint32_t state4 = 0xC3D2E1F0);
 	static void sha1_MAC(ByteVector *bv, ByteVector *key, ByteVector *output);
 };
 

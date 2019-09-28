@@ -2,6 +2,7 @@
 #include "ByteVector.h"
 #include "ByteEncryption.h"
 #include "ByteRandom.h"
+#include "Utility.h"
 #include <iostream>
 #include <fstream>
 
@@ -163,22 +164,80 @@ void Set4Challenge28() {
 }
 
 void Set4Challenge29() {
-	ByteVector secretKey = ByteVector(256);
+	// random secret key of random length
+	ByteVector secretKey = ByteVector(rand_range(32,256));
 	secretKey.random();
+	ByteVector input = ByteVector("comment1=cooking%20MCs;userdata=foo;comment2=%20like%20a%20pound%20of%20bacon", ASCII);
+	
+	ByteVector initialMAC = ByteVector();
+	ByteEncryption::sha1_MAC(&input, &secretKey, &initialMAC);
+	
+	cout << "Initial MAC" << endl;
+	initialMAC.printHexStrByBlocks(20);
 
-	ByteVector aeskey = ByteVector("YELLOW SUBMARINE", ASCII);
-	aeskey.printHexStrByBlocks(16);
-	//ByteEncryptionAESKey newKey = ByteEncryptionAESKey(&aeskey);
+	ByteVector payload = ByteVector(";admin=true", ASCII);
 
-	ByteVector input = ByteVector("This is a test!!", ASCII);
-	ByteVector output = ByteVector(16);
-	ByteVector output2 = ByteVector(16);
+	// forge a MAC for our payload
+	uint32_t state0 = (((uint32_t)initialMAC[0]) << 24) | (((uint32_t)initialMAC[1]) << 16) | (((uint32_t)initialMAC[2]) << 8) | (((uint32_t)initialMAC[3]));
+	uint32_t state1 = (((uint32_t)initialMAC[4]) << 24) | (((uint32_t)initialMAC[5]) << 16) | (((uint32_t)initialMAC[6]) << 8) | (((uint32_t)initialMAC[7]));
+	uint32_t state2 = (((uint32_t)initialMAC[8]) << 24) | (((uint32_t)initialMAC[9]) << 16) | (((uint32_t)initialMAC[10]) << 8) | (((uint32_t)initialMAC[11]));
+	uint32_t state3 = (((uint32_t)initialMAC[12]) << 24) | (((uint32_t)initialMAC[13]) << 16) | (((uint32_t)initialMAC[14]) << 8) | (((uint32_t)initialMAC[15]));
+	uint32_t state4 = (((uint32_t)initialMAC[16]) << 24) | (((uint32_t)initialMAC[17]) << 16) | (((uint32_t)initialMAC[18]) << 8) | (((uint32_t)initialMAC[19]));
 
-	ByteEncryption::aes_ecb_encrypt_block(input.dataPtr(), aeskey.dataPtr(), 16, output.dataPtr(), true);
-	ByteEncryption::aes_ecb_encrypt(&input, &aeskey, &output2, 0, input.length() - 1, true);
+	// need to determine how the padding is set up so we get
+	// sha1(key + input + initial padding + initial length of key + input (8 bytes) + payload + padding + final length (8 bytes)
+	// the key length is unknown, so we need to guess.
+	
+	// keylen is possible key size in bytes
+	for (size_t keylen = 20; keylen < 512; keylen++) {
+		size_t first_section_len = input.length() + keylen;
+		size_t first_section_padded_len = first_section_len + 1;
+		size_t first_section_total_len = first_section_padded_len + (64 - first_section_padded_len % 64);
+		if (first_section_total_len % 64 > 56) {
+			first_section_total_len += 64;
+		}
 
-	//output.printHexStrByBlocks(4);
-	output2.printHexStrByBlocks(4);
+		ByteVector len64 = ByteVector(8);
+		len64[0] = (byte)(0xff & (first_section_len * 8) >> 56);
+		len64[1] = (byte)(0xff & (first_section_len * 8) >> 48);
+		len64[2] = (byte)(0xff & (first_section_len * 8) >> 40);
+		len64[3] = (byte)(0xff & (first_section_len * 8) >> 32);
+		len64[4] = (byte)(0xff & (first_section_len * 8) >> 24);
+		len64[5] = (byte)(0xff & (first_section_len * 8) >> 16);
+		len64[6] = (byte)(0xff & (first_section_len * 8) >> 8);
+		len64[7] = (byte)(0xff & (first_section_len * 8));
+
+		// if correct keylen, key + input + 0x80 + padding + len64 should align on a block boundary
+		// and sha1_from_starting_state(mac_of_above, payload) should equal mac under secret key of key + input + 0x80 + padding + len64 + payload
+
+		ByteVector trialinput = ByteVector(first_section_total_len - keylen + payload.length());
+		trialinput.allBytes(0);
+		input.copyBytesByIndex(&trialinput, 0, input.length(), 0);
+		trialinput[input.length()] = 0x80;
+		len64.copyBytesByIndex(&trialinput, 0, len64.length(), first_section_total_len - keylen - 8);
+		payload.copyBytesByIndex(&trialinput, 0, payload.length(), first_section_total_len - keylen);
+
+		ByteVector trialMAC = ByteVector();
+		ByteEncryption::sha1_MAC(&trialinput, &secretKey, &trialMAC);
+
+
+		ByteVector forgedMAC = ByteVector();
+		ByteEncryption::sha1(&payload, &forgedMAC, first_section_total_len, state0, state1, state2, state3, state4);
+		
+		if (trialMAC.equal(&forgedMAC)) {
+			cout << "Found match at trial key length " << keylen << endl;
+			cout << "Forged input bytes (ASCII) are: " << endl;
+			trialinput.printASCIIStrByBlocks(16);
+			cout << "Forged MAC hash from initial MAC:" << endl;
+			forgedMAC.printHexStrByBlocks(20);
+			cout << "Test MAC hash of forged input bytes:" << endl;
+			trialMAC.printHexStrByBlocks(20);
+			break;
+		}
+
+	}
+
+
 }
 
 int Set4() {
