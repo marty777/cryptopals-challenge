@@ -755,6 +755,31 @@ void ByteEncryption::sha1_MAC(ByteVector *bv, ByteVector *key, ByteVector *outpu
 	ByteEncryption::sha1(&input, output);
 }
 
+uint32_t md4_F(uint32_t a, uint32_t b, uint32_t c) {
+	return ((a&b) | ((~a)&c));
+}
+uint32_t md4_G(uint32_t a, uint32_t b, uint32_t c) {
+	return ((a&b) | (a&c) | (b&c));
+}
+uint32_t md4_H(uint32_t a, uint32_t b, uint32_t c) {
+	return (a ^ b ^ c);
+}
+
+void md4_round1(uint32_t *a, uint32_t b, uint32_t c, uint32_t d, uint32_t x, uint32_t s) {
+	(*a) = (*a) + md4_F(b, c, d) + x;
+	(*a) = int32rotateleft((*a), s);
+}
+
+void md4_round2(uint32_t *a, uint32_t b, uint32_t c, uint32_t d, uint32_t x, uint32_t s) {
+	(*a) = (*a) + md4_G(b, c, d) + x + (uint32_t)0x5A827999; 
+	(*a) = int32rotateleft((*a), s);
+}
+
+void md4_round3(uint32_t *a, uint32_t b, uint32_t c, uint32_t d, uint32_t x, uint32_t s) {
+	(*a) = (*a) + md4_H(b, c, d) + x + (uint32_t)0x6ED9EBA1;
+	(*a) = int32rotateleft((*a), s);
+}
+
 void ByteEncryption::md4(ByteVector *bv, ByteVector *output, size_t length_offset, uint32_t state0, uint32_t state1, uint32_t state2, uint32_t state3) {
 	uint32_t h0 = state0;
 	uint32_t h1 = state1;
@@ -779,7 +804,98 @@ void ByteEncryption::md4(ByteVector *bv, ByteVector *output, size_t length_offse
 		message[(message_len / 8) - 8 + i] = len_chunk;
 	}
 
-	// TBD
+	ByteVector x = ByteVector(16);
+	uint32_t h0_temp, h1_temp, h2_temp, h3_temp;
+
+	for (size_t i = 0; i < message_len / 8; i += 16) {
+		for (size_t j = 0; j < 16; j++) {
+			x[j] = message[i + j];
+		}
+
+		h0_temp = h0;
+		h1_temp = h1;
+		h2_temp = h2;
+		h3_temp = h3;
+
+		// round 1
+		md4_round1(&h0, h1, h2, h3, x[0], 3);
+		md4_round1(&h3, h0, h1, h2, x[1], 7);
+		md4_round1(&h2, h3, h0, h1, x[2], 11);
+		md4_round1(&h1, h2, h3, h0, x[3], 19);
+		md4_round1(&h0, h1, h2, h3, x[4], 3);
+		md4_round1(&h3, h0, h1, h2, x[5], 7);
+		md4_round1(&h2, h3, h0, h1, x[6], 11);
+		md4_round1(&h1, h2, h3, h0, x[7], 19);
+		md4_round1(&h0, h1, h2, h3, x[8], 3);
+		md4_round1(&h3, h0, h1, h2, x[9], 7);
+		md4_round1(&h2, h3, h0, h1, x[10], 11);
+		md4_round1(&h1, h2, h3, h0, x[11], 19);
+		md4_round1(&h0, h1, h2, h3, x[12], 3);
+		md4_round1(&h3, h0, h1, h2, x[13], 7);
+		md4_round1(&h2, h3, h0, h1, x[14], 11);
+		md4_round1(&h1, h2, h3, h0, x[15], 19);
+
+		// round 2
+		md4_round2(&h0, h1, h2, h3, x[0], 3);
+		md4_round2(&h3, h0, h1, h2, x[4], 5);
+		md4_round2(&h2, h3, h0, h1, x[8], 9);
+		md4_round2(&h1, h2, h3, h0, x[12], 13);
+		md4_round2(&h0, h1, h2, h3, x[1], 3);
+		md4_round2(&h3, h0, h1, h2, x[5], 5);
+		md4_round2(&h2, h3, h0, h1, x[9], 9);
+		md4_round2(&h1, h2, h3, h0, x[13], 13);
+		md4_round2(&h0, h1, h2, h3, x[2], 3);
+		md4_round2(&h3, h0, h1, h2, x[6], 5);
+		md4_round2(&h2, h3, h0, h1, x[10], 9);
+		md4_round2(&h1, h2, h3, h0, x[14], 13);
+		md4_round2(&h0, h1, h2, h3, x[3], 3);
+		md4_round2(&h3, h0, h1, h2, x[7], 5);
+		md4_round2(&h2, h3, h0, h1, x[11], 9);
+		md4_round2(&h1, h2, h3, h0, x[15], 13);
+
+		// round 3
+		md4_round3(&h0, h1, h2, h3, x[0], 3);
+		md4_round3(&h3, h0, h1, h2, x[8], 9);
+		md4_round3(&h2, h3, h0, h1, x[4], 11);
+		md4_round3(&h1, h2, h3, h0, x[12], 15);
+		md4_round3(&h0, h1, h2, h3, x[2], 3);
+		md4_round3(&h3, h0, h1, h2, x[10], 9);
+		md4_round3(&h2, h3, h0, h1, x[6], 11);
+		md4_round3(&h1, h2, h3, h0, x[14], 15);
+		md4_round3(&h0, h1, h2, h3, x[1], 3);
+		md4_round3(&h3, h0, h1, h2, x[9], 9);
+		md4_round3(&h2, h3, h0, h1, x[5], 11);
+		md4_round3(&h1, h2, h3, h0, x[13], 15);
+		md4_round3(&h0, h1, h2, h3, x[3], 3);
+		md4_round3(&h3, h0, h1, h2, x[11], 9);
+		md4_round3(&h2, h3, h0, h1, x[7], 11);
+		md4_round3(&h1, h2, h3, h0, x[15], 15);
+
+		h0 += h0_temp;
+		h1 += h1_temp;
+		h2 += h2_temp;
+		h3 += h3_temp;
+
+	}
+
+	output->resize(16);
+	(*output)[0] = (byte)(h0 >> 24) & 0xff;
+	(*output)[1] = (byte)(h0 >> 16) & 0xff;
+	(*output)[2] = (byte)(h0 >> 8) & 0xff;
+	(*output)[3] = (byte)(h0) & 0xff;
+	(*output)[4] = (byte)(h1 >> 24) & 0xff;
+	(*output)[5] = (byte)(h1 >> 16) & 0xff;
+	(*output)[6] = (byte)(h1 >> 8) & 0xff;
+	(*output)[7] = (byte)(h1) & 0xff;
+	(*output)[8] = (byte)(h2 >> 24) & 0xff;
+	(*output)[9] = (byte)(h2 >> 16) & 0xff;
+	(*output)[10] = (byte)(h2 >> 8) & 0xff;
+	(*output)[11] = (byte)(h2) & 0xff;
+	(*output)[12] = (byte)(h3 >> 24) & 0xff;
+	(*output)[13] = (byte)(h3 >> 16) & 0xff;
+	(*output)[14] = (byte)(h3 >> 8) & 0xff;
+	(*output)[15] = (byte)(h3) & 0xff;
+
 }
 
 void ByteEncryption::md4_MAC(ByteVector *bv, ByteVector *key, ByteVector *output) {

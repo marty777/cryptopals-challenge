@@ -245,6 +245,13 @@ void Set4Challenge30() {
 	ByteVector expected2 = ByteVector("b86e130ce7028da59e672d56ad0113df", HEX);
 	ByteVector test3 = ByteVector("", ASCII);
 	ByteVector expected3 = ByteVector("31d6cfe0d16ae931b73c59d7e0c089c0", HEX);
+
+	ByteVector output = ByteVector();
+
+	cout << "Testing empty string" << endl;
+	ByteEncryption::md4(&test3, &output);
+	output.printHexStrByBlocks(16);
+	expected3.printHexStrByBlocks(16);
 }
 
 int Set4() {
