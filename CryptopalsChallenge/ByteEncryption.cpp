@@ -771,13 +771,22 @@ void md4_round1(uint32_t *a, uint32_t b, uint32_t c, uint32_t d, uint32_t x, uin
 }
 
 void md4_round2(uint32_t *a, uint32_t b, uint32_t c, uint32_t d, uint32_t x, uint32_t s) {
-	(*a) = (*a) + md4_G(b, c, d) + x + (uint32_t)0x5A827999; 
+	(*a) = (*a) + md4_G(b, c, d) + x + (uint32_t)0x5A827999;//0x9979825A; 
 	(*a) = int32rotateleft((*a), s);
 }
 
 void md4_round3(uint32_t *a, uint32_t b, uint32_t c, uint32_t d, uint32_t x, uint32_t s) {
-	(*a) = (*a) + md4_H(b, c, d) + x + (uint32_t)0x6ED9EBA1;
+	(*a) = (*a) + md4_H(b, c, d) + x + (uint32_t)0x6ED9EBA1; //0xA1EBD96E;
 	(*a) = int32rotateleft((*a), s);
+}
+
+// the spec for rfc 1320 uses low byte first
+uint32_t md4switchEndian(uint32_t in) {
+	byte b0 = (byte)0xff & (in >> 24);
+	byte b1 = (byte)0xff & (in >> 16);
+	byte b2 = (byte)0xff & (in >> 8);
+	byte b3 = (byte)0xff & (in);
+	return ((uint32_t)b3 << 24) | ((uint32_t)b2 << 16) | ((uint32_t)b1 << 8) | ((uint32_t)b0);
 }
 
 void ByteEncryption::md4(ByteVector *bv, ByteVector *output, size_t length_offset, uint32_t state0, uint32_t state1, uint32_t state2, uint32_t state3) {
@@ -804,12 +813,19 @@ void ByteEncryption::md4(ByteVector *bv, ByteVector *output, size_t length_offse
 		message[(message_len / 8) - 8 + i] = len_chunk;
 	}
 
-	ByteVector x = ByteVector(16);
+	uint32_t x[16];
 	uint32_t h0_temp, h1_temp, h2_temp, h3_temp;
 
-	for (size_t i = 0; i < message_len / 8; i += 16) {
+	for (size_t i = 0; i < message_len / 8; i += 64) {
 		for (size_t j = 0; j < 16; j++) {
-			x[j] = message[i + j];
+			x[j] = (message[i + 4*j] << 24) | (message[1 + i + 4 * j] << 16) | (message[2 + i + 4 * j] << 8) | (message[3 + i + 4 * j]);
+			x[j] = md4switchEndian(x[j]);
+			
+		}
+		if (i == message_len / 8 - 64) {
+			uint32_t temp = x[15];
+			x[15] = md4switchEndian( x[14] );
+			x[14] = md4switchEndian(temp);
 		}
 
 		h0_temp = h0;
@@ -853,6 +869,7 @@ void ByteEncryption::md4(ByteVector *bv, ByteVector *output, size_t length_offse
 		md4_round2(&h2, h3, h0, h1, x[11], 9);
 		md4_round2(&h1, h2, h3, h0, x[15], 13);
 
+
 		// round 3
 		md4_round3(&h0, h1, h2, h3, x[0], 3);
 		md4_round3(&h3, h0, h1, h2, x[8], 9);
@@ -875,8 +892,12 @@ void ByteEncryption::md4(ByteVector *bv, ByteVector *output, size_t length_offse
 		h1 += h1_temp;
 		h2 += h2_temp;
 		h3 += h3_temp;
-
 	}
+
+	h0 = md4switchEndian(h0);
+	h1 = md4switchEndian(h1);
+	h2 = md4switchEndian(h2);
+	h3 = md4switchEndian(h3);
 
 	output->resize(16);
 	(*output)[0] = (byte)(h0 >> 24) & 0xff;

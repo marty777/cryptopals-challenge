@@ -246,12 +246,31 @@ void Set4Challenge30() {
 	ByteVector test3 = ByteVector("", ASCII);
 	ByteVector expected3 = ByteVector("31d6cfe0d16ae931b73c59d7e0c089c0", HEX);
 
+	ByteVector test4 = ByteVector("Rosetta Code", ASCII);
+
 	ByteVector output = ByteVector();
+
+	cout << "Testing " << test1.toStr(ASCII) << endl;
+	ByteEncryption::md4(&test1, &output);
+	cout << "Output:   ";
+	output.printHexStrByBlocks(16);
+	cout << "Expected: ";
+	expected1.printHexStrByBlocks(16);
+
+	cout << "Testing " << test2.toStr(ASCII) << endl;
+	ByteEncryption::md4(&test2, &output);
+	cout << "Output:   ";
+	output.printHexStrByBlocks(16);
+	cout << "Expected: ";
+	expected2.printHexStrByBlocks(16);
 
 	cout << "Testing empty string" << endl;
 	ByteEncryption::md4(&test3, &output);
+	cout << "Output:   ";
 	output.printHexStrByBlocks(16);
+	cout << "Expected: ";
 	expected3.printHexStrByBlocks(16);
+
 }
 
 int Set4() {
