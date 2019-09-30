@@ -780,15 +780,8 @@ void md4_round3(uint32_t *a, uint32_t b, uint32_t c, uint32_t d, uint32_t x, uin
 	(*a) = int32rotateleft((*a), s);
 }
 
-// the spec for rfc 1320 uses low byte first
-uint32_t md4switchEndian(uint32_t in) {
-	byte b0 = (byte)0xff & (in >> 24);
-	byte b1 = (byte)0xff & (in >> 16);
-	byte b2 = (byte)0xff & (in >> 8);
-	byte b3 = (byte)0xff & (in);
-	return ((uint32_t)b3 << 24) | ((uint32_t)b2 << 16) | ((uint32_t)b1 << 8) | ((uint32_t)b0);
-}
 
+// Note: The spec for RFC 1320 uses least significant bytes first hence all the endian changes
 void ByteEncryption::md4(ByteVector *bv, ByteVector *output, size_t length_offset, uint32_t state0, uint32_t state1, uint32_t state2, uint32_t state3) {
 	uint32_t h0 = state0;
 	uint32_t h1 = state1;
@@ -812,20 +805,19 @@ void ByteEncryption::md4(ByteVector *bv, ByteVector *output, size_t length_offse
 		byte len_chunk = (byte)(0xff) & ((m1 + (length_offset * 8)) >> 8 * (8 - 1 - i));
 		message[(message_len / 8) - 8 + i] = len_chunk;
 	}
-
+	
 	uint32_t x[16];
 	uint32_t h0_temp, h1_temp, h2_temp, h3_temp;
 
 	for (size_t i = 0; i < message_len / 8; i += 64) {
 		for (size_t j = 0; j < 16; j++) {
-			x[j] = (message[i + 4*j] << 24) | (message[1 + i + 4 * j] << 16) | (message[2 + i + 4 * j] << 8) | (message[3 + i + 4 * j]);
-			x[j] = md4switchEndian(x[j]);
-			
+			x[j] = (message[i + 4*j] << 24) | (message[1 + i + (4 * j)] << 16) | (message[2 + i + (4 * j)] << 8) | (message[3 + i + (4 * j)]);
+			x[j] = int32reverseBytes(x[j]);
 		}
 		if (i == message_len / 8 - 64) {
 			uint32_t temp = x[15];
-			x[15] = md4switchEndian( x[14] );
-			x[14] = md4switchEndian(temp);
+			x[15] = int32reverseBytes( x[14] );
+			x[14] = int32reverseBytes(temp);
 		}
 
 		h0_temp = h0;
@@ -894,10 +886,11 @@ void ByteEncryption::md4(ByteVector *bv, ByteVector *output, size_t length_offse
 		h3 += h3_temp;
 	}
 
-	h0 = md4switchEndian(h0);
-	h1 = md4switchEndian(h1);
-	h2 = md4switchEndian(h2);
-	h3 = md4switchEndian(h3);
+	h0 = int32reverseBytes(h0);
+	h1 = int32reverseBytes(h1);
+	h2 = int32reverseBytes(h2);
+	h3 = int32reverseBytes(h3);
+
 
 	output->resize(16);
 	(*output)[0] = (byte)(h0 >> 24) & 0xff;

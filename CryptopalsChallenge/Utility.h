@@ -11,3 +11,5 @@ uint32_t int32rotateright(uint32_t b, int shift);
 
 // random signed int between start and end using rand()
 int rand_range(int start, int end);
+
+uint32_t int32reverseBytes(uint32_t in);
