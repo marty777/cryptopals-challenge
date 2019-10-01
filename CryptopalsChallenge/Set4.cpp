@@ -318,10 +318,13 @@ void Set4Challenge30() {
 void Set4Challenge31() {
 	
 	string url;
+	string file;
 	string hex = "0123456789abcdef";
 	cout << "This challenge requires a web component that responds to GET requests. See challenge-files\\set4\\challenge31.php for an implementation that can be installed somewhere suitable." << endl << endl;
 	cout << "Please enter the URL of the server component endpoint (e.g. http://localhost:9000/challenge31.php): ";
 	getline(cin, url);
+	cout << "Please enter the file string to obtain the HMAC for: ";
+	getline(cin, file);
 	cout << "Querying " << url << endl;
 
 	CURL *curl;
@@ -337,13 +340,12 @@ void Set4Challenge31() {
 		cout << "Response " << responsecode << " with average response time " << avgduration << " ms" << endl;
 	}
 
-	string fileParam = "foo";
-	cout << "Exploiting timing leak to obtain HMAC for file string '" << fileParam << "'. This may take a while.." << endl;
+	cout << "Exploiting timing leak to obtain HMAC for file string '" << file << "'. This may take a while.." << endl;
 
 	bool finished = false;
-	long long lastDuration = avgduration;
-	long long duration;
-	long long durations[16];
+	//long long lastDuration = avgduration;
+	//long long duration;
+	//long long durations[16];
 	ByteVector signature = ByteVector();
 	
 	int index = 0;
@@ -353,8 +355,11 @@ void Set4Challenge31() {
 			break;
 		}
 		
-		string requestUrlBase = url + "?file=" + fileParam + "&signature=" + signature.toStr(HEX);
+		string requestUrlBase = url + "?file=" + file + "&signature=" + signature.toStr(HEX);
+		long long lastduration = 0;
+		byte longest_duration_c = 0;
 		for (int c = 0; c <= 0xf; c++) {
+			long long duration = 0;
 			string requestUrl;
 			if (index % 2 == 0) {
 				requestUrl = requestUrlBase + hex[c];
@@ -362,7 +367,7 @@ void Set4Challenge31() {
 			else {
 				requestUrl = requestUrlBase + hex[nibble1] + hex[c];
 			}
-			res = libcurl_http_timed_response(curl, requestUrl, &durations[c], &responsecode);
+			res = libcurl_http_timed_response(curl, requestUrl, &duration, &responsecode);
 			if (res != CURLE_OK) { // die
 				cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << endl;
 				curl_easy_cleanup(curl);
@@ -370,29 +375,34 @@ void Set4Challenge31() {
 			}
 			if (responsecode == 200) {
 				finished = true;
-				signature.append((nibble1 << 4) | (byte)c);
+				if (index % 2 == 0) {
+					signature.append((byte)c << 4);
+				}
+				else {
+					signature.append((nibble1 << 4) | (byte)c);
+				}
 				break;
+			}
+			else {
+				if (lastduration > duration + 40) {
+					longest_duration_c = c - 1;
+					break;
+				}
+				lastduration = duration;
+				if (c == 0xf) {
+					longest_duration_c = c;
+				}
 			}
 		}
 		if (finished) {
 			break;
 		}
 
-		// take the longest response to be the next byte
-		int longest_duration = 0;
-		byte longest_nibble = 0;
-		for (int c = 0; c <= 0xf; c++) {
-			if (durations[c] > longest_duration) {
-				longest_duration = durations[c];
-				longest_nibble = c;
-			}
-		}
-
 		if (index % 2 == 0) {
-			nibble1 = longest_nibble;
+			nibble1 = longest_duration_c;
 		}
 		else {
-			signature.append((nibble1 << 4) | (byte)longest_nibble);
+			signature.append((nibble1 << 4) | (byte)longest_duration_c);
 			cout << "Current HMAC Signature:\t" << signature.toStr(HEX) << endl;
 		}
 

@@ -14,11 +14,10 @@ function insecure_compare($a, $b) {
 			return false;
 		}
 		usleep(50000); // 50 microseconds
-		
 	}
-	if(strlen($a) != strlen($b)) {
-		return false;
-	}
+	 if(strlen($a) != strlen($b)) {
+		 return false;
+	 }
 	return true;
 }
 
@@ -37,10 +36,12 @@ Unhurt amidst the war of elements,
 The wreck of matter, and the crush of worlds.";
 
 $hmac = hash_hmac("sha1", $_GET['file'], $key); // was using sha256, but the timing attack is slow enough already.
+// a 40 character hash takes forever to get through.
+$hmac = substr($hmac, 0, 16);
 
 if(!insecure_compare($hmac, $_GET['signature'])) {
 	http_response_code(500);
-	die("Not okay");
+	die($hmac);
 }
 else {
 	die("OK"); // defaults to status 200
