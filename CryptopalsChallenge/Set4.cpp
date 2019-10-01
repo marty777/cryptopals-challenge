@@ -7,7 +7,7 @@
 #include <fstream>
 #include <string>
 #include <chrono>
-#include "curl.h"; // the rmt_curl NuGet package may not be compatible with Visual Studio 2017 without some tweaks. Works fine in 2015.
+#include "curl.h" // the rmt_curl NuGet package may not be compatible with Visual Studio 2017 without some tweaks. Works fine in 2015.
 
 using namespace std;
 
@@ -343,31 +343,36 @@ void Set4Challenge31() {
 	bool finished = false;
 	long long lastDuration = avgduration;
 	long long duration;
-	long long durations[256];
+	long long durations[16];
 	ByteVector signature = ByteVector();
 	
+	int index = 0;
+	byte nibble1;
 	while (!finished) {
 		if (signature.length() > 256) { // something went wrong and we're off in the weeds.
 			break;
 		}
 		
 		string requestUrlBase = url + "?file=" + fileParam + "&signature=" + signature.toStr(HEX);
-		
-		for (int b = 0; b <= 0xff; b++) {
-			string requestUrl = requestUrlBase + hex[0xf & (b >> 4)] + hex[0xf & (b)];
-			res = libcurl_http_timed_response(curl, requestUrl, &durations[b], &responsecode);
+		for (int c = 0; c <= 0xf; c++) {
+			string requestUrl;
+			if (index % 2 == 0) {
+				requestUrl = requestUrlBase + hex[c];
+			}
+			else {
+				requestUrl = requestUrlBase + hex[nibble1] + hex[c];
+			}
+			res = libcurl_http_timed_response(curl, requestUrl, &durations[c], &responsecode);
 			if (res != CURLE_OK) { // die
 				cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << endl;
 				curl_easy_cleanup(curl);
 				return;
 			}
-			
 			if (responsecode == 200) {
 				finished = true;
-				signature.append((byte)b);
+				signature.append((nibble1 << 4) | (byte)c);
 				break;
 			}
-			
 		}
 		if (finished) {
 			break;
@@ -375,16 +380,23 @@ void Set4Challenge31() {
 
 		// take the longest response to be the next byte
 		int longest_duration = 0;
-		byte longest_byte = 0;
-		for (int b = 0; b <= 0xff; b++) {
-			if (durations[b] > longest_duration) {
-				longest_duration = durations[b];
-				longest_byte = b;
+		byte longest_nibble = 0;
+		for (int c = 0; c <= 0xf; c++) {
+			if (durations[c] > longest_duration) {
+				longest_duration = durations[c];
+				longest_nibble = c;
 			}
 		}
-		signature.append(longest_byte);
-		cout << "Current HMAC Signature:\t" << signature.toStr(HEX) << endl;
-		
+
+		if (index % 2 == 0) {
+			nibble1 = longest_nibble;
+		}
+		else {
+			signature.append((nibble1 << 4) | (byte)longest_nibble);
+			cout << "Current HMAC Signature:\t" << signature.toStr(HEX) << endl;
+		}
+
+		index++;
 	}
 	if (finished) {
 		cout << "Obtained HMAC signature " << signature.toStr(HEX) << endl;
@@ -393,7 +405,6 @@ void Set4Challenge31() {
 		cout << "Failed to correctly obtain HMAC signature" << endl;
 	}
 	curl_easy_cleanup(curl);
-
 }
 
 int Set4() {

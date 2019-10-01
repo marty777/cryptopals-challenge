@@ -9,3 +9,4 @@ packages/*
 *.VC.VC.opendb
 CryptopalsChallenge/Debug/*
 CryptopalsChallenge/x64/*
+enc_temp_folder/*
