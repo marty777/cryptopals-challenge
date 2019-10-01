@@ -316,52 +316,84 @@ void Set4Challenge30() {
 }
 
 void Set4Challenge31() {
-
-	using namespace std::chrono;
 	
 	string url;
+	string hex = "0123456789abcdef";
 	cout << "This challenge requires a web component that responds to GET requests. See challenge-files\\set4\\challenge31.php for an implementation that can be installed somewhere suitable." << endl << endl;
 	cout << "Please enter the URL of the server component endpoint (e.g. http://localhost:9000/challenge31.php): ";
 	getline(cin, url);
 	cout << "Querying " << url << endl;
 
-	high_resolution_clock::time_point starttime, endtime;
-
-	// Set up CURL. Note that I'm working with a version of libCURL prior to the introduction of microsecond request timing info. I'll measure response times externally.
 	CURL *curl;
-	CURLcode res;
-	long responsecode;
-
 	curl = curl_easy_init();
-	curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, libcurl_write_data);
-	
-	starttime = high_resolution_clock::now();
-	res = curl_easy_perform(curl);
-	endtime = high_resolution_clock::now();
 
-	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &responsecode);
-	cout << "Response code: " << responsecode << endl;
+	long long avgduration;
+	long responsecode = 0;
+	CURLcode res = libcurl_http_timed_response(curl, url, &avgduration, &responsecode);
 	if (res != CURLE_OK) {
-		cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << endl;
+		cerr << "Query failed: " << curl_easy_strerror(res) << endl;
 	}
 	else {
+		cout << "Response " << responsecode << " with average response time " << avgduration << " ms" << endl;
+	}
+
+	string fileParam = "foo";
+	cout << "Exploiting timing leak to obtain HMAC for file string '" << fileParam << "'. This may take a while.." << endl;
+
+	bool finished = false;
+	long long lastDuration = avgduration;
+	long long duration;
+	long long durations[256];
+	ByteVector signature = ByteVector();
+	
+	while (!finished) {
+		if (signature.length() > 256) { // something went wrong and we're off in the weeds.
+			break;
+		}
+		
+		string requestUrlBase = url + "?file=" + fileParam + "&signature=" + signature.toStr(HEX);
+		
+		for (int b = 0; b <= 0xff; b++) {
+			string requestUrl = requestUrlBase + hex[0xf & (b >> 4)] + hex[0xf & (b)];
+			res = libcurl_http_timed_response(curl, requestUrl, &durations[b], &responsecode);
+			if (res != CURLE_OK) { // die
+				cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << endl;
+				curl_easy_cleanup(curl);
+				return;
+			}
+			
+			if (responsecode == 200) {
+				finished = true;
+				signature.append((byte)b);
+				break;
+			}
+			
+		}
+		if (finished) {
+			break;
+		}
+
+		// take the longest response to be the next byte
+		int longest_duration = 0;
+		byte longest_byte = 0;
+		for (int b = 0; b <= 0xff; b++) {
+			if (durations[b] > longest_duration) {
+				longest_duration = durations[b];
+				longest_byte = b;
+			}
+		}
+		signature.append(longest_byte);
+		cout << "Current HMAC Signature:\t" << signature.toStr(HEX) << endl;
 		
 	}
-	
-	cout << "Response time: " << duration_cast<milliseconds>(endtime - starttime).count() << " ms" << endl;
-
-	starttime = high_resolution_clock::now();
-	res = curl_easy_perform(curl);
-	endtime = high_resolution_clock::now();
-	cout << "Response time: " << duration_cast<milliseconds>(endtime - starttime).count() << " ms" << endl;
-
-	starttime = high_resolution_clock::now();
-	res = curl_easy_perform(curl);
-	endtime = high_resolution_clock::now();
-	cout << "Response time: " << duration_cast<milliseconds>(endtime - starttime).count() << " ms" << endl;
-
+	if (finished) {
+		cout << "Obtained HMAC signature " << signature.toStr(HEX) << endl;
+	}
+	else {
+		cout << "Failed to correctly obtain HMAC signature" << endl;
+	}
 	curl_easy_cleanup(curl);
+
 }
 
 int Set4() {

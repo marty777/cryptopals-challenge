@@ -36,11 +36,11 @@ But thou shalt flourish in immortal youth,
 Unhurt amidst the war of elements,
 The wreck of matter, and the crush of worlds.";
 
-$hmac = hash_hmac("sha256", $_GET['file'], $key);
+$hmac = hash_hmac("sha1", $_GET['file'], $key); // was using sha256, but the timing attack is slow enough already.
 
 if(!insecure_compare($hmac, $_GET['signature'])) {
 	http_response_code(500);
-	die("Not OK");
+	die("Not okay");
 }
 else {
 	die("OK"); // defaults to status 200
