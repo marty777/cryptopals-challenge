@@ -131,9 +131,9 @@ void Set2Challenge12() {
 	ByteVector testInput = ByteVector(block_size);
 
 	for (size_t i = 0; i < append_size; i++) {
-		int blockindex = i / block_size;
+		size_t blockindex = i / block_size;
 		// our varying length input vector, all 0xff
-		int input_size = block_size - 1 - (i % block_size);
+		size_t input_size = block_size - 1 - (i % block_size);
 		input.resize((size_t)input_size);
 		for (size_t j = 0; j < input_size; j++) {
 			input.setAtIndex(0xff, j);
@@ -443,7 +443,7 @@ void Set2Challenge14() {
 			// each block encrypting the test for the next decoded byte
 			output.copyBytesByIndex(&referenceBlock, (j*block_size) + first_input_offset + pre_len, block_size, 0); 
 			if (referenceBlock.equal(&examineBlock)) {
-				decoded[decoded.length() - i - 1] = j;
+				decoded[decoded.length() - i - 1] = (byte)j;
 			}
 		}
 	}

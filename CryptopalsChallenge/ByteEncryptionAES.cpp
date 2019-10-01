@@ -15,7 +15,7 @@ void ByteEncryptionAES::expandKey(ByteVector *key, ByteEncryptionAESExpandedKey 
 	// AES 128 - nk = 4, nr = 10
 	// AES 192 - nk = 6, nr = 12
 	// AES 256 - nk = 8, nr = 14
-	expandedKey->keysize = key->length();
+	expandedKey->keysize = (uint32_t)key->length();
 	size_t nk = key->length() / 4;
 	size_t nb = 4;
 	size_t nr = nk + 6;
@@ -30,7 +30,7 @@ void ByteEncryptionAES::expandKey(ByteVector *key, ByteEncryptionAESExpandedKey 
 	for (size_t i = nb; i < nb*(nr + 1); i++) {
 		temp = expandedKey->w[i - 1];
 		if (i % nk == 0) {
-			temp = subword(int32rotateleft(temp, 8)) ^ ((uint32_t)rcon(i / nk) << 24);
+			temp = subword(int32rotateleft(temp, 8)) ^ ((uint32_t)rcon((int)(i / nk)) << 24);
 		}
 		else if (nk > 6 && i % nk == 4) { // AES 256 modification to expansion
 			temp = subword(temp);
@@ -192,7 +192,7 @@ byte ByteEncryptionAES::rcon(int i) {
 byte ByteEncryptionAES::gmul(byte a, byte b) {
 	byte c = 0;
 	for (int i = 0; i < 8; i++) {
-		if (b & 1 != 0) {
+		if ((b & 1) != 0) {
 			c ^= a;
 		}
 
@@ -209,7 +209,7 @@ byte ByteEncryptionAES::gmul(byte a, byte b) {
 void ByteEncryptionAES::addRoundKey(ByteVector *state, uint32_t *w, size_t w_i) {
 
 	for (size_t i = 0; i < 16; i++) {
-		int offset = i / 4;
+		int offset = (int)i / 4;
 		(*state)[i] ^= (byte)(0xff & (w[w_i + offset] >> (24 - (i % 4) * 8)));
 	}
 }

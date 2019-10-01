@@ -5,6 +5,9 @@
 #include "Utility.h"
 #include <iostream>
 #include <fstream>
+#include <string>
+#include <chrono>
+#include "curl.h"; // the rmt_curl NuGet package may not be compatible with Visual Studio 2017 without some tweaks. Works fine in 2015.
 
 using namespace std;
 
@@ -309,8 +312,56 @@ void Set4Challenge30() {
 			trialMAC.printHexStrByBlocks(20);
 			break;
 		}
-
 	}
+}
+
+void Set4Challenge31() {
+
+	using namespace std::chrono;
+	
+	string url;
+	cout << "This challenge requires a web component that responds to GET requests. See challenge-files\\set4\\challenge31.php for an implementation that can be installed somewhere suitable." << endl << endl;
+	cout << "Please enter the URL of the server component endpoint (e.g. http://localhost:9000/challenge31.php): ";
+	getline(cin, url);
+	cout << "Querying " << url << endl;
+
+	high_resolution_clock::time_point starttime, endtime;
+
+	// Set up CURL. Note that I'm working with a version of libCURL prior to the introduction of microsecond request timing info. I'll measure response times externally.
+	CURL *curl;
+	CURLcode res;
+	long responsecode;
+
+	curl = curl_easy_init();
+	curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, libcurl_write_data);
+	
+	starttime = high_resolution_clock::now();
+	res = curl_easy_perform(curl);
+	endtime = high_resolution_clock::now();
+
+	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &responsecode);
+	cout << "Response code: " << responsecode << endl;
+	if (res != CURLE_OK) {
+		cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << endl;
+	}
+	else {
+		
+	}
+	
+	cout << "Response time: " << duration_cast<milliseconds>(endtime - starttime).count() << " ms" << endl;
+
+	starttime = high_resolution_clock::now();
+	res = curl_easy_perform(curl);
+	endtime = high_resolution_clock::now();
+	cout << "Response time: " << duration_cast<milliseconds>(endtime - starttime).count() << " ms" << endl;
+
+	starttime = high_resolution_clock::now();
+	res = curl_easy_perform(curl);
+	endtime = high_resolution_clock::now();
+	cout << "Response time: " << duration_cast<milliseconds>(endtime - starttime).count() << " ms" << endl;
+
+	curl_easy_cleanup(curl);
 }
 
 int Set4() {
@@ -336,6 +387,14 @@ int Set4() {
 	getchar();
 	cout << "Set 4 Challenge 29" << endl;
 	Set4Challenge29();
+	// Pause before continuing
+	cout << "Press enter to continue..." << endl;
+	cout << "Set 4 Challenge 30" << endl;
+	Set4Challenge30();
+	// Pause before continuing
+	cout << "Press enter to continue..." << endl;
+	cout << "Set 4 Challenge 31" << endl;
+	Set4Challenge31();
 	// Pause before continuing
 	cout << "Press enter to continue..." << endl;
 	getchar();

@@ -29,7 +29,7 @@ ByteEncryption::~ByteEncryption()
 {
 }
 
-void ByteEncryption::aes_ecb_encrypt_block(byte *input, byte *key, int keylengthbytes, byte *output, bool encrypt) {
+void ByteEncryption::aes_ecb_encrypt_block(byte *input, byte *key, size_t keylengthbytes, byte *output, bool encrypt) {
 
 	ByteVector k = ByteVector(16);
 	ByteVector in = ByteVector(16);
@@ -313,7 +313,7 @@ bool ByteEncryption::challenge16decrypt(ByteVector *bv, ByteVector *key, ByteVec
 }
 
 void ByteEncryption::challenge17encrypt(std::vector<ByteVector> *inputs, ByteVector *key, ByteVector *output, ByteVector *iv, bool verbose) {
-	int inputIndex = rand_range(0, inputs->size() - 1);
+	int inputIndex = rand_range(0, (int)inputs->size() - 1);
 	ByteVector input = ByteVector(inputs->at((size_t)inputIndex));
 	ByteEncryption::pkcs7Pad(&input, AES_BLOCK_SIZE);
 	output->resize(input.length());
@@ -708,7 +708,7 @@ void ByteEncryption::sha1(ByteVector *bv, ByteVector *output, size_t length_offs
 				k = 0xCA62C1D6;
 			}
 
-			uint32_t temp = int32rotateleft(a, 5) + f + e + k + w[n];
+			uint32_t temp = int32rotateleft(a, 5) + (uint32_t)f + e + (uint32_t)k + w[n];
 			e = d;
 			d = c;
 			c = int32rotateleft(b, 30);

@@ -13,3 +13,6 @@ uint32_t int32rotateright(uint32_t b, int shift);
 int rand_range(int start, int end);
 
 uint32_t int32reverseBytes(uint32_t in);
+
+// Callback for libcurl
+size_t libcurl_write_data(void *buffer, size_t size, size_t nmemb, void *userp);
