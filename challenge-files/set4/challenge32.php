@@ -1,10 +1,13 @@
 <?php
 /*
-	This is the web server component for Set 4 Challenge 31.
+	This is the web server component for Set 4 Challenge 32.
 	Given the GET parameters 'file' and 'signature', generate
 	an HMAC for the file string and compare it with the
 	provided signature. Add an artificial delay during
 	the string comparison to allow a timing leak.
+	
+	The artificial delay is reduced to 1 ms from 50 ms
+	used in challenge 31.
 	
 	Requires PHP 5.4 or higher
 */
@@ -13,7 +16,7 @@ function insecure_compare($a, $b) {
 		if($a[$i] != $b[$i]) {
 			return false;
 		}
-		usleep(50000); // 50 microseconds
+		usleep(1000); // 1 ms
 	}
 	 if(strlen($a) != strlen($b)) {
 		 return false;
@@ -35,9 +38,7 @@ But thou shalt flourish in immortal youth,
 Unhurt amidst the war of elements,
 The wreck of matter, and the crush of worlds.";
 
-$hmac = hash_hmac("sha1", $_GET['file'], $key); // was using sha256, but the timing attack is slow enough already.
-// a 40 character hash takes forever to get through.
-//$hmac = substr($hmac, 0, 16);
+$hmac = hash_hmac("sha1", $_GET['file'], $key);
 
 if(!insecure_compare($hmac, $_GET['signature'])) {
 	http_response_code(500);

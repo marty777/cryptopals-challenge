@@ -20,4 +20,4 @@ uint32_t int32reverseBytes(uint32_t in);
 size_t libcurl_write_data(void *buffer, size_t size, size_t nmemb, void *userp);
 
 // Gives response code and average response time of several identical GET requests
-CURLcode libcurl_http_timed_response(CURL *curl, std::string url, long long *duration, long *responsecode);
+CURLcode libcurl_http_timed_response(CURL *curl, std::string url, long long *duration, long *responsecode, int numtrials = 3);

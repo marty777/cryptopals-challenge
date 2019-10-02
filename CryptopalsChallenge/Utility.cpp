@@ -40,7 +40,7 @@ size_t libcurl_write_data(void *buffer, size_t size, size_t nmemb, void *userp) 
 }
 
 // 
-CURLcode libcurl_http_timed_response(CURL *curl, std::string url, long long *duration, long *responsecode) {
+CURLcode libcurl_http_timed_response(CURL *curl, std::string url, long long *duration, long *responsecode, int numtrials) {
 	using namespace std::chrono;
 	high_resolution_clock::time_point starttime, endtime;
 	long long avgms = 0;
@@ -50,7 +50,6 @@ CURLcode libcurl_http_timed_response(CURL *curl, std::string url, long long *dur
 	curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, libcurl_write_data); // don't do anything with the response
 
-	int numtrials = 3; // Slow, but should be accurate.
 	for (int i = 0; i < numtrials; i++) {
 
 		starttime = high_resolution_clock::now();
@@ -67,6 +66,7 @@ CURLcode libcurl_http_timed_response(CURL *curl, std::string url, long long *dur
 		avgms += duration_cast<milliseconds>(endtime - starttime).count();
 	}
 	
-	*duration = avgms / numtrials;
+	// don't bother averaging.
+	*duration = avgms;
 	return CURLE_OK;
 }

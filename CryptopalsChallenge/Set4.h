@@ -6,6 +6,7 @@ void Set4Challenge27();
 void Set4Challenge28();
 void Set4Challenge29();
 void Set4Challenge30();
-void Set4Challenge31();
+void Set4Challenge31(); 
+void Set4Challenge32();
 
 int Set4();
