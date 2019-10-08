@@ -7,16 +7,18 @@ using namespace std;
 
 void Set5Challenge33() {
 	ByteVectorMath m1 = ByteVectorMath(4095);
+	ByteVectorMath m2 = ByteVectorMath(ByteVector("10", HEX));
 	cout << m1.toStr(BINARY) << " " << m1.uint64val() << endl;
-	for (size_t i = 100; i < 4095; i++) {
-		ByteVectorMath m2 = ByteVectorMath(i);
-		m1.subtractSelf(m2);
-		if (m1.uint64val() != 4095 - i) {
-			cout << "No match " << m1.uint64val() << " " << (4095 - i) << endl;
-			break;
-		}
-		m1.addSelf(m2);
-	}
+	m1.rightShiftSelf(3);
+	cout << m1.toStr(BINARY) << " " << m1.uint64val() << endl;
+	//m1.leftShiftSelf(5);
+	//cout << m1.toStr(BINARY) << " " << m1.uint64val() << endl;
+	//m1.rightShiftSelf(5);
+	//cout << m1.toStr(BINARY) << " " << m1.uint64val() << endl;
+	//m1.rightShiftSelf(9);
+	//cout << m1.toStr(BINARY) << " " << m1.uint64val() << endl;
+
+	
 	cout << "Complete" << endl;
 }
 

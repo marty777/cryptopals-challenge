@@ -44,6 +44,8 @@ public:
 	void andSelf(ByteVector *bv);
 	void truncateLeft();
 	void truncateRight();
+	void leftShiftSelf(size_t shift);
+	void rightShiftSelf(size_t shift);
 
 	char *toStr(bv_str_format format);
 	void printHexStrByBlocks(size_t blocksize);

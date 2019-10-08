@@ -58,7 +58,16 @@ void ByteVectorMath::subtractSelf(ByteVectorMath b) {
 }
 
 void ByteVectorMath::multiplySelf(ByteVectorMath b) {
-	
+	// Russian peasant
+	ByteVectorMath a = ByteVectorMath(this);
+	ByteVectorMath result = ByteVectorMath(0);
+	while (b.length() > 0) {
+		if (b[0] >> 7 != 0) {
+			result.addSelf(a);
+		}
+		
+	}
+
 }
 
 byte ByteVectorMath::byteReverse(byte b) {

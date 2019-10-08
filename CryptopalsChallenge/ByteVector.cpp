@@ -470,6 +470,32 @@ void ByteVector::truncateRight() {
 	this->resize(index + 1);
 }
 
+void ByteVector::leftShiftSelf(size_t shift) {
+	int bitshift = shift % 8;
+	size_t byteshift = shift / 8;
+	size_t final_len = this->length() - byteshift + 1;
+	for (long long i = final_len - 1; i >= 0; i--) {
+		(*this)[i] = ((*this)[i + byteshift] << bitshift) | ((i + byteshift < this->length() - 1) ? ((*this)[i + byteshift + 1] >> (8 - bitshift)) : 0);
+	}
+	this->resize(final_len);
+}
+
+void ByteVector::rightShiftSelf(size_t shift) {
+	int bitshift = shift % 8;
+	size_t byteshift = shift / 8;
+	size_t initial_len = this->length();
+	this->resize(initial_len + byteshift + (shift > 0 ? 1 : 0));
+	byte lastByte = 0;
+	byte currByte = 0;
+	for (size_t i = 0 + byteshift; i < this->length(); i++) {
+		currByte = (*this)[i];
+		(*this)[i] = ((*this)[i - byteshift] >> bitshift) | (i > byteshift ? ((*this)[i - byteshift - 1] << (8 - bitshift)) : 0);
+	}
+	for (size_t i = 0; i < 0 + byteshift; i++) {
+		(*this)[i] = 0;
+	}
+}
+
 char *ByteVector::toStr(bv_str_format format) {
 	char *str = NULL;
 	const char *hex = "0123456789abcdef";
