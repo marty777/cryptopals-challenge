@@ -21,6 +21,13 @@ public:
 	byte operator[] (size_t n) const;
 	byte& operator [] (size_t n);
 
+	ByteVector operator >> (size_t n);
+	ByteVector operator << (size_t n);
+	ByteVector operator & (ByteVector b);
+	ByteVector operator | (ByteVector b);
+	ByteVector operator ^ (ByteVector b);
+	ByteVector operator ~ ();
+	
 	size_t length();
 	byte atIndex(size_t index);
 	byte setAtIndex(byte value, size_t index);
@@ -28,9 +35,13 @@ public:
 	bool equalAtIndex(ByteVector *bv, size_t start_index, size_t length, size_t input_start_index);
 	size_t hammingDistance(ByteVector *bv, bool subset = false, size_t start_a = 0, size_t end_a = 0, size_t start_b = 0, size_t end_b = 0);
 
+	ByteVector xorRepeat(ByteVector *bv);
 	ByteVector xor(ByteVector *bv);
+	void xorSelf (ByteVector *bv);
 	void xorWithStream(ByteVector *bv);
 	void xorByIndex(ByteVector *bv, size_t start_index, size_t length, size_t input_start_index);
+	ByteVector and(ByteVector *bv);
+	void andSelf(ByteVector *bv);
 
 	char *toStr(bv_str_format format);
 	void printHexStrByBlocks(size_t blocksize);

@@ -29,7 +29,7 @@ void Set1Challenge2() {
 	ByteVector bv4 = ByteVector(expectedOutput, HEX);
 	ByteVector bv = ByteVector(input1, HEX);
 	ByteVector bv2 = ByteVector(input2, HEX);
-	ByteVector bv3 = bv.xor(&bv2);
+	ByteVector bv3 = bv.xorRepeat(&bv2);
 	cout << "Output:\t\t" << bv3.toStr(HEX) << endl;
 	cout << (bv3.equal(&bv4) ? "Output matches expected result\n" : "Output does not match expected") << endl;
 }
@@ -42,7 +42,7 @@ void Set1Challenge3() {
 	float bestScore = 10000000.0;
 	for (byte i = 0; i < 127; i++) {
 		key.setAtIndex(i, 0);
-		ByteVector result = bv.xor(&key);
+		ByteVector result = bv.xorRepeat(&key);
 		string resultText(reinterpret_cast<char*>(result.toStr(ASCII)));
 		float score = PlaintextEvaluator::score(resultText);
 		if (score < bestScore) {
@@ -51,7 +51,7 @@ void Set1Challenge3() {
 		}
 	}
 	key.setAtIndex(bestKey, 0);
-	ByteVector result = bv.xor(&key);
+	ByteVector result = bv.xorRepeat(&key);
 	cout << "Best result:\t" << std::hex << (int)bestKey << " - " << bestScore << endl;
 	cout << "Plaintext:\t" << result.toStr(ASCII) << endl;
 	
@@ -74,7 +74,7 @@ void Set1Challenge4() {
 		ByteVector key_bv = ByteVector("00", HEX);
 		for (byte i = 0; i < 255; i++) {
 			key_bv.setAtIndex(i, 0);
-			ByteVector result = line_bv. xor (&key_bv);
+			ByteVector result = line_bv. xorRepeat (&key_bv);
 			string resultText(reinterpret_cast<char*>(result.toStr(ASCII)));
 			float score = PlaintextEvaluator::score(resultText);
 			if (score < threshold) {
@@ -93,7 +93,7 @@ void Set1Challenge5() {
 	ByteVector input_bv = ByteVector(input, ASCII);
 	ByteVector key_bv = ByteVector(key, ASCII);
 	ByteVector expected_bv = ByteVector(expectedResult, HEX);
-	ByteVector result = input_bv.xor(&key_bv);
+	ByteVector result = input_bv.xorRepeat(&key_bv);
 	cout << "Input:\t" << input_bv.toStr(ASCII) << endl;
 	cout << "Key:\t" << key_bv.toStr(ASCII) << endl;
 	cout << "Output:\t" << result.toStr(HEX) << endl;
@@ -188,7 +188,7 @@ void Set1Challenge6() {
 			float histogram[255];
 			for (byte b = 0; b < 255; b++) {
 				key_bv.setAtIndex(b, 0);
-				ByteVector result = transpose_blocks[j]. xor (&key_bv);
+				ByteVector result = transpose_blocks[j].xorRepeat(&key_bv);
 				string resultText(reinterpret_cast<char*>(result.toStr(ASCII)));
 				histogram[b] = PlaintextEvaluator::score(resultText);
 			}
@@ -204,7 +204,7 @@ void Set1Challenge6() {
 			potential_key.setAtIndex(best_byte, j);
 		}
 		// attempt decryption with potential key
-		ByteVector decryption = bv. xor (&potential_key);
+		ByteVector decryption = bv.xorRepeat(&potential_key);
 		// test character frequency
 		string resultText(reinterpret_cast<char*>(decryption.toStr(ASCII)));
 		float score = PlaintextEvaluator::score(resultText);
@@ -217,7 +217,7 @@ void Set1Challenge6() {
 	
 	cout << "Best key length:\t" << best_keysize << endl;
 	cout << "Best key:\t" << best_key.toStr(HEX) << endl << "\t\t" << best_key.toStr(ASCII) << endl ;
-	ByteVector decryption = bv. xor (&best_key);
+	ByteVector decryption = bv.xorRepeat(&best_key);
 	cout << "Decryption: " << endl << decryption.toStr(ASCII) << endl;
 }
 

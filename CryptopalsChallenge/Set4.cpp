@@ -523,6 +523,7 @@ int Set4() {
 	Set4Challenge25();
 	// Pause before continuing
 	cout << "Press enter to continue..." << endl;
+	getchar();
 	cout << "Set 4 Challenge 26" << endl;
 	Set4Challenge26();
 	// Pause before continuing

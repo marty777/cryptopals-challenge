@@ -197,6 +197,71 @@ ByteVector::~ByteVector() {
 byte ByteVector::operator[] (size_t n) const { return _v[n]; };
 byte& ByteVector::operator [] (size_t n) { return _v[n]; }
 
+ByteVector ByteVector::operator >> (size_t n) {
+	int bitshift = n % 8;
+	size_t byteshift = n / 8;
+	ByteVector ret = ByteVector(this->length() + byteshift + (n>0 ? 1 : 0));
+	ret.allBytes(0);
+	for (size_t i = 0 + byteshift; i < ret.length(); i++) {
+		ret[i] = ((*this)[i - byteshift] >> bitshift) | (i > byteshift ? ((*this)[i - byteshift - 1] << (8 - bitshift)) : 0);
+	}
+	return ret;
+}
+
+ByteVector ByteVector::operator << (size_t n) {
+	int bitshift = n % 8;
+	size_t byteshift = n / 8;
+	ByteVector ret = ByteVector(this->length() - byteshift + 1);
+	ret.allBytes(0);
+	for (long long i = ret.length() - 1 - byteshift; i >= 0; i--) {
+		ret[i] = ((*this)[i + byteshift] << bitshift) | ((i + byteshift < this->length() - 1) ? ((*this)[i + byteshift + 1] >> (8 - bitshift)) : 0);
+	}
+	return ret;
+}
+ByteVector ByteVector::operator & (ByteVector b) {
+	size_t len = this->length();
+	if (b.length() > len) {
+		len = b.length();
+	}
+	ByteVector c = ByteVector(len);
+	c.allBytes(0);
+	for (size_t i = 0; i < len; i++) {
+		c[i] = (i < this->length() ? (*this)[i] : 0) & (i < b.length() ? b[i] : 0);
+	}
+	return c;
+}
+ByteVector ByteVector::operator | (ByteVector b) {
+	size_t len = this->length();
+	if (b.length() > len) {
+		len = b.length();
+	}
+	ByteVector c = ByteVector(len);
+	c.allBytes(0);
+	for (size_t i = 0; i < len; i++) {
+		c[i] = (i < this->length() ? (*this)[i] : 0) | (i < b.length() ? b[i] : 0);
+	}
+	return c;
+}
+ByteVector ByteVector::operator ^ (ByteVector b) {
+	size_t len = this->length();
+	if (b.length() > len) {
+		len = b.length();
+	}
+	ByteVector c = ByteVector(len);
+	c.allBytes(0);
+	for (size_t i = 0; i < len; i++) {
+		c[i] = (i < this->length() ? (*this)[i] : 0) ^ (i < b.length() ? b[i] : 0);
+	}
+	return c;
+}
+ByteVector ByteVector::operator ~ () {
+	ByteVector ret = ByteVector(this->length());
+	for (size_t i = 0; i < this->length(); i++) {
+		ret[i] = ~(*this)[i];
+	}
+	return ret;
+}
+
 size_t ByteVector::length() {
 	return _v.size();
 }
@@ -292,8 +357,8 @@ size_t ByteVector::hammingDistance(ByteVector *bv, bool subset, size_t start_a, 
 	return dist;
 }
 
-// XOR input vector of arbitrary length with this one and return result
-ByteVector ByteVector:: xor (ByteVector *bv) {
+// XOR input vector of arbitrary length with this one, repeating if necessary, and return result
+ByteVector ByteVector:: xorRepeat (ByteVector *bv) {
 	ByteVector bv2 = new ByteVector(_v.size());
 	size_t j = 0;
 	for (size_t i = 0; i < _v.size(); i++) {
@@ -304,6 +369,36 @@ ByteVector ByteVector:: xor (ByteVector *bv) {
 		j++;
 	}
 	return bv2;
+}
+
+// XOR input vector of arbitrary length with this one and return result
+ByteVector ByteVector::xor(ByteVector *bv) {
+	size_t len = this->length();
+	if (bv->length() > len) {
+		len = bv->length();
+	}
+	ByteVector bv2 = new ByteVector(len);
+	for (size_t i = 0; i < len; i++) {
+		bv2[i] = (i < bv->length() ? (*bv)[i] : 0x0) ^ (i < this->length() ? (*this)[i] : 0x0);
+	}
+	return bv2;
+}
+
+
+void ByteVector:: xorSelf (ByteVector *bv) {
+	if (bv->length() > (this->length())) {
+		this->resize(bv->length());
+	}
+	for (size_t i = 0; i < this->length(); i++) {
+		byte b;
+		if (i > bv->length() - 1) {
+			b = 0;
+		}
+		else {
+			b = (*bv)[i];
+		}
+		(*this)[i] ^= b;
+	}
 }
 
 // xor this vector with input vector starting at index 0, stopping when either vector runs out of bytes
@@ -324,6 +419,37 @@ void ByteVector:: xorByIndex(ByteVector *bv, size_t start_index, size_t length, 
 		_v[start_index + i] = _v[start_index + i] ^ bv->atIndex(input_start_index + i);
 	}
 }
+
+// XOR input vector of arbitrary length with this one and return result
+ByteVector ByteVector:: and (ByteVector *bv) {
+	size_t len = this->length();
+	if (bv->length() > len) {
+		len = bv->length();
+	}
+
+	ByteVector bv2 = new ByteVector(len);
+	for (size_t i = 0; i < len; i++) {
+		bv2[i] = (i < bv->length() ? (*bv)[i] : 0x0) & (i < this->length() ? (*this)[i] : 0x0);
+	}
+	return bv2;
+}
+
+void ByteVector::andSelf(ByteVector *bv) {
+	if (bv->length() >(this->length())) {
+		this->resize(bv->length());
+	}
+	for (size_t i = 0; i < this->length(); i++) {
+		byte b;
+		if (i > bv->length() - 1) {
+			b = 0;
+		}
+		else {
+			b = (*bv)[i];
+		}
+		(*this)[i] &= b;
+	}
+}
+
 char *ByteVector::toStr(bv_str_format format) {
 	char *str = NULL;
 	const char *hex = "0123456789abcdef";
