@@ -1,24 +1,23 @@
 #include "Set5.h"
 #include "ByteVector.h"
+#include "ByteVectorMath.h"
 #include <iostream>
 
 using namespace std;
 
 void Set5Challenge33() {
-	ByteVector a = ByteVector("00111100", BINARY);
-	ByteVector b = ByteVector("00001101", BINARY);
-	cout << "A:\t" << a.toStr(BINARY) << endl;
-	cout << "B:\t" << b.toStr(BINARY) << endl;
-	
-	ByteVector c = a & b;
-	cout << "A&B:\t" << c.toStr(BINARY) << endl;
-	ByteVector d = a | b;
-	cout << "A|B:\t" << d.toStr(BINARY) << endl;
-	ByteVector e = a ^ b;
-	cout << "A^B:\t" << e.toStr(BINARY) << endl;
-
-	ByteVector f = ~a;
-	cout << "~A:\t" << f.toStr(BINARY) << endl;
+	ByteVectorMath m1 = ByteVectorMath(4095);
+	cout << m1.toStr(BINARY) << " " << m1.uint64val() << endl;
+	for (size_t i = 100; i < 4095; i++) {
+		ByteVectorMath m2 = ByteVectorMath(i);
+		m1.subtractSelf(m2);
+		if (m1.uint64val() != 4095 - i) {
+			cout << "No match " << m1.uint64val() << " " << (4095 - i) << endl;
+			break;
+		}
+		m1.addSelf(m2);
+	}
+	cout << "Complete" << endl;
 }
 
 int Set5() {

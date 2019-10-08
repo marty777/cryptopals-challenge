@@ -450,6 +450,26 @@ void ByteVector::andSelf(ByteVector *bv) {
 	}
 }
 
+// shift bytes left on vector until first byte is non-zero. May result in zero-length vector.
+void ByteVector::truncateLeft() {
+	long long index = 0;
+	while ((*this)[index] == 0 && index < this->length()) {
+		index++;
+	}
+	for (size_t i = 0; i < this->length() - index; i++) {
+		(*this)[i] = (*this)[i + index];
+	}
+	this->resize(this->length() - index);
+}
+// remove bytes on right until last byte is non-zero. May result in zero-length vector.
+void ByteVector::truncateRight() {
+	long long index = this->length() - 1;
+	while ((*this)[index] == 0 && index >= 0) {
+		index--;
+	}
+	this->resize(index + 1);
+}
+
 char *ByteVector::toStr(bv_str_format format) {
 	char *str = NULL;
 	const char *hex = "0123456789abcdef";

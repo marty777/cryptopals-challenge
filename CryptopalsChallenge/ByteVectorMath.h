@@ -45,11 +45,13 @@ public:
 	~ByteVectorMath();
 
 	// updates calling instance with result
-	void add(ByteVectorMath a, ByteVectorMath b);
-	void subtract(ByteVectorMath a, ByteVectorMath b);
-
+	void addSelf(ByteVectorMath b);
+	void subtractSelf(ByteVectorMath b);
+	void multiplySelf(ByteVectorMath b);
+	
 	byte byteReverse(byte b);
 
+	size_t uint64val();
 	
 };
 

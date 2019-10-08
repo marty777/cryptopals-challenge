@@ -25,16 +25,56 @@ ByteVectorMath::~ByteVectorMath()
 {
 }
 
+// slow, possibly leaky
+void ByteVectorMath::addSelf(ByteVectorMath b) {
+	ByteVector carry = (*this) & b;
+	ByteVector result = (*this) ^ b;
+	carry.truncateRight();
+	size_t carry_rshift = 0;
+	while (carry.length() > 0) {	
+		ByteVector shiftedCarry = carry >> 1;
+		carry = result & shiftedCarry;
+		result.xorSelf(&shiftedCarry);
+		carry.truncateRight();
+	}
+	this->resize(result.length());
+	result.copyBytesByIndex(this, 0, result.length(), 0);
+}
 
-void ByteVectorMath::add(ByteVectorMath a, ByteVectorMath b) {
+// Not sure this handles a negative result well
+void ByteVectorMath::subtractSelf(ByteVectorMath b) {
+	ByteVector carry = ~(*this) & b;
+	ByteVector result = (*this) ^ b;
+	carry.truncateRight();
+	size_t carry_rshift = 0;
+	while (carry.length() > 0) {
+		ByteVector shiftedCarry = carry >> 1;
+		carry = result & shiftedCarry;
+		result.xorSelf(&shiftedCarry);
+		carry.truncateRight();
+	}
+	this->resize(result.length());
+	result.copyBytesByIndex(this, 0, result.length(), 0);
+}
 
-	byte carry = 0;
-
-	/*while (b != 0) {
-
-	}*/
+void ByteVectorMath::multiplySelf(ByteVectorMath b) {
+	
 }
 
 byte ByteVectorMath::byteReverse(byte b) {
 	return bitwiseReverse[b];
+}
+
+size_t ByteVectorMath::uint64val() {
+	// only work with first 64 bits
+	size_t result = bitwiseReverse[(*this)[7]] << 56 |
+					bitwiseReverse[(*this)[6]] << 48 |
+					bitwiseReverse[(*this)[5]] << 40 |
+					bitwiseReverse[(*this)[4]] << 32 |
+					bitwiseReverse[(*this)[3]] << 24 |
+					bitwiseReverse[(*this)[2]] << 16 |
+					bitwiseReverse[(*this)[1]] << 8 |
+					bitwiseReverse[(*this)[0]];
+	return result;
+	
 }

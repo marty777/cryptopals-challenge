@@ -42,6 +42,8 @@ public:
 	void xorByIndex(ByteVector *bv, size_t start_index, size_t length, size_t input_start_index);
 	ByteVector and(ByteVector *bv);
 	void andSelf(ByteVector *bv);
+	void truncateLeft();
+	void truncateRight();
 
 	char *toStr(bv_str_format format);
 	void printHexStrByBlocks(size_t blocksize);
