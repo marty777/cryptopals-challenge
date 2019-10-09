@@ -1,5 +1,5 @@
 #include "ByteVectorMath.h"
-
+#include <iostream>
 
 
 ByteVectorMath::ByteVectorMath()
@@ -13,11 +13,16 @@ ByteVectorMath::ByteVectorMath(uint32_t a) {
 	(*this)[2] = bitwiseReverse[0xff & (a >> 16)];
 	(*this)[3] = bitwiseReverse[0xff & (a >> 24)];
 }
-ByteVectorMath::ByteVectorMath(ByteVector a) {
+ByteVectorMath::ByteVectorMath(ByteVector a, bool flip) {
 	// least significant bits first
 	this->resize(a.length());
 	for (size_t i = 0; i < a.length(); i++) {
-		(*this)[i] = bitwiseReverse[a[a.length() - 1 - i]];
+		if (flip) {
+			(*this)[i] = bitwiseReverse[a[a.length() - 1 - i]];
+		}
+		else {
+			(*this)[i] = a[i];
+		}
 	}
 }
 
@@ -59,15 +64,23 @@ void ByteVectorMath::subtractSelf(ByteVectorMath b) {
 
 void ByteVectorMath::multiplySelf(ByteVectorMath b) {
 	// Russian peasant
-	ByteVectorMath a = ByteVectorMath(this);
+	ByteVectorMath a = ByteVectorMath(this, false);
 	ByteVectorMath result = ByteVectorMath(0);
 	while (b.length() > 0) {
+		std::cout << "Start round:" << std::endl;
+		std::cout << "A: " << a.toStr(BINARY) << std::endl;
+		std::cout << "B: " << b.toStr(BINARY) << std::endl;
 		if (b[0] >> 7 != 0) {
+			std::cout << "Add A" << std::endl;
 			result.addSelf(a);
+			std::cout << "Result: " << result.toStr(BINARY) << std::endl;
 		}
-		
+		a.rightShiftSelf(1);
+		b.leftShiftSelf(1);
+		b.truncateRight();
 	}
-
+	this->resize(result.length());
+	result.copyBytesByIndex(this, 0, result.length(), 0);
 }
 
 byte ByteVectorMath::byteReverse(byte b) {

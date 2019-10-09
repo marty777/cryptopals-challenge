@@ -41,7 +41,7 @@ public:
 
 	ByteVectorMath();
 	ByteVectorMath(uint32_t a);
-	ByteVectorMath(ByteVector a);
+	ByteVectorMath(ByteVector a, bool flip=true);
 	~ByteVectorMath();
 
 	// updates calling instance with result

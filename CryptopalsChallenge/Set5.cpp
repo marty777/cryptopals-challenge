@@ -7,25 +7,12 @@ using namespace std;
 
 void Set5Challenge33() {
 	ByteVectorMath m1 = ByteVectorMath(4095);
-	m1.printHexStrByBlocks(16);
-	//ByteVectorMath m2 = ByteVectorMath(ByteVector("10", HEX));
-	cout << m1.toStr(BINARY) << " " << m1.uint64val() << endl;
-	m1.rightShiftSelf(3);
+	m1.printHexStrByBlocks(4);
+	ByteVectorMath m2 = ByteVectorMath(1000);
 	cout << m1.toStr(HEX) << " " << m1.uint64val() << endl;
-	m1.rightShiftSelf(9);
+	cout << m2.toStr(HEX) << " " << m2.uint64val() << endl;
+	m1.multiplySelf(m2);
 	cout << m1.toStr(HEX) << " " << m1.uint64val() << endl;
-	m1.printHexStrByBlocks(16);
-	m1.leftShiftSelf(1);
-	m1.printHexStrByBlocks(16);
-	m1.leftShiftSelf(11);
-	m1.printHexStrByBlocks(16);
-	//m1.leftShiftSelf(5);
-	//cout << m1.toStr(BINARY) << " " << m1.uint64val() << endl;
-	//m1.rightShiftSelf(5);
-	//cout << m1.toStr(BINARY) << " " << m1.uint64val() << endl;
-	//m1.rightShiftSelf(9);
-	//cout << m1.toStr(BINARY) << " " << m1.uint64val() << endl;
-
 	
 	cout << "Complete" << endl;
 }

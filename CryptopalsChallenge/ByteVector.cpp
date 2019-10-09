@@ -202,8 +202,11 @@ ByteVector ByteVector::operator >> (size_t n) {
 	size_t byteshift = n / 8;
 	ByteVector ret = ByteVector(this->length() + byteshift + (n>0 ? 1 : 0));
 	ret.allBytes(0);
-	for (size_t i = 0 + byteshift; i < ret.length(); i++) {
-		ret[i] = ((*this)[i - byteshift] >> bitshift) | (i > byteshift ? ((*this)[i - byteshift - 1] << (8 - bitshift)) : 0);
+	for (size_t i = 0; i < this->length(); i++) {
+		ret[i + byteshift] = 0xff & ((*this)[i] >> bitshift);
+		if (i > 0) {
+			ret[i + byteshift] |= 0xff & ((*this)[i - 1] << (8 - bitshift));
+		}
 	}
 	return ret;
 }
@@ -213,8 +216,16 @@ ByteVector ByteVector::operator << (size_t n) {
 	size_t byteshift = n / 8;
 	ByteVector ret = ByteVector(this->length() - byteshift + 1);
 	ret.allBytes(0);
-	for (long long i = ret.length() - 1 - byteshift; i >= 0; i--) {
-		ret[i] = ((*this)[i + byteshift] << bitshift) | ((i + byteshift < this->length() - 1) ? ((*this)[i + byteshift + 1] >> (8 - bitshift)) : 0);
+	for (size_t i = 0; i < ret.length(); i++) {
+		if (i + byteshift < this->length()) {
+			ret[i] = 0xff & (*this)[i + byteshift] << bitshift;
+		}
+		else {
+			ret[i] = 0;
+		}
+		if (i + byteshift + 1 < this->length()) {
+			ret[i] |= 0xff & ((*this)[i + byteshift + 1] >> (8 - bitshift));
+		}
 	}
 	return ret;
 }
@@ -475,8 +486,16 @@ void ByteVector::leftShiftSelf(size_t shift) {
 	size_t byteshift = shift / 8;
 	size_t final_len = this->length() - byteshift + 1;
 	ByteVector temp = ByteVector(this);
-	for (long long i = final_len - 1; i >= 0; i--) {
-		(*this)[i] = (temp[i + byteshift] << bitshift) | ((i + byteshift < this->length() - 1) ? (temp[i + byteshift + 1] >> (8 - bitshift)) : 0);
+	for (size_t i = 0; i < final_len; i++) {
+		if (i + byteshift < temp.length()) {
+			(*this)[i] = 0xff & temp[i + byteshift] << bitshift;
+		}
+		else {
+			(*this)[i] = 0;
+		}
+		if (i + byteshift + 1 < temp.length()) {
+			(*this)[i] |= 0xff & (temp[i + byteshift + 1] >> (8 - bitshift));
+		}
 	}
 	this->resize(final_len);
 }
@@ -487,12 +506,11 @@ void ByteVector::rightShiftSelf(size_t shift) {
 	size_t initial_len = this->length();
 	ByteVector temp = ByteVector(this);
 	this->resize(initial_len + byteshift + (shift > 0 ? 1 : 0));
-
-	byte lastByte = 0;
-	byte currByte = 0;
-	for (size_t i = 0 + byteshift; i < this->length(); i++) {
-		currByte = (*this)[i - byteshift];
-		(*this)[i] = (temp[i - byteshift] >> bitshift) | (i > byteshift ? (temp[i - byteshift - 1] << (8 - bitshift)) : 0);
+	for (size_t i = 0; i < initial_len; i++) {
+		(*this)[i + byteshift] = 0xff & (temp[i] >> bitshift);
+		if (i > 0) {
+			(*this)[i + byteshift] |= 0xff & (temp[i - 1] << (8 - bitshift));
+		}
 	}
 	for (size_t i = 0; i < 0 + byteshift; i++) {
 		(*this)[i] = 0;
