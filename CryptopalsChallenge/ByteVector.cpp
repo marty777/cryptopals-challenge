@@ -200,9 +200,10 @@ byte& ByteVector::operator [] (size_t n) { return _v[n]; }
 ByteVector ByteVector::operator >> (size_t n) {
 	int bitshift = n % 8;
 	size_t byteshift = n / 8;
-	ByteVector ret = ByteVector(this->length() + byteshift + (n>0 ? 1 : 0));
+	size_t final_len = this->length() + byteshift + (n > 0 ? 1 : 0);
+	ByteVector ret = ByteVector(final_len);
 	ret.allBytes(0);
-	for (size_t i = 0; i < this->length(); i++) {
+	for (size_t i = 0; i < final_len - byteshift; i++) {
 		ret[i + byteshift] = 0xff & ((*this)[i] >> bitshift);
 		if (i > 0) {
 			ret[i + byteshift] |= 0xff & ((*this)[i - 1] << (8 - bitshift));
@@ -214,9 +215,12 @@ ByteVector ByteVector::operator >> (size_t n) {
 ByteVector ByteVector::operator << (size_t n) {
 	int bitshift = n % 8;
 	size_t byteshift = n / 8;
-	ByteVector ret = ByteVector(this->length() - byteshift + 1);
+	size_t final_len = this->length() - byteshift + 1;
+	printf("<< %d %d %d\n", bitshift, byteshift, final_len);
+
+	ByteVector ret = ByteVector(final_len);
 	ret.allBytes(0);
-	for (size_t i = 0; i < ret.length(); i++) {
+	for (size_t i = 0; i < final_len; i++) {
 		if (i + byteshift < this->length()) {
 			ret[i] = 0xff & (*this)[i + byteshift] << bitshift;
 		}
@@ -228,6 +232,24 @@ ByteVector ByteVector::operator << (size_t n) {
 		}
 	}
 	return ret;
+
+	/*int bitshift = shift % 8;
+	size_t byteshift = shift / 8;
+	size_t final_len = this->length() - byteshift + 1;
+	ByteVector temp = ByteVector(this);
+	for (size_t i = 0; i < final_len; i++) {
+		if (i + byteshift < temp.length()) {
+			(*this)[i] = 0xff & temp[i + byteshift] << bitshift;
+		}
+		else {
+			(*this)[i] = 0;
+		}
+		if (i + byteshift + 1 < temp.length()) {
+			(*this)[i] |= 0xff & (temp[i + byteshift + 1] >> (8 - bitshift));
+		}
+	}
+	this->resize(final_len);*/
+
 }
 ByteVector ByteVector::operator & (ByteVector b) {
 	size_t len = this->length();
@@ -484,7 +506,7 @@ void ByteVector::truncateRight() {
 void ByteVector::leftShiftSelf(size_t shift) {
 	int bitshift = shift % 8;
 	size_t byteshift = shift / 8;
-	size_t final_len = this->length() - byteshift + 1;
+	size_t final_len = this->length() - byteshift;
 	ByteVector temp = ByteVector(this);
 	for (size_t i = 0; i < final_len; i++) {
 		if (i + byteshift < temp.length()) {
@@ -504,13 +526,22 @@ void ByteVector::rightShiftSelf(size_t shift) {
 	int bitshift = shift % 8;
 	size_t byteshift = shift / 8;
 	size_t initial_len = this->length();
-	ByteVector temp = ByteVector(this);
-	this->resize(initial_len + byteshift + (shift > 0 ? 1 : 0));
-	for (size_t i = 0; i < initial_len; i++) {
-		(*this)[i + byteshift] = 0xff & (temp[i] >> bitshift);
-		if (i > 0) {
+	size_t final_len = this->length() + byteshift + (shift > 0 ? 1 : 0);
+	ByteVector temp = ByteVector(this->length());
+	this->copyBytesByIndex(&temp, 0, this->length(), 0);
+	this->resize(final_len);
+	for (size_t i = 0; i < final_len - byteshift; i++) {
+		if (i >= initial_len) {
+			(*this)[i + byteshift] = 0;
+		}
+		else {
+			(*this)[i + byteshift] = 0xff & (temp[i] >> bitshift);
+		}
+
+		if (i > 0 && i-1 < initial_len) {
 			(*this)[i + byteshift] |= 0xff & (temp[i - 1] << (8 - bitshift));
 		}
+		
 	}
 	for (size_t i = 0; i < 0 + byteshift; i++) {
 		(*this)[i] = 0;
@@ -751,7 +782,13 @@ void ByteVector::reserve(size_t len) {
 }
 
 void ByteVector::resize(size_t len) {
+	size_t initial_len = this->length();
 	_v.resize(len);
+	if (len > initial_len) {
+		for (size_t i = initial_len; i < len; i++) {
+			_v[i] = 0;
+		}
+	}
 }
 
 // exposing this kind of negates having the vector as a private member, but I'm building this as I go.

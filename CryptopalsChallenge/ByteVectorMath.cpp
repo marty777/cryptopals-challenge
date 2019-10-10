@@ -38,10 +38,12 @@ void ByteVectorMath::addSelf(ByteVectorMath b) {
 	size_t carry_rshift = 0;
 	while (carry.length() > 0) {	
 		ByteVector shiftedCarry = carry >> 1;
+		
 		carry = result & shiftedCarry;
 		result.xorSelf(&shiftedCarry);
 		carry.truncateRight();
 	}
+	result.truncateRight();
 	this->resize(result.length());
 	result.copyBytesByIndex(this, 0, result.length(), 0);
 }
@@ -67,16 +69,12 @@ void ByteVectorMath::multiplySelf(ByteVectorMath b) {
 	ByteVectorMath a = ByteVectorMath(this, false);
 	ByteVectorMath result = ByteVectorMath(0);
 	while (b.length() > 0) {
-		std::cout << "Start round:" << std::endl;
-		std::cout << "A: " << a.toStr(BINARY) << std::endl;
-		std::cout << "B: " << b.toStr(BINARY) << std::endl;
 		if (b[0] >> 7 != 0) {
-			std::cout << "Add A" << std::endl;
 			result.addSelf(a);
-			std::cout << "Result: " << result.toStr(BINARY) << std::endl;
 		}
 		a.rightShiftSelf(1);
 		b.leftShiftSelf(1);
+		a.truncateRight();
 		b.truncateRight();
 	}
 	this->resize(result.length());
