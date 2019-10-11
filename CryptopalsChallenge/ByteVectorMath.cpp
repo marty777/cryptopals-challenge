@@ -81,6 +81,34 @@ void ByteVectorMath::multiplySelf(ByteVectorMath b) {
 	result.copyBytesByIndex(this, 0, result.length(), 0);
 }
 
+void ByteVectorMath::exponentSelf(uint32_t power) {
+	ByteVectorMath result = ByteVectorMath(1);
+	ByteVectorMath x = ByteVectorMath();
+	x.resize(this->length());
+	this->copyBytesByIndex(&x, 0, this->length(), 0);
+	ByteVectorMath y = ByteVectorMath(power);
+	while (y.length() > 0) {
+		// if y is odd
+		if (y[0] >> 7 != 0) {
+			result.multiplySelf(x);
+			result.printHexStrByBlocks(16);
+		}
+		y.leftShiftSelf(1); // y = y/2
+		x.multiplySelf(x); // x = x^2;
+		y.truncateRight();
+	}
+	this->resize(result.length());
+	result.copyBytesByIndex(this, 0, result.length(), 0);
+}
+
+void  ByteVectorMath::modSelf(uint32_t mod) {
+
+}
+
+void ByteVectorMath::modExpSelf(uint32_t exp, uint32_t mod) {
+
+}
+
 byte ByteVectorMath::byteReverse(byte b) {
 	return bitwiseReverse[b];
 }

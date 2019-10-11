@@ -48,6 +48,9 @@ public:
 	void addSelf(ByteVectorMath b);
 	void subtractSelf(ByteVectorMath b);
 	void multiplySelf(ByteVectorMath b);
+	void exponentSelf(uint32_t power);
+	void modSelf(uint32_t mod);
+	void modExpSelf(uint32_t exp, uint32_t mod);
 	
 	byte byteReverse(byte b);
 
