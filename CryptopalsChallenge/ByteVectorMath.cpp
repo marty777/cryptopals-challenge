@@ -26,8 +26,67 @@ ByteVectorMath::ByteVectorMath(ByteVector a, bool flip) {
 	}
 }
 
-ByteVectorMath::~ByteVectorMath()
-{
+ByteVectorMath::~ByteVectorMath(){
+}
+
+bool ByteVectorMath::operator == (ByteVectorMath b) {
+	ByteVector c = (*this) ^ b;
+	c.truncateRight();
+	return (c.length() == 0);
+}
+bool ByteVectorMath::operator < (ByteVectorMath b) {
+	ByteVectorMath a;
+	a.resize(this->length());
+	this->copyBytesByIndex(&a, 0, this->length(), 0);
+	a.truncateRight();
+	b.truncateRight();
+	if (a.length() < b.length()) {
+		return true;
+	}
+	else if (a.length() > b.length()) {
+		return false;
+	}
+	else {
+		long long index = (a.length() - 1);
+		while (index >= 0) {
+			if (bitwiseReverse[a[index]] > bitwiseReverse[b[index]]) {
+				return false;
+			}
+			else if (bitwiseReverse[a[index]] < bitwiseReverse[b[index]]) {
+				return true;
+			}
+			// else continue;
+			index--;
+		}
+		return false; // equal
+	}
+}
+bool ByteVectorMath::operator > (ByteVectorMath b) {
+	ByteVectorMath a;
+	a.resize(this->length());
+	this->copyBytesByIndex(&a, 0, this->length(), 0);
+	a.truncateRight();
+	b.truncateRight();
+	if (a.length() < b.length()) {
+		return false;
+	}
+	else if (a.length() > b.length()) {
+		return true;
+	}
+	else {
+		long long index = (a.length() - 1);
+		while (index >= 0) {
+			if (bitwiseReverse[a[index]] > bitwiseReverse[b[index]]) {
+				return true;
+			}
+			else if (bitwiseReverse[a[index]] < bitwiseReverse[b[index]]) {
+				return false;
+			}
+			// else continue;
+			index--;
+		}
+		return false; // equal
+	}
 }
 
 // slow, possibly leaky

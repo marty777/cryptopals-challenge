@@ -44,6 +44,10 @@ public:
 	ByteVectorMath(ByteVector a, bool flip=true);
 	~ByteVectorMath();
 
+	bool operator == (ByteVectorMath b);
+	bool operator < (ByteVectorMath b);
+	bool operator > (ByteVectorMath b);
+
 	// updates calling instance with result
 	void addSelf(ByteVectorMath b);
 	void subtractSelf(ByteVectorMath b);
