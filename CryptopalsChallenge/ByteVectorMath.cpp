@@ -303,12 +303,39 @@ void ByteVectorMath::exponentSelf(uint32_t power) {
 	result.copyBytesByIndex(this, 0, result.length(), 0);
 }
 
-void  ByteVectorMath::modSelf(uint32_t mod) {
+void ByteVectorMath::modSelf(uint32_t mod) {
+	ByteVectorMath dividend = ByteVectorMath(this, false);
+	ByteVectorMath divisor = ByteVectorMath(mod);
+	ByteVectorMath remainder = ByteVectorMath();
+	dividend.divideSelf(divisor, &remainder);
+	(*this) = remainder;
+}
 
+void ByteVectorMath::modSelf(ByteVectorMath mod) {
+	ByteVectorMath dividend = ByteVectorMath(this, false);
+	ByteVectorMath divisor = ByteVectorMath(mod, false);
+	ByteVectorMath remainder = ByteVectorMath();
+	dividend.divideSelf(divisor, &remainder);
+	(*this) = remainder;
 }
 
 void ByteVectorMath::modExpSelf(uint32_t exp, uint32_t mod) {
-
+	// this = (this ^ exp) % mod
+	ByteVectorMath temp = ByteVectorMath(this, false);
+	ByteVectorMath exp1 = ByteVectorMath(exp);
+	ByteVectorMath mod1 = ByteVectorMath(mod);
+	ByteVectorMath s = ByteVectorMath(1);
+	while (exp1.length() != 0) {
+		if (exp1.bitAtIndex(0) == 1) {
+			s.multiplySelf(temp);
+			s.modSelf(mod1);
+		}
+		exp1.leftShiftSelf(1);
+		exp1.truncateRight();
+		temp.multiplySelf(temp);
+		temp.modSelf(mod1);
+	}
+	(*this) = s;
 }
 
 byte ByteVectorMath::byteReverse(byte b) {

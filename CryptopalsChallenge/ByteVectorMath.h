@@ -62,6 +62,7 @@ public:
 	void divideSelf(ByteVectorMath b, ByteVectorMath *remainder);
 	void exponentSelf(uint32_t power);
 	void modSelf(uint32_t mod);
+	void modSelf(ByteVectorMath mod);
 	void modExpSelf(uint32_t exp, uint32_t mod);
 	
 	byte byteReverse(byte b);

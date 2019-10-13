@@ -19,7 +19,14 @@ void Set5Challenge33() {
 		cout << i << "\t" << a.uint64val() << "\t" << r.uint64val() << "\t" << dividend / i << "\t" << dividend % i << endl;
 	}
 	
+	ByteVectorMath m96 = ByteVectorMath(96);
+	m96.modExpSelf(25, 17);
 	cout << "Complete" << endl;
+
+	ByteVectorMath m15 = ByteVectorMath(96);
+	cout << "m15: " << m15.uint64val() << endl;
+	m15.multiplySelf(m15);
+	cout << "m15: " << m15.uint64val() << endl;
 }
 
 int Set5() {
