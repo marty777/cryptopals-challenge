@@ -48,6 +48,7 @@ public:
 	bool bitAtIndex(size_t index);
 	void setBitAtIndex(bool value, size_t index);
 
+	void operator = (ByteVectorMath b);
 	bool operator == (ByteVectorMath b);
 	bool operator < (ByteVectorMath b);
 	bool operator > (ByteVectorMath b);

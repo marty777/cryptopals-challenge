@@ -536,6 +536,12 @@ void ByteVector::rightShiftSelf(size_t shift) {
 	}
 }
 
+void ByteVector::notSelf() {
+	for (size_t i = 0; i < this->length(); i++) {
+		(*this)[i] = ~(*this)[i];
+	}
+}
+
 char *ByteVector::toStr(bv_str_format format) {
 	char *str = NULL;
 	const char *hex = "0123456789abcdef";

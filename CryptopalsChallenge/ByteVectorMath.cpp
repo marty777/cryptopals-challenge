@@ -56,6 +56,11 @@ void ByteVectorMath::setBitAtIndex(bool value, size_t index) {
 	}
 }
 
+
+void ByteVectorMath::operator = (ByteVectorMath b) {
+	this->resize(b.length());
+	b.copyBytesByIndex(this, 0, b.length(), 0);
+}
 bool ByteVectorMath::operator == (ByteVectorMath b) {
 	ByteVector c = (*this) ^ b;
 	c.truncateRight();
@@ -173,18 +178,21 @@ void ByteVectorMath::addSelf(ByteVectorMath b) {
 
 // Not sure this handles a negative result well
 void ByteVectorMath::subtractSelf(ByteVectorMath b) {
-	ByteVector carry = ~(*this) & b;
-	ByteVector result = (*this) ^ b;
-	carry.truncateRight();
-	size_t carry_rshift = 0;
-	while (carry.length() > 0) {
-		ByteVector shiftedCarry = carry >> 1;
-		carry = result & shiftedCarry;
-		result.xorSelf(&shiftedCarry);
-		carry.truncateRight();
+	ByteVectorMath b1 = ByteVectorMath(b, false);
+	b1.truncateRight();
+	ByteVectorMath result = ByteVectorMath(this, false);
+	while (b1.length() > 0) {
+		// carry = ~result & b1
+		ByteVectorMath carry = ByteVectorMath(result, false);
+		carry.notSelf();
+		carry.andSelf(&b1);
+		// result = result ^ b1
+		result.xorSelf(&b1);
+		b1 = carry;
+		b1.rightShiftSelf(1);
+		b1.truncateRight();
 	}
-	this->resize(result.length());
-	result.copyBytesByIndex(this, 0, result.length(), 0);
+	*this = result;
 }
 
 void ByteVectorMath::multiplySelf(ByteVectorMath b) {
@@ -223,7 +231,6 @@ void ByteVectorMath::divideSelf(ByteVectorMath b, ByteVectorMath *remainder) {
 	}
 	ByteVectorMath one = ByteVectorMath(1);
 	if (b1 == one) {
-		std::cout << "Got here 1 " << this->toStr(BINARY) << " " << this->uint64val() << " " << b1.toStr(BINARY) << std::endl;
 		// quotient = this, remainder = 0
 		remainder->allBytes(0);
 		remainder->truncateRight();
@@ -246,7 +253,6 @@ void ByteVectorMath::divideSelf(ByteVectorMath b, ByteVectorMath *remainder) {
 		this->truncateLeft();
 		return;
 	}
-	
 	ByteVectorMath q = ByteVectorMath(1);
 	q.allBytes(0);
 	size_t hi_bit = 0;
@@ -267,19 +273,14 @@ void ByteVectorMath::divideSelf(ByteVectorMath b, ByteVectorMath *remainder) {
 			acc.addSelf(d);
 			q.setBitAtIndex(1, (hi_bit - i));
 		}
+		
 	}
-
 	q.truncateRight();
 	rem.truncateRight();
-	ByteVectorMath rem2 = ByteVectorMath(q, false);
-	rem2.multiplySelf(b);
-	ByteVectorMath rem3 = ByteVectorMath(a1, false);
-	rem3.subtractSelf(rem2);
 	this->resize(q.length());
 	q.copyBytesByIndex(this, 0, q.length(), 0);
-	remainder->resize(rem3.length());
-	rem3.copyBytesByIndex(remainder, 0, rem3.length(), 0);
-
+	remainder->resize(rem.length());
+	rem.copyBytesByIndex(remainder, 0, rem.length(), 0);
 }
 
 void ByteVectorMath::exponentSelf(uint32_t power) {
@@ -321,7 +322,7 @@ size_t ByteVectorMath::uint64val() {
 	}
 	size_t result = 0;
 	for (size_t i = 0; i < this->length() && i < 8; i++) {
-		result |= bitwiseReverse[(*this)[0]] << (i * 8);
+		result |= bitwiseReverse[(*this)[i]] << (i * 8);
 	}
 	return result;
 	
