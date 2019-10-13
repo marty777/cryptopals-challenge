@@ -1,5 +1,6 @@
 #include "ByteVectorMath.h"
 #include <iostream>
+#include <assert.h>
 
 
 ByteVectorMath::ByteVectorMath()
@@ -27,6 +28,32 @@ ByteVectorMath::ByteVectorMath(ByteVector a, bool flip) {
 }
 
 ByteVectorMath::~ByteVectorMath(){
+}
+
+size_t ByteVectorMath::bitlength() {
+	return 8 * this->length();
+}
+bool ByteVectorMath::bitAtIndex(size_t index) {
+	if (index >= this->bitlength()) {
+		return 0;
+	}
+	return (bool) (0x01 & ((*this)[index/8] >> (7 - (index % 8))));
+}
+void ByteVectorMath::setBitAtIndex(bool value, size_t index) {
+	if (index >= this->bitlength()) {
+		size_t start_len = this->length();
+		size_t new_len = (index / 8) + 1;
+		this->resize(new_len);
+		for (size_t i = start_len; i < new_len; i++) {
+			(*this)[i] = 0;
+		}
+	}
+	if (value == 1) {
+		(*this)[index / 8] |= 0x1 << (7 - (index % 8));
+	}
+	else {
+		(*this)[index / 8] &= ~(0x1 << (7 - (index % 8)));
+	}
 }
 
 bool ByteVectorMath::operator == (ByteVectorMath b) {
@@ -89,6 +116,43 @@ bool ByteVectorMath::operator > (ByteVectorMath b) {
 	}
 }
 
+ByteVectorMath ByteVectorMath::operator >> (size_t n) {
+	int bitshift = n % 8;
+	size_t byteshift = n / 8;
+	size_t final_len = this->length() + byteshift + (n > 0 ? 1 : 0);
+	ByteVectorMath ret = ByteVectorMath(final_len);
+	ret.allBytes(0);
+	for (size_t i = 0; i < final_len - byteshift; i++) {
+		ret[i + byteshift] = 0xff & ((*this)[i] >> bitshift);
+		if (i > 0) {
+			ret[i + byteshift] |= 0xff & ((*this)[i - 1] << (8 - bitshift));
+		}
+	}
+	return ret;
+}
+
+ByteVectorMath ByteVectorMath::operator << (size_t n) {
+	int bitshift = n % 8;
+	size_t byteshift = n / 8;
+	size_t final_len = this->length() - byteshift + 1;
+	printf("<< %d %d %d\n", bitshift, byteshift, final_len);
+
+	ByteVectorMath ret = ByteVectorMath(final_len);
+	ret.allBytes(0);
+	for (size_t i = 0; i < final_len; i++) {
+		if (i + byteshift < this->length()) {
+			ret[i] = 0xff & (*this)[i + byteshift] << bitshift;
+		}
+		else {
+			ret[i] = 0;
+		}
+		if (i + byteshift + 1 < this->length()) {
+			ret[i] |= 0xff & ((*this)[i + byteshift + 1] >> (8 - bitshift));
+		}
+	}
+	return ret;
+}
+
 // slow, possibly leaky
 void ByteVectorMath::addSelf(ByteVectorMath b) {
 	ByteVector carry = (*this) & b;
@@ -140,6 +204,84 @@ void ByteVectorMath::multiplySelf(ByteVectorMath b) {
 	result.copyBytesByIndex(this, 0, result.length(), 0);
 }
 
+void ByteVectorMath::divideSelf(ByteVectorMath b, ByteVectorMath *remainder) {
+	ByteVectorMath b1 = ByteVectorMath();
+	b1.resize(b.length());
+	b.copyBytesByIndex(&b1, 0, b.length(), 0);
+	ByteVectorMath a1 = ByteVectorMath();
+	a1.resize(this->length());
+	this->copyBytesByIndex(&a1, 0, this->length(), 0);
+	
+	a1.truncateRight();
+	b1.truncateRight();
+	assert(b1.length() > 0); // division by zero;
+	if (a1.length() == 0) {
+		// zero dividend
+		remainder->resize(1);
+		(*remainder)[0] = 0;
+		return;
+	}
+	ByteVectorMath one = ByteVectorMath(1);
+	if (b1 == one) {
+		std::cout << "Got here 1 " << this->toStr(BINARY) << " " << this->uint64val() << " " << b1.toStr(BINARY) << std::endl;
+		// quotient = this, remainder = 0
+		remainder->allBytes(0);
+		remainder->truncateRight();
+		return;
+	}
+	if (a1 == b1) {
+		// quotient = 1, remainder = 0
+		remainder->allBytes(0); 
+		remainder->truncateRight();
+		this->allBytes(0);
+		(*this)[0] = bitwiseReverse[0x01]; /// 1
+		this->truncateRight();
+		return;
+	}
+	if (a1 < b1) {
+		// quotient = 0, remainder = this
+		remainder->resize(this->length());
+		this->copyBytesByIndex(remainder, 0, this->length(), 0);
+		this->allBytes(0);
+		this->truncateLeft();
+		return;
+	}
+	
+	ByteVectorMath q = ByteVectorMath(1);
+	q.allBytes(0);
+	size_t hi_bit = 0;
+	for (size_t i = a1.bitlength() - 1; i > 0; i--) { // if we hit zero, that must be where the hi bit is
+		if (a1.bitAtIndex(i) == 1) {
+			hi_bit = i;
+			break;
+		}
+	}
+	ByteVectorMath acc = ByteVectorMath(0);
+	ByteVectorMath rem = ByteVectorMath(a1, false);
+	for (size_t i = 0; i <= hi_bit; i++) {
+		ByteVectorMath c = b1 >> (hi_bit - i);
+		ByteVectorMath d = ByteVectorMath(c, false);
+		c.addSelf(acc);
+		if (c < a1 || c == a1) {
+			rem.subtractSelf(d);
+			acc.addSelf(d);
+			q.setBitAtIndex(1, (hi_bit - i));
+		}
+	}
+
+	q.truncateRight();
+	rem.truncateRight();
+	ByteVectorMath rem2 = ByteVectorMath(q, false);
+	rem2.multiplySelf(b);
+	ByteVectorMath rem3 = ByteVectorMath(a1, false);
+	rem3.subtractSelf(rem2);
+	this->resize(q.length());
+	q.copyBytesByIndex(this, 0, q.length(), 0);
+	remainder->resize(rem3.length());
+	rem3.copyBytesByIndex(remainder, 0, rem3.length(), 0);
+
+}
+
 void ByteVectorMath::exponentSelf(uint32_t power) {
 	ByteVectorMath result = ByteVectorMath(1);
 	ByteVectorMath x = ByteVectorMath();
@@ -172,16 +314,15 @@ byte ByteVectorMath::byteReverse(byte b) {
 	return bitwiseReverse[b];
 }
 
+// only works with first 64 bits
 size_t ByteVectorMath::uint64val() {
-	// only work with first 64 bits
-	size_t result = bitwiseReverse[(*this)[7]] << 56 |
-					bitwiseReverse[(*this)[6]] << 48 |
-					bitwiseReverse[(*this)[5]] << 40 |
-					bitwiseReverse[(*this)[4]] << 32 |
-					bitwiseReverse[(*this)[3]] << 24 |
-					bitwiseReverse[(*this)[2]] << 16 |
-					bitwiseReverse[(*this)[1]] << 8 |
-					bitwiseReverse[(*this)[0]];
+	if (this->length() == 0) {
+		return 0;
+	}
+	size_t result = 0;
+	for (size_t i = 0; i < this->length() && i < 8; i++) {
+		result |= bitwiseReverse[(*this)[0]] << (i * 8);
+	}
 	return result;
 	
 }

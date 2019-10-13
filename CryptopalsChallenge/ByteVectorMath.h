@@ -44,14 +44,21 @@ public:
 	ByteVectorMath(ByteVector a, bool flip=true);
 	~ByteVectorMath();
 
+	size_t bitlength();
+	bool bitAtIndex(size_t index);
+	void setBitAtIndex(bool value, size_t index);
+
 	bool operator == (ByteVectorMath b);
 	bool operator < (ByteVectorMath b);
 	bool operator > (ByteVectorMath b);
+	ByteVectorMath operator >> (size_t n);
+	ByteVectorMath operator << (size_t n);
 
 	// updates calling instance with result
 	void addSelf(ByteVectorMath b);
 	void subtractSelf(ByteVectorMath b);
 	void multiplySelf(ByteVectorMath b);
+	void divideSelf(ByteVectorMath b, ByteVectorMath *remainder);
 	void exponentSelf(uint32_t power);
 	void modSelf(uint32_t mod);
 	void modExpSelf(uint32_t exp, uint32_t mod);

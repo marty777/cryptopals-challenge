@@ -232,24 +232,6 @@ ByteVector ByteVector::operator << (size_t n) {
 		}
 	}
 	return ret;
-
-	/*int bitshift = shift % 8;
-	size_t byteshift = shift / 8;
-	size_t final_len = this->length() - byteshift + 1;
-	ByteVector temp = ByteVector(this);
-	for (size_t i = 0; i < final_len; i++) {
-		if (i + byteshift < temp.length()) {
-			(*this)[i] = 0xff & temp[i + byteshift] << bitshift;
-		}
-		else {
-			(*this)[i] = 0;
-		}
-		if (i + byteshift + 1 < temp.length()) {
-			(*this)[i] |= 0xff & (temp[i + byteshift + 1] >> (8 - bitshift));
-		}
-	}
-	this->resize(final_len);*/
-
 }
 ByteVector ByteVector::operator & (ByteVector b) {
 	size_t len = this->length();
@@ -485,6 +467,9 @@ void ByteVector::andSelf(ByteVector *bv) {
 
 // shift bytes left on vector until first byte is non-zero. May result in zero-length vector.
 void ByteVector::truncateLeft() {
+	if (this->length() == 0) {
+		return;
+	}
 	long long index = 0;
 	while ((*this)[index] == 0 && index < this->length()) {
 		index++;
@@ -496,6 +481,9 @@ void ByteVector::truncateLeft() {
 }
 // remove bytes on right until last byte is non-zero. May result in zero-length vector.
 void ByteVector::truncateRight() {
+	if (this->length() == 0) {
+		return;
+	}
 	long long index = this->length() - 1;
 	while ((*this)[index] == 0 && index >= 0) {
 		index--;
