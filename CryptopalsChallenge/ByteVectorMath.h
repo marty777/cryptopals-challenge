@@ -45,6 +45,7 @@ public:
 	~ByteVectorMath();
 
 	size_t bitlength();
+	size_t hibit();
 	bool bitAtIndex(size_t index);
 	void setBitAtIndex(bool value, size_t index);
 
@@ -62,12 +63,17 @@ public:
 	void divideSelf(ByteVectorMath b, ByteVectorMath *remainder);
 	void exponentSelf(uint32_t power);
 	void modSelf(uint32_t mod);
-	void modSelf(ByteVectorMath mod);
+	void modSelf1(ByteVectorMath mod);
+	void modSelf(ByteVectorMath *mod);
+	void modMultSelf(ByteVectorMath *b, ByteVectorMath *mod);
 	void modExpSelf(uint32_t exp, uint32_t mod);
+	void modExpSelf(ByteVectorMath exp, ByteVectorMath mod);
 	
 	byte byteReverse(byte b);
 
 	size_t uint64val();
+
+	void random(ByteVectorMath mod);
 	
 };
 
