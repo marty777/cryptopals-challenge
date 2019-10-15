@@ -114,6 +114,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="BitLL.cpp" />
     <ClCompile Include="ByteEncryption.cpp" />
     <ClCompile Include="ByteEncryptionAES.cpp" />
     <ClCompile Include="ByteRandom.cpp" />
@@ -130,6 +131,7 @@
     <ClCompile Include="Utility.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="BitLL.h" />
     <ClInclude Include="ByteEncryption.h" />
     <ClInclude Include="ByteEncryptionAES.h" />
     <ClInclude Include="ByteRandom.h" />
