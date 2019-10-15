@@ -59,6 +59,7 @@ public:
 	// updates calling instance with result
 	void addSelf(ByteVectorMath b);
 	void subtractSelf(ByteVectorMath b);
+	void subtractSelfLeftShift(ByteVectorMath b, size_t lshift_offset);
 	void multiplySelf(ByteVectorMath b);
 	void divideSelf(ByteVectorMath b, ByteVectorMath *remainder);
 	void exponentSelf(uint32_t power);

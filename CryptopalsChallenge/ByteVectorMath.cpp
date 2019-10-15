@@ -205,6 +205,23 @@ void ByteVectorMath::subtractSelf(ByteVectorMath b) {
 	*this = result;
 }
 
+void ByteVectorMath::subtractSelfLeftShift(ByteVectorMath b, size_t lshift_offset) {
+	ByteVectorMath b1 = ByteVectorMath();
+	size_t bit_offset = lshift_offset % 8;
+	size_t byte_offset = lshift_offset / 8;
+	b1.resize(b.length() - byte_offset);
+	for (size_t i = 0; i < b1.length(); i++) {
+		b1[i] = 0;
+		if (i + byte_offset < b.length()) {
+			b1[i] |= b[i + byte_offset] << (bit_offset);
+		}
+		if (i + byte_offset + 1 < b.length()) {
+			b1[i] |= b[i + byte_offset + 1] << (7 - bit_offset);
+		}
+	}
+	//...
+}
+
 void ByteVectorMath::multiplySelf(ByteVectorMath b) {
 	// Russian peasant
 	ByteVectorMath result = ByteVectorMath(0);
@@ -380,6 +397,7 @@ void ByteVectorMath::modExpSelf(ByteVectorMath exp, ByteVectorMath mod) {
 	while (exp_index <= max_exp_bit) {
 		printf("loop exp1 index: %d\n", exp_index);
 		if (exp1.bitAtIndex(exp_index) == 1) {
+			printf("bit1\n", exp_index);
 			s.modMultSelf(&temp, &mod1);
 		}
 		temp.modMultSelf(&temp, &mod1);
