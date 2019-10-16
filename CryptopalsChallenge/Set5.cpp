@@ -29,19 +29,19 @@ void Set5Challenge33() {
 
 	cout << "s1 " << s1.toStr(BITLL_BINARY) << " " << s1.uint64() << endl;
 	cout << "s2 " << s2.toStr(BITLL_BINARY) << " " << s2.uint64() << endl;
-
+	
 	ByteVector bv = ByteVector("ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca237327ffffffffffffffff", HEX);
-	BitLL p1 = BitLL(&bv);
+	ByteVectorMath bvm = ByteVectorMath(&bv, true);
+	bvm.printHexStrByBlocks(16);
+	BitLL p1 = BitLL(&bvm);
 	cout << p1.toStr(BITLL_HEX) << " " << p1.size() << " " << bv.length() * 8 << endl;
 	BitLL g1 = BitLL(2);
-
-	/*BitLL s1 = BitLL(B);
-	BitLL s2 = BitLL(A);
-	s1.modExpSelf(&a, &p);
-	s2.modExpSelf(&b, &p);
-
-	cout << "s1 " << s1.toStr(BITLL_BINARY) << " " << s1.uint64() << endl;
-	cout << "s2 " << s2.toStr(BITLL_BINARY) << " " << s2.uint64() << endl;*/
+	cout << "Got here" << endl;
+	p1.multSelf(&g1);
+	cout << "Got here" << endl;
+	cout << p1.toStr(BITLL_HEX) << " " << p1.size() << " " << bv.length() * 8 << endl;
+	p1.modExpSelf(&g1, &p1);
+	cout << "Got here" << endl;
 
 	//ByteVectorMath(test) = ByteVectorMath(3);
 	//test.exponentSelf(2);

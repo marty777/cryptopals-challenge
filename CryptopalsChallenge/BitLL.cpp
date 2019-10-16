@@ -38,7 +38,13 @@ BitLL::BitLL(BitLL *b) {
 }
 BitLL::BitLL(ByteVector *m) {
 	size_t hi_bit = 8 * m->length() - 1;
-	while (hi_bit > 0) {
+	for (size_t i = 0; i < m->length(); i++) {
+		for (size_t j = 0; j < 8; j++) {
+			bool bit = (bool)(0x01 & ((*m)[i] >> j));
+			this->push(bit);
+		}
+	}
+	/*while (hi_bit > 0) {
 		if ((*m)[hi_bit / 8] >> 7 - (hi_bit % 8)) {
 			break;
 		}
@@ -60,7 +66,7 @@ BitLL::BitLL(ByteVector *m) {
 		}
 		prev = n;
 		this->len++;
-	}
+	}*/
 }
 BitLL::BitLL(size_t val) {
 	size_t hi_bit = 63;
@@ -549,8 +555,6 @@ void BitLL::modSelf(BitLL *bll) {
 		this->subtractSelf(&mod_temp);
 		count++;
 	}
-
-	//delete mod_temp;
 }
 
 void BitLL::modMultSelf(BitLL *bll, BitLL *mod) {
@@ -559,7 +563,6 @@ void BitLL::modMultSelf(BitLL *bll, BitLL *mod) {
 	this->modSelf(mod);
 	this->multSelf(&b);
 	this->modSelf(mod);
-	//delete b;
 }
 
 void BitLL::modExpSelf(BitLL *exp, BitLL *mod) {
@@ -575,7 +578,6 @@ void BitLL::modExpSelf(BitLL *exp, BitLL *mod) {
 		n = n->next;
 	}
 	(*this) = &s;
-	//delete s;
 }
 
 void BitLL::addSelf(BitLL *bll) {
@@ -698,7 +700,7 @@ char *BitLL::toStr(bll_str_format format) {
 				index++;
 				n = n->next;
 			}
-			str[this->len / 8] = '\0';
+			str[this->len / 4] = '\0';
 	}
 	return str;
 }
