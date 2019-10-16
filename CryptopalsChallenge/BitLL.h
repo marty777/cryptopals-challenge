@@ -38,13 +38,19 @@ public:
 	size_t hi_bit();
 	void truncRight();
 
+	void notSelf();
 	void lshift(size_t shift);
 	void rshift(size_t shift);
 	void andSelf(BitLL *bll);
 	void orSelf(BitLL *bll);
 	void xorSelf(BitLL *bll);
-
+	
+	void modSelf(BitLL *bll);
+	void modMultSelf(BitLL *bll, BitLL *mod);
+	void modExpSelf(BitLL *exp, BitLL *mod);
 	void addSelf(BitLL *bll);
+	void subtractSelf(BitLL *bll);
+	void multSelf(BitLL *bll);
 
 	char *toStr(bll_str_format format);
 	size_t uint64();

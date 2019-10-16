@@ -9,79 +9,40 @@ using namespace std;
 
 void Set5Challenge33() {
 
-	BitLL testLL1 = BitLL();
-	testLL1.push(1);
-	testLL1.push(0);
-	testLL1.push(1);
-	cout << "testLL1 " << testLL1.toStr(BITLL_BINARY) << endl;
-	BitLL testLL2 = BitLL(5);
-	cout << "testLL2 " << testLL2.toStr(BITLL_BINARY) << endl;
-	
-	BitLL testLL3 = BitLL(3);
-	cout << "testLL3 " << testLL3.toStr(BITLL_BINARY) << endl;
 
-	testLL3.xorSelf(&testLL2);
-	cout << "testLL3 " << testLL3.toStr(BITLL_BINARY) << endl;
+	BitLL a = BitLL(32);
+	BitLL b = BitLL(12);
+	BitLL p = BitLL(37);
+	BitLL g = BitLL(5);
 
-	testLL3.rshift(10);
-	cout << "testLL3 " << testLL3.toStr(BITLL_BINARY) << endl;
-	testLL1.xorSelf(&testLL3);
-	cout << "testLL1 " << testLL1.toStr(BITLL_BINARY) << endl;
-	BitLL testLL4 = BitLL(5);
-	cout << "testLL4 " << testLL4.toStr(BITLL_BINARY) << endl;
-	testLL1.xorSelf(&testLL4);
-	cout << "testLL1 " << testLL1.toStr(BITLL_BINARY) << endl;
+	BitLL A = BitLL(&g);
+	BitLL B = BitLL(&g);
+	A.modExpSelf(&a, &p); // A = g**a % p
+	B.modExpSelf(&b, &p); // A = g**a % p
+	cout << "A = g**a %p " << A.toStr(BITLL_BINARY) << " " << A.uint64() << endl;
+	cout << "B = g**b %p " << B.toStr(BITLL_BINARY) << " " << B.uint64() << endl;
 
-	cout << "3 < 1 " << ( testLL3 < &testLL1 ? "true" : "false" ) << endl;
-	cout << "3 == 1 " << (testLL3 == &testLL1 ? "true" : "false") << endl;
-	cout << "3 > 1 " << (testLL3 > &testLL1 ? "true" : "false") << endl;
-	
-	cout << "3 >= 1 " << (testLL3 >= &testLL1 ? "true" : "false") << endl;
-	cout << "3 <= 1 " << (testLL3 <= &testLL1 ? "true" : "false") << endl;
+	BitLL s1 = BitLL(&B);
+	BitLL s2 = BitLL(&A);
+	s1.modExpSelf(&a, &p);
+	s2.modExpSelf(&b, &p);
 
-	BitLL testLL5 = BitLL(1);
-	testLL1.xorSelf(&testLL5);
-	cout << "testLL1 " << testLL1.toStr(BITLL_BINARY) << endl;
+	cout << "s1 " << s1.toStr(BITLL_BINARY) << " " << s1.uint64() << endl;
+	cout << "s2 " << s2.toStr(BITLL_BINARY) << " " << s2.uint64() << endl;
 
-	cout << "3 < 1 " << (testLL3 < &testLL1 ? "true" : "false") << endl;
-	cout << "3 == 1 " << (testLL3 == &testLL1 ? "true" : "false") << endl;
-	cout << "3 > 1 " << (testLL3 > &testLL1 ? "true" : "false") << endl;
+	ByteVector bv = ByteVector("ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca237327ffffffffffffffff", HEX);
+	BitLL p1 = BitLL(&bv);
+	cout << p1.toStr(BITLL_HEX) << " " << p1.size() << " " << bv.length() * 8 << endl;
+	BitLL g1 = BitLL(2);
 
-	cout << "3 >= 1 " << (testLL3 >= &testLL1 ? "true" : "false") << endl;
-	cout << "3 <= 1 " << (testLL3 <= &testLL1 ? "true" : "false") << endl;
+	/*BitLL s1 = BitLL(B);
+	BitLL s2 = BitLL(A);
+	s1.modExpSelf(&a, &p);
+	s2.modExpSelf(&b, &p);
 
-	testLL5.push(true);
-	testLL3.xorSelf(&testLL5);
-	cout << "testLL3 " << testLL3.toStr(BITLL_BINARY) << endl;
-	cout << "3 < 1 " << (testLL3 < &testLL1 ? "true" : "false") << endl;
-	cout << "3 == 1 " << (testLL3 == &testLL1 ? "true" : "false") << endl;
-	cout << "3 > 1 " << (testLL3 > &testLL1 ? "true" : "false") << endl;
+	cout << "s1 " << s1.toStr(BITLL_BINARY) << " " << s1.uint64() << endl;
+	cout << "s2 " << s2.toStr(BITLL_BINARY) << " " << s2.uint64() << endl;*/
 
-	cout << "3 >= 1 " << (testLL3 >= &testLL1 ? "true" : "false") << endl;
-	cout << "3 <= 1 " << (testLL3 <= &testLL1 ? "true" : "false") << endl;
-
-	cout << " 1 :" << testLL1.uint64() << " " << testLL1.hi_bit() << endl;
-	cout << " 2 :" << testLL2.uint64() << " " << testLL2.hi_bit() << endl;
-	cout << " 3 :" << testLL3.uint64() << " " << testLL3.hi_bit() << endl;
-	cout << " 4 :" << testLL4.uint64() << " " << testLL4.hi_bit() << endl;
-	cout << " 5 :" << testLL5.uint64() << " " << testLL5.hi_bit() << endl;
-
-	testLL3.push(0);
-	testLL3.push(0);
-	testLL3.push(0);
-	testLL3.push(0);
-	testLL3.push(0);
-	cout << "testLL3 " << testLL3.toStr(BITLL_BINARY) << " " << testLL3.size() << endl;
-	testLL3.truncRight();
-	cout << "testLL3 " << testLL3.toStr(BITLL_BINARY) << " " << testLL3.size() << endl;
-	BitLL test1 = BitLL();
-	test1.push(0);
-	test1.push(0);
-	test1.push(0);
-	test1.push(0);
-	cout << "test1 " << test1.toStr(BITLL_BINARY) << " " << test1.size() << endl;
-	test1.truncRight();
-	cout << "test1 :" << test1.toStr(BITLL_BINARY) << ": " << test1.size() << endl;
 	//ByteVectorMath(test) = ByteVectorMath(3);
 	//test.exponentSelf(2);
 	//cout << "3^2: " << test.uint64val() << endl;

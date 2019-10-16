@@ -33,6 +33,7 @@ BitLL::BitLL(BitLL *b) {
 	BitLLNode *n = b->first;
 	while (n != NULL) {
 		this->push(n->val);
+		n = n->next;
 	}
 }
 BitLL::BitLL(ByteVector *m) {
@@ -408,19 +409,6 @@ bool BitLL::fpop() {
 	delete n; // for speed, may want to let automatic collection handle it later rather than dealloc one node at a time, not sure.
 	return ret;
 }
-
-// remove up to shift elements from start of list
-void BitLL::lshift(size_t shift) {
-	for (size_t index = 0; index < shift; index++) {
-		this->fpop();
-	}
-}
-// add shift elements at start of list
-void BitLL::rshift(size_t shift) {
-	for (size_t index = 0; index < shift; index++) {
-		this->fpush(0);
-	}
-}
 // remove all elements in list
 void BitLL::clear() {
 	while (this->len > 0) {
@@ -457,6 +445,27 @@ void BitLL::truncRight() {
 			this->push(true);
 			break;
 		}
+	}
+}
+
+void BitLL::notSelf() {
+	BitLLNode *n = this->first;
+	while (n != NULL) {
+		n->val = !(n->val);
+		n = n->next;
+	}
+}
+
+// remove up to shift elements from start of list
+void BitLL::lshift(size_t shift) {
+	for (size_t index = 0; index < shift; index++) {
+		this->fpop();
+	}
+}
+// add shift elements at start of list
+void BitLL::rshift(size_t shift) {
+	for (size_t index = 0; index < shift; index++) {
+		this->fpush(0);
 	}
 }
 
@@ -514,22 +523,133 @@ void BitLL::xorSelf(BitLL *bll) {
 	}
 }
 
+void BitLL::modSelf(BitLL *bll) {
+	if (*this < bll) {
+		return;
+	}
+	size_t hi_bit_mod = bll->hi_bit();
+	size_t hi_bit_this = this->hi_bit();
+	BitLL mod_temp = new BitLL(bll);
+	mod_temp.rshift(hi_bit_this - hi_bit_mod);
+	if (mod_temp > this) {
+		mod_temp.lshift(1);
+	}
+	this->subtractSelf(&mod_temp);
+	size_t count = 0;
+	size_t hi_bit_mod_temp;
+	
+	while (!((*this) < bll)) {
+		hi_bit_mod_temp = mod_temp.hi_bit();
+		hi_bit_this = this->hi_bit();
+		mod_temp.lshift(hi_bit_mod_temp - hi_bit_this );
+		if (mod_temp > this) {
+			mod_temp.lshift(1);
+
+		}
+		this->subtractSelf(&mod_temp);
+		count++;
+	}
+
+	//delete mod_temp;
+}
+
+void BitLL::modMultSelf(BitLL *bll, BitLL *mod) {
+	BitLL b = new BitLL(bll);
+	b.modSelf(mod);
+	this->modSelf(mod);
+	this->multSelf(&b);
+	this->modSelf(mod);
+	//delete b;
+}
+
+void BitLL::modExpSelf(BitLL *exp, BitLL *mod) {
+	// this = (this ^ exp) % mod
+	size_t exp_hi_bit = exp->hi_bit();
+	BitLL s = new BitLL(1);
+	BitLLNode *n = exp->first;
+	while (n != NULL) {
+		if (n->val) {
+			s.modMultSelf(this, mod);
+		}
+		this->modMultSelf(this, mod);
+		n = n->next;
+	}
+	(*this) = &s;
+	//delete s;
+}
 
 void BitLL::addSelf(BitLL *bll) {
 	// carry = this & bll
 	// result = this ^ bll
 	BitLL carry = BitLL(this);
-	BitLL result = BitLL(this);
+	//BitLL result = BitLL(this);
 	carry.andSelf(bll);
-	result.xorSelf(bll);
-
+	this->xorSelf(bll);//result.xorSelf(bll);
 	carry.truncRight();
-	// I think there should be a way to avoid the costly copy in the loop
+	
 	while (carry.len > 0) {
-		BitLL shifted_carry = BitLL(carry);
-		// TBD
+		// Trying to avoid making a full copy of the carry list for the shift
+		// BitLL shifted_carry = BitLL(carry);
+		// in each loop:
+		// shifted_carry = carry >> 1
+		// result = resut ^ shfited_carry
+		// carry = result & shifted_carry
+		BitLLNode *c = carry.first;
+		BitLLNode *r = this->first;
+		bool last_c = 0;
+		bool temp = 0;
+		size_t carry_len = carry.len;
+		for (size_t i = 0; i <= carry_len; i++) {
+			if (r == NULL) {
+				this->push(0);
+				r = this->last;
+			}
+			if (c == NULL) {
+				carry.push(0);
+				c = carry.last;
+			}
+			temp = c->val;
+			c->val = r->val & last_c;
+			r->val = r->val ^ last_c;
+			
+			last_c = temp;
+			c = c->next;
+			r = r->next;
+		}
+		carry.truncRight();
 	}
+}
 
+void BitLL::subtractSelf(BitLL *bll) {
+	BitLL b = BitLL(bll);
+	BitLL zero = BitLL();
+	zero.push(0);
+	// should be a way to avoid the two copy operations
+	while (b.len > 0) {
+		BitLL carry = BitLL(this);
+		carry.notSelf();
+		carry.andSelf(&b);
+		this->xorSelf(&b);
+		b = &carry;
+		b.rshift(1);
+		b.truncRight();
+	}
+	this->truncRight();
+}
+
+void BitLL::multSelf(BitLL *bll) {
+	BitLL result = BitLL(); // 0
+	result.push(0);
+	BitLLNode *b = bll->first;
+	size_t count = 0;
+	while (b != NULL) {
+		if (b->val == true) {
+			result.addSelf(this);
+		}
+		this->rshift(1);
+		b = b->next;
+	}
+	*this = &result;
 }
 
 char *BitLL::toStr(bll_str_format format) {
