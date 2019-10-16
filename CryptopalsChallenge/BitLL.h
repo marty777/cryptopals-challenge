@@ -16,26 +16,38 @@ public:
 
 	BitLL();
 	~BitLL();
+	BitLL(BitLL *b);
 	BitLL(ByteVector *m);
 	BitLL(size_t val);
 
-	void operator = (BitLL b);
-	bool operator == (BitLL b);
-	bool operator < (BitLL b);
-	bool operator > (BitLL b);
+	size_t size();
+
+	void operator = (BitLL *b);
+	bool operator == (BitLL *b);
+	bool operator < (BitLL *b);
+	bool operator > (BitLL *b);
+	bool operator <= (BitLL *b);
+	bool operator >= (BitLL *b);
 
 	bool push(bool bit);
 	bool pop();
 	bool fpush(bool bit);
 	bool fpop();
 	void clear();
-	
+
+	size_t hi_bit();
+	void truncRight();
+
 	void lshift(size_t shift);
 	void rshift(size_t shift);
 	void andSelf(BitLL *bll);
 	void orSelf(BitLL *bll);
 	void xorSelf(BitLL *bll);
+
+	void addSelf(BitLL *bll);
+
 	char *toStr(bll_str_format format);
+	size_t uint64();
 
 private:
 	size_t len;

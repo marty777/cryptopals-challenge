@@ -28,7 +28,13 @@ BitLL::~BitLL()
 		this->last = NULL;
 	}
 }
-
+BitLL::BitLL(BitLL *b) {
+	this->len = 0;
+	BitLLNode *n = b->first;
+	while (n != NULL) {
+		this->push(n->val);
+	}
+}
 BitLL::BitLL(ByteVector *m) {
 	size_t hi_bit = 8 * m->length() - 1;
 	while (hi_bit > 0) {
@@ -85,37 +91,248 @@ BitLL::BitLL(size_t val) {
 	}
 }
 
+size_t BitLL::size() {
+	return this->len;
+}
+
 // clear current list and replace with b
-void BitLL::operator = (BitLL b) {
+void BitLL::operator = (BitLL *b) {
 	this->clear();
-	BitLLNode *n = b.first;
+	BitLLNode *n = b->first;
 	while (n != NULL) {
 		this->push(n->val);
-		n = n->next();
+		n = n->next;
 	}
 }
 
-bool BitLL::operator == (BitLL b) {
+bool BitLL::operator == (BitLL *b) {
 	// test if all set bits are equivalent. For lists of unequal length, take missing bits to be zero
 	BitLLNode *a_n = this->first;
-	BitLLNode *b_n = b.first;
+	BitLLNode *b_n = b->first;
+	bool a_val;
+	bool b_val;
 	while (a_n != NULL || b_n != NULL) {
-		bool a_val = a_n == NULL ? 0 : a_n->val;
-		bool b_val = b_n == NULL ? 0 : b_n->val;
+		
+		if (a_n != NULL) {
+			a_val = a_n->val;
+			a_n = a_n->next;
+		}
+		else {
+			a_val = 0;
+		}
+		
+		if (b_n != NULL) {
+			b_val = b_n->val;
+			b_n = b_n->next;
+		}
+		else {
+			b_val = 0;
+		}
+		
 		if (a_val != b_val) {
 			return false;
 		}
+		
 	}
 	return true;
 }
 
-bool BitLL::operator < (BitLL b) {
+bool BitLL::operator < (BitLL *b) {
+	if (b->len == 0 && this->len == 0) {
+		return false; // equal
+	}
+	// locate hi bit for both lists
+	BitLLNode *a_n = this->last;
+	size_t a_i = this->len;
+	BitLLNode *b_n = b->last;
+	size_t b_i = b->len;
+	
+	while (a_i > 0) {
+		if (a_n->val == 1) {
+			break;
+		}
+		a_n = a_n->prev;
+		a_i--;
+	}
+	while (b_i > 0) {
+		if (b_n->val == 1) {
+			break;
+		}
+		b_n = b_n->prev;
+		b_i--;
+	}
 
+	if (a_i > b_i) {
+		a_n = NULL;
+		b_n = NULL;
+		return false;
+	}
+	else if (a_i < b_i) {
+		a_n = NULL;
+		b_n = NULL;
+		return true;
+	}
+	else {
+		while (a_i > 0) {
+			if (a_n->val == false && b_n->val == true) {
+				//a_n = NULL;
+				//b_n = NULL;
+				return true;
+			}
+			else if (a_n->val == true && b_n->val == false) {
+				//a_n = NULL;
+				//b_n = NULL;
+				return false;
+			}
+			a_n = a_n->prev;
+			b_n = b_n->prev;
+			a_i--;
+		}
+		
+	}
+	//a_n = NULL;
+	//b_n = NULL;
+	return false; // equal
 }
-bool BitLL::operator > (BitLL b) {
-
+bool BitLL::operator > (BitLL *b) {
+	if (b->len == 0 && this->len == 0) {
+		return false; // equal
+	}
+	// locate hi bit for both lists
+	BitLLNode *a_n = this->last;
+	size_t a_i = this->len;
+	BitLLNode *b_n = b->last;
+	size_t b_i = b->len;
+	while (a_i > 0) {
+		if (a_n->val = 1) {
+			break;
+		}
+		a_n = a_n->prev;
+		a_i--;
+	}
+	while (b_i > 0) {
+		if (b_n->val = 1) {
+			break;
+		}
+		b_n = b_n->prev;
+		b_i--;
+	}
+	if (a_i > b_i) {
+		return true;
+	}
+	else if (a_i < b_i) {
+		return false;
+	}
+	else {
+		while (a_i > 0) {
+			if (a_n->val == false && b_n->val == true) {
+				//a_n = NULL;
+				//b_n = NULL;
+				return false;
+			}
+			else if (a_n->val == true && b_n->val == false) {
+				//a_n = NULL;
+				//b_n = NULL;
+				return true;
+			}
+			a_n = a_n->prev;
+			b_n = b_n->prev;
+			a_i--;
+		}
+	}
+	// final node
+	return false; // equal
 }
-
+bool BitLL::operator <= (BitLL *b) {
+	if (b->len == 0 && this->len == 0) {
+		return true; // equal
+	}
+	// locate hi bit for both lists
+	BitLLNode *a_n = this->last;
+	size_t a_i = this->len;
+	BitLLNode *b_n = b->last;
+	size_t b_i = b->len;
+	while (a_i > 0) {
+		if (a_n->val = 1) {
+			break;
+		}
+		a_n = a_n->prev;
+		a_i--;
+	}
+	while (b_i > 0) {
+		if (b_n->val = 1) {
+			break;
+		}
+		b_n = b_n->prev;
+		b_i--;
+	}
+	if (a_i > b_i) {
+		return true;
+	}
+	else if (a_i < b_i) {
+		return false;
+	}
+	else {
+		while (a_i > 0) {
+			if (a_n->val == false && b_n->val == true) {
+				return true;
+			}
+			else if (a_n->val == true && b_n->val == false) {
+				return false;
+			}
+			a_n = a_n->prev;
+			b_n = b_n->prev;
+			a_i--;
+		}
+	}
+	// final node
+	return true; // equal
+}
+bool BitLL::operator >= (BitLL *b) {
+	if (b->len == 0 && this->len == 0) {
+		return true; // equal
+	}
+	// locate hi bit for both lists
+	BitLLNode *a_n = this->last;
+	size_t a_i = this->len;
+	BitLLNode *b_n = b->last;
+	size_t b_i = b->len;
+	while (a_i > 0) {
+		if (a_n->val = 1) {
+			break;
+		}
+		a_n = a_n->prev;
+		a_i--;
+	}
+	while (b_i > 0) {
+		if (b_n->val = 1) {
+			break;
+		}
+		b_n = b_n->prev;
+		b_i--;
+	}
+	if (a_i > b_i) {
+		return true;
+	}
+	else if (a_i < b_i) {
+		return false;
+	}
+	else {
+		while (a_i > 0) {
+			if (a_n->val == false && b_n->val == true) {
+				return false;
+			}
+			else if (a_n->val == true && b_n->val == false) {
+				return true;
+			}
+			a_n = a_n->prev;
+			b_n = b_n->prev;
+			a_i--;
+		}
+	}
+	// final node
+	return true; // equal
+}
 
 // returns false if memory won't allocate
 bool BitLL::push(bool bit) {
@@ -141,6 +358,14 @@ bool BitLL::push(bool bit) {
 bool BitLL::pop() {
 	if (this->len == 0) {
 		return false;
+	}
+	else if (this->len == 1) {
+		bool ret = this->first->val;
+		delete this->first;
+		this->first = NULL;
+		this->last = NULL;
+		this->len = 0;
+		return ret;
 	}
 	BitLLNode *n = this->last;
 	bool ret = n->val;
@@ -203,6 +428,38 @@ void BitLL::clear() {
 	}
 }
 
+// note that if zero, function will return a zero index for a hi bit.
+size_t BitLL::hi_bit() {
+	if (this->len == 0) {
+		return 0;
+	}
+	size_t index = this->len - 1;
+	BitLLNode *n = this->last;
+	while (n != NULL) {
+		if (n->val) {
+			break;
+		}
+		n = n->prev;
+		index--;
+	}
+	return index;
+}
+
+void BitLL::truncRight() {
+	if (this->len == 0) {
+		return;
+	}
+	size_t index = this->len - 1;
+	BitLLNode *n = this->last;
+	while (this->len > 0) {
+		bool val = this->pop();
+		if (val) {
+			this->push(true);
+			break;
+		}
+	}
+}
+
 void BitLL::andSelf(BitLL *bll) {
 	// for lists of unequal length, treat unavailable bits as zeroes
 	BitLLNode *a = this->first;
@@ -257,6 +514,24 @@ void BitLL::xorSelf(BitLL *bll) {
 	}
 }
 
+
+void BitLL::addSelf(BitLL *bll) {
+	// carry = this & bll
+	// result = this ^ bll
+	BitLL carry = BitLL(this);
+	BitLL result = BitLL(this);
+	carry.andSelf(bll);
+	result.xorSelf(bll);
+
+	carry.truncRight();
+	// I think there should be a way to avoid the costly copy in the loop
+	while (carry.len > 0) {
+		BitLL shifted_carry = BitLL(carry);
+		// TBD
+	}
+
+}
+
 char *BitLL::toStr(bll_str_format format) {
 	char *str = NULL;
 	const char *hex = "0123456789abcdef";
@@ -306,5 +581,17 @@ char *BitLL::toStr(bll_str_format format) {
 			str[this->len / 8] = '\0';
 	}
 	return str;
+}
+
+size_t BitLL::uint64() {
+	size_t result = 0;
+	size_t index = 0;
+	BitLLNode *n = this->first;
+	while (n != NULL && index < 64) {
+		result |= (n->val ? 1 : 0) << index;
+		n = n->next;
+		index++;
+	}
+	return result;
 }
 
