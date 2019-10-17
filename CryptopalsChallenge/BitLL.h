@@ -52,6 +52,9 @@ public:
 	void subtractSelf(BitLL *bll);
 	void multSelf(BitLL *bll);
 
+	void random(size_t length);
+	void randomMod(BitLL *mod);
+
 	char *toStr(bll_str_format format);
 	size_t uint64();
 

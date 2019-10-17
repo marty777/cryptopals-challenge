@@ -36,13 +36,14 @@ void Set5Challenge33() {
 	BitLL p1 = BitLL(&bvm);
 	cout << p1.toStr(BITLL_HEX) << " " << p1.size() << " " << bv.length() * 8 << endl;
 	BitLL g1 = BitLL(2);
+	BitLL a1 = BitLL();
+	a1.randomMod(&p1);
 	cout << "Got here" << endl;
-	p1.multSelf(&g1);
+	BitLL A1 = BitLL(&g1);
+	cout << "Got here" << endl;
+	A1.modExpSelf(&a1, &p1);
 	cout << "Got here" << endl;
 	cout << p1.toStr(BITLL_HEX) << " " << p1.size() << " " << bv.length() * 8 << endl;
-	p1.modExpSelf(&g1, &p1);
-	cout << "Got here" << endl;
-
 	//ByteVectorMath(test) = ByteVectorMath(3);
 	//test.exponentSelf(2);
 	//cout << "3^2: " << test.uint64val() << endl;

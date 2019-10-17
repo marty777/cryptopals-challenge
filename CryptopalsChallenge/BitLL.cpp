@@ -44,29 +44,6 @@ BitLL::BitLL(ByteVector *m) {
 			this->push(bit);
 		}
 	}
-	/*while (hi_bit > 0) {
-		if ((*m)[hi_bit / 8] >> 7 - (hi_bit % 8)) {
-			break;
-		}
-		hi_bit--;
-	}
-	BitLLNode *prev = NULL;
-	for (size_t i = 0; i < hi_bit; i++) {
-		BitLLNode *n = new BitLLNode();
-		n->val = 0x01 & ((*m)[i / 8] >> 7 - (i % 8));
-		if (i == 0) {
-			this->first = n;
-		}
-		else {
-			n->prev = prev;
-			prev->next = n;
-			if (i == hi_bit - 1) {
-				this->last = n;
-			}
-		}
-		prev = n;
-		this->len++;
-	}*/
 }
 BitLL::BitLL(size_t val) {
 	size_t hi_bit = 63;
@@ -170,25 +147,17 @@ bool BitLL::operator < (BitLL *b) {
 	}
 
 	if (a_i > b_i) {
-		a_n = NULL;
-		b_n = NULL;
 		return false;
 	}
 	else if (a_i < b_i) {
-		a_n = NULL;
-		b_n = NULL;
 		return true;
 	}
 	else {
 		while (a_i > 0) {
 			if (a_n->val == false && b_n->val == true) {
-				//a_n = NULL;
-				//b_n = NULL;
 				return true;
 			}
 			else if (a_n->val == true && b_n->val == false) {
-				//a_n = NULL;
-				//b_n = NULL;
 				return false;
 			}
 			a_n = a_n->prev;
@@ -197,8 +166,6 @@ bool BitLL::operator < (BitLL *b) {
 		}
 		
 	}
-	//a_n = NULL;
-	//b_n = NULL;
 	return false; // equal
 }
 bool BitLL::operator > (BitLL *b) {
@@ -530,9 +497,16 @@ void BitLL::xorSelf(BitLL *bll) {
 }
 
 void BitLL::modSelf(BitLL *bll) {
+	std::cout << "\t\t\tmodSelf: THIS " << this->toStr(BITLL_HEX) << " BLL " << bll->toStr(BITLL_HEX) << std::endl;
 	if (*this < bll) {
 		return;
 	}
+	if (*this == bll) {
+		this->clear();
+		this->push(0);
+		return;
+	}
+	std::cout << "\t\t\t this " << (*this > bll ? ">" : "<=") << " bll" << std::endl;
 	size_t hi_bit_mod = bll->hi_bit();
 	size_t hi_bit_this = this->hi_bit();
 	BitLL mod_temp = new BitLL(bll);
@@ -558,14 +532,26 @@ void BitLL::modSelf(BitLL *bll) {
 }
 
 void BitLL::modMultSelf(BitLL *bll, BitLL *mod) {
+	std::cout << "\t\tmodMultSelf: THIS " << this->toStr(BITLL_HEX) << " BLL " << bll->toStr(BITLL_HEX) << " MOD " << mod->toStr(BITLL_HEX) << std::endl;
 	BitLL b = new BitLL(bll);
+	BitLL zero = new BitLL();
+	zero.push(0);
 	b.modSelf(mod);
+	if (b == &zero) {
+		this->clear();
+		this->push(0);
+		return;
+	}
 	this->modSelf(mod);
+	if (*this == &zero) {
+		return;
+	}
 	this->multSelf(&b);
 	this->modSelf(mod);
 }
 
 void BitLL::modExpSelf(BitLL *exp, BitLL *mod) {
+	std::cout << "\tmodExpSelf: THIS " << this->toStr(BITLL_HEX) << " EXP " << exp->toStr(BITLL_HEX) << " MOD " << mod->toStr(BITLL_HEX);
 	// this = (this ^ exp) % mod
 	size_t exp_hi_bit = exp->hi_bit();
 	BitLL s = new BitLL(1);
@@ -652,6 +638,22 @@ void BitLL::multSelf(BitLL *bll) {
 		b = b->next;
 	}
 	*this = &result;
+}
+
+// sets this to random bits of length len using rand()
+void BitLL::random(size_t length) {
+	this->clear();
+	size_t i = 1;
+	while (i <= length) {
+		this->push((bool)rand() % 2);
+		i++;
+	}
+}
+
+// sets this to random bits on 0..mod-1
+void BitLL::randomMod(BitLL *mod) {
+	this->random(mod->size());
+	this->modSelf(mod);
 }
 
 char *BitLL::toStr(bll_str_format format) {
