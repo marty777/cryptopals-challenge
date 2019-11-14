@@ -114,12 +114,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="BitLL.cpp" />
+    <ClCompile Include="BNUtility.cpp" />
     <ClCompile Include="ByteEncryption.cpp" />
     <ClCompile Include="ByteEncryptionAES.cpp" />
     <ClCompile Include="ByteRandom.cpp" />
     <ClCompile Include="ByteVector.cpp" />
-    <ClCompile Include="ByteVectorMath.cpp" />
     <ClCompile Include="KeyValueParser.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="PlaintextEvaluator.cpp" />
@@ -131,12 +130,11 @@
     <ClCompile Include="Utility.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="BitLL.h" />
+    <ClInclude Include="BNUtility.h" />
     <ClInclude Include="ByteEncryption.h" />
     <ClInclude Include="ByteEncryptionAES.h" />
     <ClInclude Include="ByteRandom.h" />
     <ClInclude Include="ByteVector.h" />
-    <ClInclude Include="ByteVectorMath.h" />
     <ClInclude Include="KeyValueParser.h" />
     <ClInclude Include="PlaintextEvaluator.h" />
     <ClInclude Include="Set1.h" />

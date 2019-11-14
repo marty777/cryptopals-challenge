@@ -1,109 +1,247 @@
 #include "Set5.h"
 #include "ByteVector.h"
-#include "ByteVectorMath.h"
-#include "BitLL.h"
+#include "ByteEncryption.h"
 #include "Utility.h"
 #include <iostream>
+#include "openssl\bn.h"
+#include "BNUtility.h"
 
 using namespace std;
 
 void Set5Challenge33() {
 
+	BN_CTX *ctx = BN_CTX_new();
+	// initial test parameters
+	BIGNUM *p1 = bn_from_word(37);
+	BIGNUM *g1 = bn_from_word(5);
+	// random integer 0 <= a1 < 37
+	BIGNUM *a1 = BN_new();
+	if (!BN_rand_range(a1, p1)) {
+		cout << "Error encountered" << endl;
+		return;
+	}
+	BIGNUM *A1 = BN_new();
+	if (!BN_mod_exp(A1, g1, a1, p1, ctx)) {
+		cout << "Error encountered" << endl;
+		return;
+	}
+	// random integer 0 <= b1 < 37
+	BIGNUM *b1 = BN_new();
+	if (!BN_rand_range(b1, p1)) {
+		cout << "Error encountered" << endl;
+		return;
+	}
+	BIGNUM *B1 = BN_new();
+	if (!BN_mod_exp(B1, g1, b1, p1, ctx)) {
+		cout << "Error encountered" << endl;
+		return;
+	}
 
-	BitLL a = BitLL(32);
-	BitLL b = BitLL(12);
-	BitLL p = BitLL(37);
-	BitLL g = BitLL(5);
+	BIGNUM *sA = BN_new();
+	if (!BN_mod_exp(sA, B1, a1, p1, ctx)) {
+		cout << "Error encountered" << endl;
+		return;
+	}
+	BIGNUM *sB = BN_new();
+	if (!BN_mod_exp(sA, A1, b1, p1, ctx)) {
+		cout << "Error encountered" << endl;
+		return;
+	}
 
-	BitLL A = BitLL(&g);
-	BitLL B = BitLL(&g);
-	A.modExpSelf(&a, &p); // A = g**a % p
-	B.modExpSelf(&b, &p); // A = g**a % p
-	cout << "A = g**a %p " << A.toStr(BITLL_BINARY) << " " << A.uint64() << endl;
-	cout << "B = g**b %p " << B.toStr(BITLL_BINARY) << " " << B.uint64() << endl;
+	if (!BN_cmp(sA, sB) == 0) {
+		cout << "Small test of (A**b) % p equal to (B**a) % p" << endl;
+	}
+	else {
+		cout << "Small test of (A**b) % p not equal to (B**a) % p" << endl;
+	}
 
-	BitLL s1 = BitLL(&B);
-	BitLL s2 = BitLL(&A);
-	s1.modExpSelf(&a, &p);
-	s2.modExpSelf(&b, &p);
+	BN_free(p1);
+	BN_free(g1);
+	BN_free(a1);
+	BN_free(b1);
+	BN_free(A1);
+	BN_free(B1);
+	BN_free(sA);
+	BN_free(sB);
 
-	cout << "s1 " << s1.toStr(BITLL_BINARY) << " " << s1.uint64() << endl;
-	cout << "s2 " << s2.toStr(BITLL_BINARY) << " " << s2.uint64() << endl;
+	// NIST parameters
+	ByteVector bigP = ByteVector("ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca237327ffffffffffffffff", HEX);
+	BIGNUM *p = bn_from_bytevector(&bigP);
+	BIGNUM *g = bn_from_word(2);
+	BIGNUM *a = BN_new();
+	BIGNUM *b = BN_new();
+	BIGNUM *A = BN_new();
+	BIGNUM *B = BN_new();
+	if (!BN_rand_range(a, p)) {
+		cout << "Error encountered" << endl;
+		return;
+	}
+	if (!BN_rand_range(b, p)) {
+		cout << "Error encountered" << endl;
+		return;
+	}
+	if (!BN_mod_exp(A, g, a, p, ctx)) {
+		cout << "Error encountered" << endl;
+		return;
+	}
+	if (!BN_mod_exp(B, g, b, p, ctx)) {
+		cout << "Error encountered" << endl;
+		return;
+	}
+	BIGNUM *s1 = BN_new();
+	if (!BN_mod_exp(s1, A, b, p, ctx)) {
+		cout << "Error encountered" << endl;
+		return;
+	}
+	BIGNUM *s2 = BN_new();
+	if (!BN_mod_exp(s2, B, a, p, ctx)) {
+		cout << "Error encountered" << endl;
+		return;
+	}
+	if (!BN_cmp(sA, sB) == 0) {
+		cout << "Large test of (A**b) % p equal to (B**a) % p" << endl;
+	}
+	else {
+		cout << "Large test of (A**b) % p not equal to (B**a) % p" << endl;
+	}
 	
-	ByteVector bv = ByteVector("ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca237327ffffffffffffffff", HEX);
-	ByteVectorMath bvm = ByteVectorMath(&bv, true);
-	bvm.printHexStrByBlocks(16);
-	BitLL p1 = BitLL(&bvm);
-	cout << p1.toStr(BITLL_HEX) << " " << p1.size() << " " << bv.length() * 8 << endl;
-	BitLL g1 = BitLL(2);
-	BitLL a1 = BitLL();
-	a1.randomMod(&p1);
-	cout << "Got here" << endl;
-	BitLL A1 = BitLL(&g1);
-	cout << "Got here" << endl;
-	A1.modExpSelf(&a1, &p1);
-	cout << "Got here" << endl;
-	cout << p1.toStr(BITLL_HEX) << " " << p1.size() << " " << bv.length() * 8 << endl;
-	//ByteVectorMath(test) = ByteVectorMath(3);
-	//test.exponentSelf(2);
-	//cout << "3^2: " << test.uint64val() << endl;
-	//test.exponentSelf(3);
-	//cout << "9^33: " << test.uint64val() << endl;
-	//test.exponentSelf(3);
-	//cout << "729 ^ 3:" << test.uint64val() << endl;
+	BN_CTX_free(ctx);
+	BN_free(p);
+	BN_free(g);
+	BN_free(a);
+	BN_free(b);
+	BN_free(A);
+	BN_free(B);
+	BN_free(s1);
+	BN_free(s2);
+}
 
-	//cout << "Small values:" << endl;
-	//srand(1000);
-	//ByteVectorMath p = ByteVectorMath(37);
-	//ByteVectorMath g = ByteVectorMath(5);
-	//int a = rand_range(0, 36); // rand() % 37
-	//printf("%d\n", a);
-	//ByteVectorMath A = ByteVectorMath(g, false);
-	//A.modExpSelf(a, p.uint64val());
-	//cout << "A = (g**a)%p: " << A.uint64val() << endl;
-	//int b = rand_range(0, 36); // rand() % 37
-	//ByteVectorMath B = ByteVectorMath(g, false);
-	//B.modExpSelf(b, p.uint64val());
-	//cout << "B = (g**b)%p: " << B.uint64val() << endl;
+void Set5Challenge34() {
 
-	//uint32_t A_test = ((int)floor(pow(5.0, (double)a))) % 37;
-	//uint32_t B_test = ((int)floor(pow(5.0, (double)b))) % 37;
-	//cout << "Compare with 32-bit math A:" << A_test << " B:" << B_test << endl;
-	//
-	//ByteVectorMath s_B = ByteVectorMath(B, false);
-	//s_B.modExpSelf(a, 37);
-	//cout << "s = (B**a)%37: " << s_B.uint64val() << endl;
-	//ByteVectorMath s_A = ByteVectorMath(A, false);
-	//s_A.modExpSelf(b, 37);
-	//cout << "s = (A**b)%37: " << s_A.uint64val() << endl;
-	//cout << "s values " << (s_A == s_B ? "match" : "don't match") << endl;
+	BN_CTX *ctx = BN_CTX_new();
 
-	//cout << "Big values:" << endl;
+	// field prime and generator parameters
+	ByteVector bigP = ByteVector("ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca237327ffffffffffffffff", HEX);
+	BIGNUM *p = bn_from_bytevector(&bigP);
+	BIGNUM *g = bn_from_word(2);
 
-	//ByteVector bv = ByteVector("ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca237327ffffffffffffffff", HEX);
-	//ByteVectorMath p1 = ByteVectorMath(bv, false); // not sure if this is meant to be most significant byte first or not
-	//ByteVectorMath g1 = ByteVectorMath(2);
-	//
-	//// random values on 0..p1-1
-	//ByteVectorMath a1 = ByteVectorMath();
-	//ByteVectorMath b1 = ByteVectorMath();
-	//a1.random(p1);
-	//b1.random(p1);
-	//cout << "Got here 1" << endl;
-	//ByteVectorMath A1 = ByteVectorMath(g1, false);
-	//cout << "Got here 2" << endl;
-	//A1.modExpSelf(a1, p1);
-	//cout << "Got here 3" << endl;
-	//ByteVectorMath B1 = ByteVectorMath(g1, false);
-	//B1.modExpSelf(b1, p1);
-	//cout << "Got here 4" << endl;
-	//ByteVectorMath s_A1 = ByteVectorMath(A1, false);
-	//ByteVectorMath s_B1 = ByteVectorMath(B1, false);
-	//s_A1.modExpSelf(b1, p1);
-	//s_B1.modExpSelf(a1, p1);
+	// participants A and B
+	BIGNUM *a_private_key = BN_new();
+	BIGNUM *a_public_key = BN_new();
+	if (!BN_rand_range(a_private_key, p)) {
+		cout << "Error encountered" << endl;
+		return;
+	}
+	if (!BN_mod_exp(a_public_key, g, a_private_key, p, ctx)) {
+		cout << "Error encountered" << endl;
+		return;
+	}
+	BIGNUM *b_private_key = BN_new();
+	BIGNUM *b_public_key = BN_new();
+	if (!BN_rand_range(b_private_key, p)) {
+		cout << "Error encountered" << endl;
+		return;
+	}
+	if (!BN_mod_exp(b_public_key, g, b_private_key, p, ctx)) {
+		cout << "Error encountered" << endl;
+		return;
+	}
 
-	//cout << "s values " << (s_A1 == s_B1 ? "match" : "don't match") << endl;
+	// simulate regular key exchange and encryption/decryption
+	// A->B (p,g,a_public_key)
+	// B->A (b_public_key)
+	// A->B (message encrypted with AES-CBC using key derived from (b_public_key ** a_private_key) % p)
+	// B->A decrypted message from A, encrypted with key derived from (a_public_key ** b_private_key) % p)
+	cout << "No eavesdropping:" << endl;
+	cout << "Simulating exchange of DH parameters and public keys..." << endl;
+	cout << "Sending encrypted message from A to B..." << endl;
+	ByteVector message = ByteVector("This is a test message", ASCII);
+	ByteVector fromAtoB = ByteVector();
+	ByteEncryption::challenge34Encrypt(p, b_public_key, a_private_key, &message, &fromAtoB);
 
+	cout << "B decrypting message from A...";
+	ByteVector recievedByB = ByteVector();
+	ByteEncryption::challenge34Decrypt(p, a_public_key, b_private_key, &fromAtoB, &recievedByB);
+	if (recievedByB.equal(&message)) {
+		cout << "passed" << endl;
+	}
+	else {
+		cout << "failed" << endl;
+	}
+
+	cout << "Sending confirmation encrypted message from B to A..." << endl;
+	ByteVector fromBtoA = ByteVector();
+	ByteEncryption::challenge34Encrypt(p, a_public_key, b_private_key, &recievedByB, &fromBtoA);
+
+	cout << "A decrypting message from B...";
+	ByteVector recievedByA = ByteVector();
+	ByteEncryption::challenge34Decrypt(p, b_public_key, a_private_key, &fromBtoA, &recievedByA);
+	if (recievedByA.equal(&message)) {
+		cout << "passed" << endl;
+	}
+	else {
+		cout << "failed" << endl;
+	}
+
+	// simulate MITM with parameter injection
+	// A->M (p,g,a_public_key)
+	// M->B (p,g,p)
+	// B->M (b_public_key)
+	// M->A (p)
+	// A->M (message encrypted with AES-CBC using key derived from (p ** a_private_key) % p (equivalent to 0))
+	// M->B (relay message from A)
+	// B->M (decrypted message from A, encrypted with key derived from (p ** b_private_key) % p (equivalent to 0)
+	cout << endl << "With eavesdropping:" << endl;
+	cout << "Simulating exchange of DH parameters and public keys..." << endl;
+	ByteVector message2 = ByteVector("This is a test message that M shouldn't see", ASCII);
+	cout << "Sending encrypted message from A to M to B..." << endl;
+	ByteVector fromAtoMtoB = ByteVector();
+	ByteEncryption::challenge34Encrypt(p, p, a_private_key, &message2, &fromAtoMtoB);
+
+	cout << "B decrypting message from A via M...";
+	ByteVector recievedByBfromM = ByteVector();
+	ByteEncryption::challenge34Decrypt(p, p, b_private_key, &fromAtoMtoB, &recievedByBfromM);
+	if (recievedByBfromM.equal(&message2)) {
+		cout << "passed" << endl;
+	}
+	else {
+		cout << "failed" << endl;
+	}
+	BIGNUM *m_cheat_private_key = bn_from_word(1);
+	cout << "M decrypting intercepted message from A...";
+	ByteVector interceptedFromA = ByteVector();
+	ByteEncryption::challenge34Decrypt(p, p, m_cheat_private_key, &fromAtoMtoB, &interceptedFromA);
+	if (interceptedFromA.equal(&message2)) {
+		cout << "passed" << endl;
+	}
+	else {
+		cout << "failed" << endl;
+	}
+
+	cout << "Sending confirmation encrypted message from B to A via M..." << endl;
+	ByteVector fromBtoAviaM = ByteVector();
+	ByteEncryption::challenge34Encrypt(p, p, b_private_key, &recievedByBfromM, &fromBtoAviaM);
+
+	cout << "A decrypting message from B via M...";
+	ByteVector recievedByAfromM = ByteVector();
+	ByteEncryption::challenge34Decrypt(p, p, a_private_key, &fromAtoMtoB, &recievedByBfromM);
+	if (recievedByBfromM.equal(&message2)) {
+		cout << "passed" << endl;
+	}
+	else {
+		cout << "failed" << endl;
+	}
+	cout << "M decrypting intercepted message from B...";
+	ByteVector interceptedFromB = ByteVector();
+	ByteEncryption::challenge34Decrypt(p, p, m_cheat_private_key, &fromBtoAviaM, &interceptedFromB);
+	if (interceptedFromB.equal(&message2)) {
+		cout << "passed" << endl;
+	}
+	else {
+		cout << "failed" << endl;
+	}
+
+	cout << "Decrypted message from B by M:" << endl << interceptedFromB.toStr(ASCII) << endl;
 
 }
 
@@ -111,6 +249,11 @@ int Set5() {
 	cout << "### SET 5 ###" << endl;
 	cout << "Set 5 Challenge 33" << endl;
 	Set5Challenge33();
+	// Pause before continuing
+	cout << "Press enter to continue..." << endl;
+	getchar();
+	cout << "Set 5 Challenge 34" << endl;
+	Set5Challenge34();
 	// Pause before continuing
 	cout << "Press enter to continue..." << endl;
 	getchar();

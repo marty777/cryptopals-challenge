@@ -5,6 +5,7 @@
 #include "Utility.h"
 #include <assert.h>
 #include <iostream>
+#include "BNUtility.h"
 
 void ByteEncryptionError::clear() {
 	err = 0;
@@ -435,6 +436,86 @@ bool ByteEncryption::challenge27decrypt(ByteVector *bv, ByteVector *key, ByteEnc
 	ByteVector stripped = ByteVector();
 	ByteEncryption::pkcs7PaddingValidate(&output, AES_BLOCK_SIZE, &stripped, err);
 	if (err->hasErr()) {
+		return false;
+	}
+	return true;
+}
+
+// returns false on error
+bool ByteEncryption::challenge34Encrypt(BIGNUM *field_prime, BIGNUM *public_key, BIGNUM *private_key, ByteVector *message, ByteVector *output) {
+	// obtain session key s given field_prime, partner's public_key and own private_key. Hash s using SHA1 and use first 16 bytes as key to encrypt message with AES-CBC with a random IV. IV is appended to encrypted message
+	// before sending.
+	BN_CTX *ctx = BN_CTX_new();
+	BIGNUM *s = BN_new();
+	if (!BN_mod_exp(s, public_key, private_key, field_prime, ctx)) {
+		BN_CTX_free(ctx);
+		BN_free(s);
+		return false;
+	}
+	ByteVector sessionKey = ByteVector();
+	bn_to_bytevector(s, &sessionKey);
+	ByteVector sessionKeyHash = ByteVector();
+	ByteEncryption::sha1(&sessionKey, &sessionKeyHash);
+
+	ByteVector iv = ByteVector(16);
+	iv.random();
+
+	ByteVector aesKey = ByteVector(16);
+	sessionKeyHash.copyBytesByIndex(&aesKey, 0, 16, 0);
+
+	ByteVector paddedMessage = ByteVector(message);
+	ByteEncryption::pkcs7Pad(&paddedMessage, AES_BLOCK_SIZE);
+
+	ByteVector initialOutput = ByteVector(paddedMessage.length());
+	ByteEncryption::aes_cbc_encrypt(&paddedMessage, &aesKey, &initialOutput, &iv, true);
+
+	// copy initialOutput to output and append iv
+	output->resize(initialOutput.length() + 16);
+	initialOutput.copyBytesByIndex(output, 0, initialOutput.length(), 0);
+	iv.copyBytesByIndex(output, 0, 16, initialOutput.length());
+
+	BN_CTX_free(ctx);
+	BN_free(s);
+
+	return true;
+}
+
+// returns false on error
+bool ByteEncryption::challenge34Decrypt(BIGNUM *field_prime, BIGNUM *public_key, BIGNUM *private_key, ByteVector *message, ByteVector *output) {
+	// obtain session key s given field_prime, partner's public_key and own private_key. Hash s using SHA1 and use first 16 bytes as key to decrypt message with AES-CBC with IV appended to last 16 bytes of message
+	// before sending.
+	BN_CTX *ctx = BN_CTX_new();
+	BIGNUM *s = BN_new();
+	if (!BN_mod_exp(s, public_key, private_key, field_prime, ctx)) {
+		BN_CTX_free(ctx);
+		BN_free(s);
+		return false;
+	}
+	ByteVector sessionKey = ByteVector();
+	bn_to_bytevector(s, &sessionKey);
+	ByteVector sessionKeyHash = ByteVector();
+	ByteEncryption::sha1(&sessionKey, &sessionKeyHash);
+
+	BN_CTX_free(ctx);
+	BN_free(s);
+
+	// copy last 16 bytes of message to iv
+	ByteVector iv = ByteVector(16);
+	message->copyBytesByIndex(&iv, message->length() - 16, 16, 0);
+
+	ByteVector aesKey = ByteVector(16);
+	sessionKeyHash.copyBytesByIndex(&aesKey, 0, 16, 0);
+
+	// encrypted message is message less the final 16 bytes
+	ByteVector truncatedMessage = ByteVector(message->length() - 16);
+	message->copyBytesByIndex(&truncatedMessage, 0, message->length() - 16, 0);
+
+
+	ByteVector paddedMessage = ByteVector(truncatedMessage.length());
+	ByteEncryption::aes_cbc_encrypt(&truncatedMessage, &aesKey, &paddedMessage, &iv, false);
+	ByteEncryptionError err = ByteEncryptionError();
+	ByteEncryption::pkcs7PaddingValidate(&paddedMessage, output, &err);
+	if (err.hasErr()) {
 		return false;
 	}
 	return true;

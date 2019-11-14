@@ -1,6 +1,7 @@
 #pragma once
 #include "ByteVector.h"
 #include <vector>
+#include <openssl\bn.h>
 
 class ByteEncryptionError 
 {
@@ -41,6 +42,9 @@ public:
 
 	static void challenge27encrypt(ByteVector *bv, ByteVector *key, ByteVector *output);
 	static bool challenge27decrypt(ByteVector *bv, ByteVector *key, ByteEncryptionError *err);
+
+	static bool challenge34Encrypt(BIGNUM *field_prime, BIGNUM *public_key, BIGNUM *private_key, ByteVector *message, ByteVector *output);
+	static bool challenge34Decrypt(BIGNUM *field_prime, BIGNUM *public_key, BIGNUM *private_key, ByteVector *message, ByteVector *output);
 
 	static int aes_repeated_block_count(ByteVector *bv);
 	static size_t aes_seq_repeated_block_count(ByteVector *bv);

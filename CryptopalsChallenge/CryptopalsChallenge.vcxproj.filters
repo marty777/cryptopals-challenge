@@ -51,13 +51,10 @@
     <ClCompile Include="Utility.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ByteVectorMath.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Set5.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="BitLL.cpp">
+    <ClCompile Include="BNUtility.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -95,13 +92,10 @@
     <ClInclude Include="ByteEncryptionAES.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ByteVectorMath.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Set5.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="BitLL.h">
+    <ClInclude Include="BNUtility.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
