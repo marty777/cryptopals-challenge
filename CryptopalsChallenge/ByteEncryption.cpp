@@ -860,7 +860,7 @@ void ByteEncryption::sha1(ByteVector *bv, ByteVector *output, size_t length_offs
 // MAC is SHA1( key CONCAT message ) 
 void ByteEncryption::sha1_MAC(ByteVector *bv, ByteVector *key, ByteVector *output) {
 	ByteVector input = ByteVector(key->length() + bv->length());
-	key->copyBytesByIndex(&input, 0, bv->length(), 0);
+	key->copyBytesByIndex(&input, 0, key->length(), 0);
 	bv->copyBytesByIndex(&input, 0, bv->length(), key->length());
 
 	ByteEncryption::sha1(&input, output);

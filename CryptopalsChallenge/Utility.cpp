@@ -70,3 +70,20 @@ CURLcode libcurl_http_timed_response(CURL *curl, std::string url, long long *dur
 	*duration = avgms;
 	return CURLE_OK;
 }
+
+void bv_concat(ByteVector *a, ByteVector *b, ByteVector *output) {
+	assert(a != NULL);
+	if (a == NULL && b == NULL) {
+		output->resize(0);
+		return;
+	}
+	if (b != NULL) {
+		output->resize(a->length() + b->length());
+		a->copyBytesByIndex(output, 0, a->length(), 0);
+		b->copyBytesByIndex(output, 0, b->length(), a->length());
+	}
+	else {
+		output->resize(a->length());
+		a->copyBytesByIndex(output, 0, a->length(), 0);
+	}
+}

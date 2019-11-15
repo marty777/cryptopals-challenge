@@ -6,52 +6,12 @@
 #include "openssl\bn.h"
 #include "BNUtility.h"
 #include <vector>
+#include <assert.h>
+#include "SRPServer.h"
 
 using namespace std;
 
-// for challenge 36, 37
-class SRP_Server {
-	SRP_Server() {
-		_ctx = BN_CTX_new();
-		_N = BN_new();
-		_g = BN_new();
-		_k = BN_new();
-		_salt = BN_new();
-	}
-	SRP_Server(ByteVector N, int g, int k, char *email, char *password) {
-		_ctx = BN_CTX_new();
-		_N = bn_from_bytevector(&N);
-		_g = bn_from_word(g);
-		_k = bn_from_word(k);
-		_I = ByteVector(email, ASCII);
-		_P = ByteVector(password, ASCII);
-		_salt = BN_new();
-		if (!BN_rand(_salt, 64, -1, 0)) { // random 64 bit integer
-			cerr << "Error initializing salt in SRP_Server" << endl;
-		}
-		// sha256 hash salt + pw, generate x and v
-		// TBD
 
-	}
-	~SRP_Server() {
-		BN_CTX_free(_ctx);
-		BN_free(_N);
-		BN_free(_g);
-		BN_free(_k);
-		BN_free(_salt);
-	}
-
-private:
-	BN_CTX *_ctx;
-	BIGNUM *_N;
-	BIGNUM *_g;
-	BIGNUM *_k;
-	ByteVector _I;
-	ByteVector _P;
-	BIGNUM *_salt;
-
-
-};
 
 void Set5Challenge33() {
 
@@ -476,11 +436,7 @@ void Set5Challenge36() {
 	BIGNUM *g = bn_from_word(2, &bn_ptrs);
 	BIGNUM *k = bn_from_word(3, &bn_ptrs);
 
-	ByteVector shaTest = ByteVector("This is a SHA256 test string", ASCII);
-	ByteVector shaTestOutput = ByteVector();
-	ByteEncryption::sha256(&shaTest, &shaTestOutput);
-
-	cout << "SHA-256 Output: " << shaTestOutput.toStr(HEX) << endl;
+	SRPServer server = SRPServer(bigP, 2, 3, "test@test.com", "password");
 
 }
 

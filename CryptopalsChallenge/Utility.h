@@ -21,3 +21,5 @@ size_t libcurl_write_data(void *buffer, size_t size, size_t nmemb, void *userp);
 
 // Gives response code and average response time of several identical GET requests
 CURLcode libcurl_http_timed_response(CURL *curl, std::string url, long long *duration, long *responsecode, int numtrials = 3);
+
+void bv_concat(ByteVector *a, ByteVector *b, ByteVector *output);
