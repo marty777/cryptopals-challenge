@@ -866,6 +866,138 @@ void ByteEncryption::sha1_MAC(ByteVector *bv, ByteVector *key, ByteVector *outpu
 	ByteEncryption::sha1(&input, output);
 }
 
+// implementation based on pseudocode from https://en.wikipedia.org/wiki/SHA-2
+void ByteEncryption::sha256(ByteVector *bv, ByteVector *output, size_t length_offset, uint32_t state0, uint32_t state1, uint32_t state2, uint32_t state3, uint32_t state4, uint32_t state5, uint32_t state6, uint32_t state7) {
+	uint32_t h0 = state0;
+	uint32_t h1 = state1;
+	uint32_t h2 = state2;
+	uint32_t h3 = state3;
+	uint32_t h4 = state4;
+	uint32_t h5 = state5;
+	uint32_t h6 = state6; 
+	uint32_t h7 = state7;
+
+	uint32_t k[64] = {
+		0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+		0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+		0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+		0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+		0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+		0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+		0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+		0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
+	};
+
+	// pad input
+	ByteVector input = ByteVector();
+	size_t initial_len_bits = bv->length() * 8;
+	size_t len = bv->length() + 9;
+	len += 64 - (len % 64);
+	input.resize(len);
+	bv->copyBytesByIndex(&input, 0, bv->length(), 0);
+	input[bv->length()] = 0x80;
+	for (size_t i = bv->length() + 1; i < len - 8; i++) {
+		input[i] = 0;
+	}
+	input[len - 8] = 0xff & (initial_len_bits >> 56);
+	input[len - 7] = 0xff & (initial_len_bits >> 48);
+	input[len - 6] = 0xff & (initial_len_bits >> 40);
+	input[len - 5] = 0xff & (initial_len_bits >> 32);
+	input[len - 4] = 0xff & (initial_len_bits >> 24);
+	input[len - 3] = 0xff & (initial_len_bits >> 16);
+	input[len - 2] = 0xff & (initial_len_bits >> 8);
+	input[len - 1] = 0xff & (initial_len_bits);
+
+	for (size_t i = 0; i < input.length(); i += 64) {
+		// for each 512 bit chunk of the padded input
+
+		// message schedule array 
+		uint32_t w[64];
+		for (size_t j = 0; j < 16; j++) {
+			w[j] = (input[i + (4 * j)] << 24) | (input[i + (4 * j) + 1] << 16) | (input[i + (4 * j) + 2] << 8) | (input[i + (4 * j) + 3]);
+		}
+		for (size_t j = 16; j < 64; j++) {
+			uint32_t s0 = int32rotateright(w[j - 15], 7) ^ int32rotateright(w[j - 15], 18) ^ (w[j - 15] >> 3);  //(w[j-15] rightrotate  7) xor (w[j-15] rightrotate 18) xor (w[j-15] rightshift  3)
+			uint32_t s1 = int32rotateright(w[j - 2], 17) ^ int32rotateright(w[j - 2], 19) ^ (w[j - 2] >> 10);	//(w[j- 2] rightrotate 17) xor (w[j- 2] rightrotate 19) xor (w[j- 2] rightshift 10)
+			w[j] = w[j - 16] + s0 + w[j - 7] + s1;
+		}
+
+		// internal variables
+		uint32_t a, b, c, d, e, f, g, h;
+		a = h0;
+		b = h1;
+		c = h2;
+		d = h3;
+		e = h4;
+		f = h5;
+		g = h6;
+		h = h7;
+
+		// compression function loop
+		for (size_t j = 0; j < 64; j++) {
+			uint32_t S1 = int32rotateright(e, 6) ^ int32rotateright(e, 11) ^ int32rotateright(e, 25);	//(e rightrotate 6) xor (e rightrotate 11) xor (e rightrotate 25)
+			uint32_t ch = (e & f) ^ ((~e) & g);															//(e and f) xor ((not e) and g)
+			uint32_t temp1 = h + S1 + ch + k[j] + w[j];
+			uint32_t S0 = int32rotateright(a, 2) ^ int32rotateright(a, 13) ^ int32rotateright(a, 22);	//(a rightrotate 2) xor (a rightrotate 13) xor (a rightrotate 22)
+			uint32_t maj = (a & b) ^ (a & c) ^ (b & c);													//(a and b) xor (a and c) xor (b and c);
+			uint32_t temp2 = S0 + maj;
+
+			h = g;
+			g = f;
+			f = e;
+			e = d + temp1;
+			d = c;
+			c = b;
+			b = a;
+			a = temp1 + temp2;
+		}
+
+		h0 += a;
+		h1 += b;
+		h2 += c;
+		h3 += d;
+		h4 += e;
+		h5 += f;
+		h6 += g;
+		h7 += h;
+	}
+
+	output->resize(32);
+	(*output)[0] = 0xff & (h0 >> 24);
+	(*output)[1] = 0xff & (h0 >> 16);
+	(*output)[2] = 0xff & (h0 >> 8);
+	(*output)[3] = 0xff & (h0);
+	(*output)[4] = 0xff & (h1 >> 24);
+	(*output)[5] = 0xff & (h1 >> 16);
+	(*output)[6] = 0xff & (h1 >> 8);
+	(*output)[7] = 0xff & (h1);
+	(*output)[8] = 0xff & (h2 >> 24);
+	(*output)[9] = 0xff & (h2 >> 16);
+	(*output)[10] = 0xff & (h2 >> 8);
+	(*output)[11] = 0xff & (h2);
+	(*output)[12] = 0xff & (h3 >> 24);
+	(*output)[13] = 0xff & (h3 >> 16);
+	(*output)[14] = 0xff & (h3 >> 8);
+	(*output)[15] = 0xff & (h3);
+	(*output)[16] = 0xff & (h4 >> 24);
+	(*output)[17] = 0xff & (h4 >> 16);
+	(*output)[18] = 0xff & (h4 >> 8);
+	(*output)[19] = 0xff & (h4);
+	(*output)[20] = 0xff & (h5 >> 24);
+	(*output)[21] = 0xff & (h5 >> 16);
+	(*output)[22] = 0xff & (h5 >> 8);
+	(*output)[23] = 0xff & (h5);
+	(*output)[24] = 0xff & (h6 >> 24);
+	(*output)[25] = 0xff & (h6 >> 16);
+	(*output)[26] = 0xff & (h6 >> 8);
+	(*output)[27] = 0xff & (h6);
+	(*output)[28] = 0xff & (h7 >> 24);
+	(*output)[29] = 0xff & (h7 >> 16);
+	(*output)[30] = 0xff & (h7 >> 8);
+	(*output)[31] = 0xff & (h7);
+
+}
+
 uint32_t md4_F(uint32_t a, uint32_t b, uint32_t c) {
 	return ((a&b) | ((~a)&c));
 }
