@@ -130,20 +130,44 @@ void Set5Challenge34() {
 	BIGNUM *a_public_key = BN_new();
 	if (!BN_rand_range(a_private_key, p)) {
 		cout << "Error encountered" << endl;
+		BN_CTX_free(ctx);
+		BN_free(p);
+		BN_free(g);
+		BN_free(a_private_key);
+		BN_free(a_public_key);
 		return;
 	}
 	if (!BN_mod_exp(a_public_key, g, a_private_key, p, ctx)) {
 		cout << "Error encountered" << endl;
+		BN_CTX_free(ctx);
+		BN_free(p);
+		BN_free(g);
+		BN_free(a_private_key);
+		BN_free(a_public_key);
 		return;
 	}
 	BIGNUM *b_private_key = BN_new();
 	BIGNUM *b_public_key = BN_new();
 	if (!BN_rand_range(b_private_key, p)) {
 		cout << "Error encountered" << endl;
+		BN_CTX_free(ctx);
+		BN_free(p);
+		BN_free(g);
+		BN_free(a_private_key);
+		BN_free(a_public_key);
+		BN_free(b_private_key);
+		BN_free(b_public_key);
 		return;
 	}
 	if (!BN_mod_exp(b_public_key, g, b_private_key, p, ctx)) {
 		cout << "Error encountered" << endl;
+		BN_CTX_free(ctx);
+		BN_free(p);
+		BN_free(g);
+		BN_free(a_private_key);
+		BN_free(a_public_key);
+		BN_free(b_private_key);
+		BN_free(b_public_key);
 		return;
 	}
 
@@ -243,6 +267,74 @@ void Set5Challenge34() {
 
 	cout << "Decrypted message from B by M:" << endl << interceptedFromB.toStr(ASCII) << endl;
 
+	BN_CTX_free(ctx);
+	BN_free(p);
+	BN_free(g);
+	BN_free(a_private_key);
+	BN_free(a_public_key);
+	BN_free(b_private_key);
+	BN_free(b_public_key);
+}
+
+void Set5Challenge35() {
+	BN_CTX *ctx = BN_CTX_new();
+
+	// field prime and generator parameters
+	ByteVector bigP = ByteVector("ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca237327ffffffffffffffff", HEX);
+	BIGNUM *p = bn_from_bytevector(&bigP);
+	BIGNUM *g1 = bn_from_word(1);
+	BIGNUM *gp = bn_from_bytevector(&bigP);
+	BIGNUM *gp_minus_1 = bn_from_bytevector(&bigP);
+	if (!BN_sub_word(gp_minus_1, 1)) {
+		cout << "Error encounterd" << endl;
+		BN_CTX_free(ctx);
+		BN_free(p);
+		BN_free(g1);
+		BN_free(gp);
+		BN_free(gp_minus_1);
+		return;
+	}
+
+	// if g == 1 -> public key A = 1 ^ (private_key) % p == 1 (for p > 1). When computing s, 1 ^ private_key % p is 1.
+	// if g == p -> public key A = p ^ (private_key) % p == 0. s = 0 ^ private_key % p == 0.
+	// if g = p-1 -> public key A = (p-1) ^ (private_key) % p. 
+	//		(p-1)*(p-1) % p = 1 and (1 * p-1) % p = p-1, so p-1 raised to any power mod p is either 1 or p-1 depending on whether the exponent is even. 
+	//		p is intended to be a large prime so A = p-1.
+	//		When computing s (p-1) ^ private_key % p is either 1 or p-1 depending on whether the private key is odd or even.
+
+	// below isn't a full simulation of the key exchange and message interception, just a verification of the above by testing a message sent in one direction
+	BIGNUM *a_private_key = BN_new();
+	BIGNUM *b_private_key = BN_new();
+	BIGNUM *a_public_key_g1 = BN_new();
+	BIGNUM *a_public_key_gp = BN_new();
+	BIGNUM *a_public_key_gp_minus_1 = BN_new();
+	// generate private keys
+	if (!BN_rand_range(a_private_key, p) || !BN_rand_range(b_private_key, p)) {
+		cout << "Error encountered" << endl;
+		BN_CTX_free(ctx);
+		BN_free(p);
+		BN_free(g1);
+		BN_free(gp);
+		BN_free(gp_minus_1);
+		BN_free(a_private_key);
+		BN_free(b_private_key);
+		BN_free(a_public_key_g1);
+		BN_free(a_public_key_gp);
+		BN_free(a_public_key_gp_minus_1);
+		return;
+	}
+	
+	BN_CTX_free(ctx);
+	BN_free(p);
+	BN_free(g1);
+	BN_free(gp);
+	BN_free(gp_minus_1);
+	BN_free(a_private_key);
+	BN_free(b_private_key);
+	BN_free(a_public_key_g1);
+	BN_free(a_public_key_gp);
+	BN_free(a_public_key_gp_minus_1);
+
 }
 
 int Set5() {
@@ -254,6 +346,11 @@ int Set5() {
 	getchar();
 	cout << "Set 5 Challenge 34" << endl;
 	Set5Challenge34();
+	// Pause before continuing
+	cout << "Press enter to continue..." << endl;
+	getchar();
+	cout << "Set 5 Challenge 35" << endl;
+	Set5Challenge35();
 	// Pause before continuing
 	cout << "Press enter to continue..." << endl;
 	getchar();
