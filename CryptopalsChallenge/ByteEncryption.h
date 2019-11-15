@@ -46,6 +46,8 @@ public:
 	static bool challenge34Encrypt(BIGNUM *field_prime, BIGNUM *public_key, BIGNUM *private_key, ByteVector *message, ByteVector *output);
 	static bool challenge34Decrypt(BIGNUM *field_prime, BIGNUM *public_key, BIGNUM *private_key, ByteVector *message, ByteVector *output);
 
+	static bool challenge35Decrypt(BIGNUM *field_prime, BIGNUM *session_key, ByteVector *message, ByteVector *output);
+
 	static int aes_repeated_block_count(ByteVector *bv);
 	static size_t aes_seq_repeated_block_count(ByteVector *bv);
 

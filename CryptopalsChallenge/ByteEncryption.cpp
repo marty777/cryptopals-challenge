@@ -521,6 +521,36 @@ bool ByteEncryption::challenge34Decrypt(BIGNUM *field_prime, BIGNUM *public_key,
 	return true;
 }
 
+
+bool ByteEncryption::challenge35Decrypt(BIGNUM *field_prime, BIGNUM *session_key, ByteVector *message, ByteVector *output) {
+	ByteVector sessionKey = ByteVector();
+	bn_to_bytevector(session_key, &sessionKey);
+	ByteVector sessionKeyHash = ByteVector();
+	ByteEncryption::sha1(&sessionKey, &sessionKeyHash);
+
+	// copy last 16 bytes of message to iv
+	ByteVector iv = ByteVector(16);
+	message->copyBytesByIndex(&iv, message->length() - 16, 16, 0);
+
+	ByteVector aesKey = ByteVector(16);
+	sessionKeyHash.copyBytesByIndex(&aesKey, 0, 16, 0);
+
+	// encrypted message is message less the final 16 bytes
+	ByteVector truncatedMessage = ByteVector(message->length() - 16);
+	message->copyBytesByIndex(&truncatedMessage, 0, message->length() - 16, 0);
+
+
+	ByteVector paddedMessage = ByteVector(truncatedMessage.length());
+	ByteEncryption::aes_cbc_encrypt(&truncatedMessage, &aesKey, &paddedMessage, &iv, false);
+	ByteEncryptionError err = ByteEncryptionError();
+	ByteEncryption::pkcs7PaddingValidate(&paddedMessage, output, &err);
+	if (err.hasErr()) {
+		return false;
+	}
+	return true;
+}
+
+
 // returns the number of 16-byte blocks in the vector that appear more than once
 int ByteEncryption::aes_repeated_block_count(ByteVector *bv) {
 	// probably smarter ways to do this, but eh

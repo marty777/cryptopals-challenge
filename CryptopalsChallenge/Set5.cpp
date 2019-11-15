@@ -308,6 +308,13 @@ void Set5Challenge35() {
 	BIGNUM *a_public_key_g1 = BN_new();
 	BIGNUM *a_public_key_gp = BN_new();
 	BIGNUM *a_public_key_gp_minus_1 = BN_new();
+	BIGNUM *s1 = BN_new();
+	BIGNUM *s0 = BN_new();
+	BIGNUM *sp_minus_1 = BN_new();
+	BN_one(s1); // s1 = 1
+	BN_zero(s0); // s0 = 0
+	BN_copy(sp_minus_1, gp_minus_1); // sp_minus_1 = p-1
+
 	// generate private keys
 	if (!BN_rand_range(a_private_key, p) || !BN_rand_range(b_private_key, p)) {
 		cout << "Error encountered" << endl;
@@ -321,8 +328,129 @@ void Set5Challenge35() {
 		BN_free(a_public_key_g1);
 		BN_free(a_public_key_gp);
 		BN_free(a_public_key_gp_minus_1);
+		BN_free(s0);
+		BN_free(s1);
+		BN_free(sp_minus_1);
 		return;
 	}
+
+	// case g = 1
+	cout << "Case g == 1: " << endl;
+	// A generates public key (as does B, but we're omitting that part). B sends message to A, intercepted by M encrypted with key based on s
+	cout << "Generating public key for participant A..." << endl;
+	if (!BN_mod_exp(a_public_key_g1, g1, a_private_key, p, ctx)) {
+		cout << "Error encountered" << endl;
+		BN_CTX_free(ctx);
+		BN_free(p);
+		BN_free(g1);
+		BN_free(gp);
+		BN_free(gp_minus_1);
+		BN_free(a_private_key);
+		BN_free(b_private_key);
+		BN_free(a_public_key_g1);
+		BN_free(a_public_key_gp);
+		BN_free(a_public_key_gp_minus_1);
+		BN_free(s0);
+		BN_free(s1);
+		BN_free(sp_minus_1);
+		return;
+	}
+	// Encrypt message to A from B knowing public key
+	cout << "Encrypting test message from B to A..." << endl;
+	ByteVector message = ByteVector("This is a message from A to B that M shouldn't see.", ASCII);
+	ByteVector encrypted_g1 = ByteVector();
+	ByteEncryption::challenge34Encrypt(p, a_public_key_g1, b_private_key, &message, &encrypted_g1);
+
+	// decrypt as M knowing g = 1 -> s = 1
+	cout << "Testing decryption as participant M...";
+	ByteVector decrypted_g1 = ByteVector();
+	ByteEncryption::challenge35Decrypt(p, s1, &encrypted_g1, &decrypted_g1);
+	cout << (message.equal(&decrypted_g1) ? "passed" : "failed") << endl;
+	
+	// case g = p
+	cout << "Case g == p: " << endl;
+	// A generates public key 
+	cout << "Generating public key for participant A..." << endl;
+	if (!BN_mod_exp(a_public_key_gp, gp, a_private_key, p, ctx)) {
+		cout << "Error encountered" << endl;
+		BN_CTX_free(ctx);
+		BN_free(p);
+		BN_free(g1);
+		BN_free(gp);
+		BN_free(gp_minus_1);
+		BN_free(a_private_key);
+		BN_free(b_private_key);
+		BN_free(a_public_key_g1);
+		BN_free(a_public_key_gp);
+		BN_free(a_public_key_gp_minus_1);
+		BN_free(s0);
+		BN_free(s1);
+		BN_free(sp_minus_1);
+		return;
+	}
+	// Encrypt message to A from B knowing public key
+	cout << "Encrypting test message from B to A..." << endl;
+	ByteVector encrypted_gp = ByteVector();
+	ByteEncryption::challenge34Encrypt(p, a_public_key_gp, b_private_key, &message, &encrypted_gp);
+
+	// decrypt as M knowing g = p -> s = 0
+	cout << "Testing decryption as participant M...";
+	ByteVector decrypted_gp = ByteVector();
+	ByteEncryption::challenge35Decrypt(p, s0, &encrypted_gp, &decrypted_gp);
+	cout << (message.equal(&decrypted_gp) ? "passed" : "failed") << endl;
+
+	// case g = p-1
+	cout << "Case g == p - 1: " << endl;
+	// A generates public key 
+	cout << "Generating public key for participant A..." << endl;
+	if (!BN_mod_exp(a_public_key_gp_minus_1, gp_minus_1, a_private_key, p, ctx)) {
+		cout << "Error encountered" << endl;
+		BN_CTX_free(ctx);
+		BN_free(p);
+		BN_free(g1);
+		BN_free(gp);
+		BN_free(gp_minus_1);
+		BN_free(a_private_key);
+		BN_free(b_private_key);
+		BN_free(a_public_key_g1);
+		BN_free(a_public_key_gp);
+		BN_free(a_public_key_gp_minus_1);
+		BN_free(s0);
+		BN_free(s1);
+		BN_free(sp_minus_1);
+		return;
+	}
+	// Encrypt message to A from B knowing public key
+	cout << "Encrypting test message from B to A..." << endl;
+	ByteVector encrypted_gp_minus_1 = ByteVector();
+	ByteEncryption::challenge34Encrypt(p, a_public_key_gp_minus_1, b_private_key, &message, &encrypted_gp_minus_1);
+
+	// decrypt as M knowing g = p-1 -> s = 1 or s = p-1
+	cout << "Testing decryption as participant M..." << endl;
+	ByteVector decrypted_gp_minus_1 = ByteVector();
+	bool success = false;
+	if (!ByteEncryption::challenge35Decrypt(p, s1, &encrypted_gp_minus_1, &decrypted_gp_minus_1)) {
+		cout << "Decryption assuming s = 0 failed. Retrying with s = p - 1..." << endl;
+		if (!ByteEncryption::challenge35Decrypt(p, sp_minus_1, &encrypted_gp_minus_1, &decrypted_gp_minus_1)) {
+			cout << "Decryption assuming s = p - 1 failed." << endl;
+		}
+		else {
+			cout << "Decryption succeeded with s = p - 1. Private key of A is odd." << endl;
+			success = true;
+		}
+	}
+	else {
+		cout << "Decryption succeeded with s = 1. Private key of A is even." << endl;
+		success = true;
+	}
+
+	cout << "Decrypted message " << (message.equal(&decrypted_gp_minus_1) ? "matches" : "does not match") << " original" << endl;
+	cout << "Decrypted message: " << endl << decrypted_gp_minus_1.toStr(ASCII) << endl;
+
+	cout << "Private key of A is actually " << (BN_is_bit_set(a_private_key, 0) ? "odd" : "even") << endl;
+
+
+
 	
 	BN_CTX_free(ctx);
 	BN_free(p);
@@ -334,6 +462,9 @@ void Set5Challenge35() {
 	BN_free(a_public_key_g1);
 	BN_free(a_public_key_gp);
 	BN_free(a_public_key_gp_minus_1);
+	BN_free(s0);
+	BN_free(s1);
+	BN_free(sp_minus_1);
 
 }
 
