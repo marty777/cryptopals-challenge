@@ -5,46 +5,67 @@
 #include <iostream>
 #include "openssl\bn.h"
 #include "BNUtility.h"
+#include <vector>
 
 using namespace std;
 
 void Set5Challenge33() {
 
+	vector<BIGNUM *> bn_ptrs;
+
 	BN_CTX *ctx = BN_CTX_new();
 	// initial test parameters
-	BIGNUM *p1 = bn_from_word(37);
-	BIGNUM *g1 = bn_from_word(5);
+	BIGNUM *p1 = bn_from_word(37, &bn_ptrs);
+	BIGNUM *g1 = bn_from_word(5, &bn_ptrs);
 	// random integer 0 <= a1 < 37
 	BIGNUM *a1 = BN_new();
+	bn_add_to_ptrs(a1, &bn_ptrs);
 	if (!BN_rand_range(a1, p1)) {
 		cout << "Error encountered" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
 		return;
 	}
 	BIGNUM *A1 = BN_new();
+	bn_add_to_ptrs(A1, &bn_ptrs);
 	if (!BN_mod_exp(A1, g1, a1, p1, ctx)) {
 		cout << "Error encountered" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
 		return;
 	}
 	// random integer 0 <= b1 < 37
 	BIGNUM *b1 = BN_new();
+	bn_add_to_ptrs(b1, &bn_ptrs);
 	if (!BN_rand_range(b1, p1)) {
 		cout << "Error encountered" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
 		return;
 	}
 	BIGNUM *B1 = BN_new();
+	bn_add_to_ptrs(B1, &bn_ptrs);
 	if (!BN_mod_exp(B1, g1, b1, p1, ctx)) {
 		cout << "Error encountered" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
 		return;
 	}
 
 	BIGNUM *sA = BN_new();
+	bn_add_to_ptrs(sA, &bn_ptrs);
 	if (!BN_mod_exp(sA, B1, a1, p1, ctx)) {
 		cout << "Error encountered" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
 		return;
 	}
 	BIGNUM *sB = BN_new();
+	bn_add_to_ptrs(sB, &bn_ptrs);
 	if (!BN_mod_exp(sA, A1, b1, p1, ctx)) {
 		cout << "Error encountered" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
 		return;
 	}
 
@@ -55,47 +76,58 @@ void Set5Challenge33() {
 		cout << "Small test of (A**b) % p not equal to (B**a) % p" << endl;
 	}
 
-	BN_free(p1);
-	BN_free(g1);
-	BN_free(a1);
-	BN_free(b1);
-	BN_free(A1);
-	BN_free(B1);
-	BN_free(sA);
-	BN_free(sB);
-
+	bn_free_ptrs(&bn_ptrs);
+	
 	// NIST parameters
 	ByteVector bigP = ByteVector("ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca237327ffffffffffffffff", HEX);
-	BIGNUM *p = bn_from_bytevector(&bigP);
-	BIGNUM *g = bn_from_word(2);
+	BIGNUM *p = bn_from_bytevector(&bigP, &bn_ptrs);
+	BIGNUM *g = bn_from_word(2, &bn_ptrs);
 	BIGNUM *a = BN_new();
 	BIGNUM *b = BN_new();
 	BIGNUM *A = BN_new();
 	BIGNUM *B = BN_new();
+	bn_add_to_ptrs(a, &bn_ptrs);
+	bn_add_to_ptrs(b, &bn_ptrs);
+	bn_add_to_ptrs(A, &bn_ptrs);
+	bn_add_to_ptrs(B, &bn_ptrs);
 	if (!BN_rand_range(a, p)) {
 		cout << "Error encountered" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
 		return;
 	}
 	if (!BN_rand_range(b, p)) {
 		cout << "Error encountered" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
 		return;
 	}
 	if (!BN_mod_exp(A, g, a, p, ctx)) {
 		cout << "Error encountered" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
 		return;
 	}
 	if (!BN_mod_exp(B, g, b, p, ctx)) {
 		cout << "Error encountered" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
 		return;
 	}
 	BIGNUM *s1 = BN_new();
+	bn_add_to_ptrs(s1, &bn_ptrs);
 	if (!BN_mod_exp(s1, A, b, p, ctx)) {
 		cout << "Error encountered" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
 		return;
 	}
 	BIGNUM *s2 = BN_new();
+	bn_add_to_ptrs(s2, &bn_ptrs);
 	if (!BN_mod_exp(s2, B, a, p, ctx)) {
 		cout << "Error encountered" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
 		return;
 	}
 	if (!BN_cmp(sA, sB) == 0) {
@@ -104,70 +136,52 @@ void Set5Challenge33() {
 	else {
 		cout << "Large test of (A**b) % p not equal to (B**a) % p" << endl;
 	}
-	
+
+	bn_free_ptrs(&bn_ptrs);
 	BN_CTX_free(ctx);
-	BN_free(p);
-	BN_free(g);
-	BN_free(a);
-	BN_free(b);
-	BN_free(A);
-	BN_free(B);
-	BN_free(s1);
-	BN_free(s2);
 }
 
 void Set5Challenge34() {
 
+	vector<BIGNUM *> bn_ptrs;
 	BN_CTX *ctx = BN_CTX_new();
 
 	// field prime and generator parameters
 	ByteVector bigP = ByteVector("ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca237327ffffffffffffffff", HEX);
-	BIGNUM *p = bn_from_bytevector(&bigP);
-	BIGNUM *g = bn_from_word(2);
+	BIGNUM *p = bn_from_bytevector(&bigP, &bn_ptrs);
+	BIGNUM *g = bn_from_word(2, &bn_ptrs);
 
 	// participants A and B
 	BIGNUM *a_private_key = BN_new();
 	BIGNUM *a_public_key = BN_new();
+	bn_add_to_ptrs(a_private_key, &bn_ptrs);
+	bn_add_to_ptrs(a_public_key, &bn_ptrs);
 	if (!BN_rand_range(a_private_key, p)) {
 		cout << "Error encountered" << endl;
 		BN_CTX_free(ctx);
-		BN_free(p);
-		BN_free(g);
-		BN_free(a_private_key);
-		BN_free(a_public_key);
+		bn_free_ptrs(&bn_ptrs);
 		return;
 	}
 	if (!BN_mod_exp(a_public_key, g, a_private_key, p, ctx)) {
 		cout << "Error encountered" << endl;
 		BN_CTX_free(ctx);
-		BN_free(p);
-		BN_free(g);
-		BN_free(a_private_key);
-		BN_free(a_public_key);
+		bn_free_ptrs(&bn_ptrs);
 		return;
 	}
 	BIGNUM *b_private_key = BN_new();
 	BIGNUM *b_public_key = BN_new();
+	bn_add_to_ptrs(b_private_key, &bn_ptrs);
+	bn_add_to_ptrs(b_public_key, &bn_ptrs);
 	if (!BN_rand_range(b_private_key, p)) {
 		cout << "Error encountered" << endl;
 		BN_CTX_free(ctx);
-		BN_free(p);
-		BN_free(g);
-		BN_free(a_private_key);
-		BN_free(a_public_key);
-		BN_free(b_private_key);
-		BN_free(b_public_key);
+		bn_free_ptrs(&bn_ptrs);
 		return;
 	}
 	if (!BN_mod_exp(b_public_key, g, b_private_key, p, ctx)) {
 		cout << "Error encountered" << endl;
 		BN_CTX_free(ctx);
-		BN_free(p);
-		BN_free(g);
-		BN_free(a_private_key);
-		BN_free(a_public_key);
-		BN_free(b_private_key);
-		BN_free(b_public_key);
+		bn_free_ptrs(&bn_ptrs);
 		return;
 	}
 
@@ -231,7 +245,7 @@ void Set5Challenge34() {
 	else {
 		cout << "failed" << endl;
 	}
-	BIGNUM *m_cheat_private_key = bn_from_word(1);
+	BIGNUM *m_cheat_private_key = bn_from_word(1, &bn_ptrs);
 	cout << "M decrypting intercepted message from A...";
 	ByteVector interceptedFromA = ByteVector();
 	ByteEncryption::challenge34Decrypt(p, p, m_cheat_private_key, &fromAtoMtoB, &interceptedFromA);
@@ -268,30 +282,24 @@ void Set5Challenge34() {
 	cout << "Decrypted message from B by M:" << endl << interceptedFromB.toStr(ASCII) << endl;
 
 	BN_CTX_free(ctx);
-	BN_free(p);
-	BN_free(g);
-	BN_free(a_private_key);
-	BN_free(a_public_key);
-	BN_free(b_private_key);
-	BN_free(b_public_key);
+	bn_free_ptrs(&bn_ptrs);
 }
 
 void Set5Challenge35() {
+
+	vector<BIGNUM *> bn_ptrs;
 	BN_CTX *ctx = BN_CTX_new();
 
 	// field prime and generator parameters
 	ByteVector bigP = ByteVector("ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca237327ffffffffffffffff", HEX);
-	BIGNUM *p = bn_from_bytevector(&bigP);
-	BIGNUM *g1 = bn_from_word(1);
-	BIGNUM *gp = bn_from_bytevector(&bigP);
-	BIGNUM *gp_minus_1 = bn_from_bytevector(&bigP);
+	BIGNUM *p = bn_from_bytevector(&bigP, &bn_ptrs);
+	BIGNUM *g1 = bn_from_word(1, &bn_ptrs);
+	BIGNUM *gp = bn_from_bytevector(&bigP, &bn_ptrs);
+	BIGNUM *gp_minus_1 = bn_from_bytevector(&bigP, &bn_ptrs);
 	if (!BN_sub_word(gp_minus_1, 1)) {
 		cout << "Error encounterd" << endl;
 		BN_CTX_free(ctx);
-		BN_free(p);
-		BN_free(g1);
-		BN_free(gp);
-		BN_free(gp_minus_1);
+		bn_free_ptrs(&bn_ptrs);
 		return;
 	}
 
@@ -311,6 +319,14 @@ void Set5Challenge35() {
 	BIGNUM *s1 = BN_new();
 	BIGNUM *s0 = BN_new();
 	BIGNUM *sp_minus_1 = BN_new();
+	bn_add_to_ptrs(a_private_key, &bn_ptrs);
+	bn_add_to_ptrs(b_private_key, &bn_ptrs);
+	bn_add_to_ptrs(a_public_key_g1, &bn_ptrs);
+	bn_add_to_ptrs(a_public_key_gp, &bn_ptrs);
+	bn_add_to_ptrs(a_public_key_gp_minus_1, &bn_ptrs);
+	bn_add_to_ptrs(s1, &bn_ptrs);
+	bn_add_to_ptrs(s0, &bn_ptrs);
+	bn_add_to_ptrs(sp_minus_1, &bn_ptrs);
 	BN_one(s1); // s1 = 1
 	BN_zero(s0); // s0 = 0
 	BN_copy(sp_minus_1, gp_minus_1); // sp_minus_1 = p-1
@@ -319,18 +335,7 @@ void Set5Challenge35() {
 	if (!BN_rand_range(a_private_key, p) || !BN_rand_range(b_private_key, p)) {
 		cout << "Error encountered" << endl;
 		BN_CTX_free(ctx);
-		BN_free(p);
-		BN_free(g1);
-		BN_free(gp);
-		BN_free(gp_minus_1);
-		BN_free(a_private_key);
-		BN_free(b_private_key);
-		BN_free(a_public_key_g1);
-		BN_free(a_public_key_gp);
-		BN_free(a_public_key_gp_minus_1);
-		BN_free(s0);
-		BN_free(s1);
-		BN_free(sp_minus_1);
+		bn_free_ptrs(&bn_ptrs);
 		return;
 	}
 
@@ -341,18 +346,7 @@ void Set5Challenge35() {
 	if (!BN_mod_exp(a_public_key_g1, g1, a_private_key, p, ctx)) {
 		cout << "Error encountered" << endl;
 		BN_CTX_free(ctx);
-		BN_free(p);
-		BN_free(g1);
-		BN_free(gp);
-		BN_free(gp_minus_1);
-		BN_free(a_private_key);
-		BN_free(b_private_key);
-		BN_free(a_public_key_g1);
-		BN_free(a_public_key_gp);
-		BN_free(a_public_key_gp_minus_1);
-		BN_free(s0);
-		BN_free(s1);
-		BN_free(sp_minus_1);
+		bn_free_ptrs(&bn_ptrs);
 		return;
 	}
 	// Encrypt message to A from B knowing public key
@@ -374,18 +368,7 @@ void Set5Challenge35() {
 	if (!BN_mod_exp(a_public_key_gp, gp, a_private_key, p, ctx)) {
 		cout << "Error encountered" << endl;
 		BN_CTX_free(ctx);
-		BN_free(p);
-		BN_free(g1);
-		BN_free(gp);
-		BN_free(gp_minus_1);
-		BN_free(a_private_key);
-		BN_free(b_private_key);
-		BN_free(a_public_key_g1);
-		BN_free(a_public_key_gp);
-		BN_free(a_public_key_gp_minus_1);
-		BN_free(s0);
-		BN_free(s1);
-		BN_free(sp_minus_1);
+		bn_free_ptrs(&bn_ptrs);
 		return;
 	}
 	// Encrypt message to A from B knowing public key
@@ -406,18 +389,7 @@ void Set5Challenge35() {
 	if (!BN_mod_exp(a_public_key_gp_minus_1, gp_minus_1, a_private_key, p, ctx)) {
 		cout << "Error encountered" << endl;
 		BN_CTX_free(ctx);
-		BN_free(p);
-		BN_free(g1);
-		BN_free(gp);
-		BN_free(gp_minus_1);
-		BN_free(a_private_key);
-		BN_free(b_private_key);
-		BN_free(a_public_key_g1);
-		BN_free(a_public_key_gp);
-		BN_free(a_public_key_gp_minus_1);
-		BN_free(s0);
-		BN_free(s1);
-		BN_free(sp_minus_1);
+		bn_free_ptrs(&bn_ptrs);
 		return;
 	}
 	// Encrypt message to A from B knowing public key
@@ -435,36 +407,30 @@ void Set5Challenge35() {
 			cout << "Decryption assuming s = p - 1 failed." << endl;
 		}
 		else {
-			cout << "Decryption succeeded with s = p - 1. Private key of A is odd." << endl;
+			cout << "Decryption succeeded with s = p - 1." << endl;
 			success = true;
 		}
 	}
 	else {
-		cout << "Decryption succeeded with s = 1. Private key of A is even." << endl;
+		cout << "Decryption succeeded with s = 1." << endl;
 		success = true;
 	}
 
 	cout << "Decrypted message " << (message.equal(&decrypted_gp_minus_1) ? "matches" : "does not match") << " original" << endl;
 	cout << "Decrypted message: " << endl << decrypted_gp_minus_1.toStr(ASCII) << endl;
 
-	cout << "Private key of A is actually " << (BN_is_bit_set(a_private_key, 0) ? "odd" : "even") << endl;
-
-
-
-	
 	BN_CTX_free(ctx);
-	BN_free(p);
-	BN_free(g1);
-	BN_free(gp);
-	BN_free(gp_minus_1);
-	BN_free(a_private_key);
-	BN_free(b_private_key);
-	BN_free(a_public_key_g1);
-	BN_free(a_public_key_gp);
-	BN_free(a_public_key_gp_minus_1);
-	BN_free(s0);
-	BN_free(s1);
-	BN_free(sp_minus_1);
+	bn_free_ptrs(&bn_ptrs);
+}
+
+void Set5Challenge36() {
+	vector<BIGNUM *> bn_ptrs;
+	BN_CTX *ctx = BN_CTX_new();
+
+	ByteVector bigP = ByteVector("ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca237327ffffffffffffffff", HEX);
+	BIGNUM *N = bn_from_bytevector(&bigP, &bn_ptrs);
+	BIGNUM *g = bn_from_word(2, &bn_ptrs);
+	BIGNUM *k = bn_from_word(3, &bn_ptrs);
 
 }
 
@@ -482,6 +448,11 @@ int Set5() {
 	getchar();
 	cout << "Set 5 Challenge 35" << endl;
 	Set5Challenge35();
+	// Pause before continuing
+	cout << "Press enter to continue..." << endl;
+	getchar();
+	cout << "Set 5 Challenge 36" << endl;
+	Set5Challenge36();
 	// Pause before continuing
 	cout << "Press enter to continue..." << endl;
 	getchar();
