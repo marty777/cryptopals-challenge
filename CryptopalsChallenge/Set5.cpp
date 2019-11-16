@@ -575,6 +575,166 @@ void Set5Challenge36() {
 
 	BN_CTX_free(ctx);
 	bn_free_ptrs(&bn_ptrs);
+}
+
+void Set5Challenge37() {
+	// Providing an A value equivalent to zero mod N (i.e. 0, N, N*x, N^x) means that the server will generate K = SHA256(0). 
+	// HMAC-SHA256(SHA256(0),salt) can be sent by the client without needing to know the valid password.
+
+	vector<BIGNUM *> bn_ptrs;
+	BN_CTX *ctx = BN_CTX_new();
+
+	ByteVector bigP = ByteVector("ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca237327ffffffffffffffff", HEX);
+	BIGNUM *N = bn_from_bytevector(&bigP, &bn_ptrs);
+	BIGNUM *g = bn_from_word(2, &bn_ptrs);
+	BIGNUM *k = bn_from_word(3, &bn_ptrs);
+
+	char *email = "test@test.com";
+	char *secretpassword = "password";
+	SRPServer server = SRPServer(N, g, k, email, secretpassword);
+
+
+	// A = 0
+	BIGNUM *A = bn_from_word(0, &bn_ptrs);
+	cout << "Attempting to authenticate by providing A = 0" << endl;
+	ByteVector emailBV = ByteVector(email, ASCII);
+	ByteVector ABV = ByteVector();
+	bn_to_bytevector(A, &ABV);
+	SRP_message message;
+	message.data = ByteVector(emailBV.length() + ABV.length());
+	emailBV.copyBytesByIndex(&message.data, 0, emailBV.length(), 0);
+	ABV.copyBytesByIndex(&message.data, 0, ABV.length(), emailBV.length());
+	message.num_items = 2;
+	message.first_item_len = emailBV.length();
+	message.special = EXCHANGE_KEYS;
+	cout << "Sending initial message to server..." << endl;
+	SRP_message response1 = server.response(message);
+	cout << "Response recieved from server" << endl;
+	if (response1.special != EXCHANGE_KEYS || response1.num_items != 2 || response1.first_item_len == 0) {
+		cout << "Unexpected recieved from server" << endl;
+		BN_CTX_free(ctx);
+		bn_free_ptrs(&bn_ptrs);
+		return;
+	}
+	// extract response info
+	ByteVector saltBV = ByteVector(response1.first_item_len);
+	response1.data.copyBytesByIndex(&saltBV, 0, response1.first_item_len, 0);
+	ByteVector BBV = ByteVector(response1.data.length() - response1.first_item_len);
+	response1.data.copyBytesByIndex(&BBV, response1.first_item_len, response1.data.length() - response1.first_item_len, 0);
+
+
+	cout << "Sending zero key HMAC." << endl;
+	BIGNUM *zero = bn_from_word(0, &bn_ptrs);
+	ByteVector zeroS = ByteVector(1); 
+	bn_to_bytevector(zero, &zeroS);
+	ByteVector zeroKey = ByteVector();
+	ByteEncryption::sha256(&zeroS, &zeroKey);
+	ByteVector zeroHMAC = ByteVector();
+	ByteEncryption::sha256_HMAC(&saltBV, &zeroKey, &zeroHMAC);
+
+	SRP_message message2;
+
+	message2.data.resize(zeroHMAC.length());
+	zeroHMAC.copyBytesByIndex(&message2.data, 0, zeroHMAC.length(), 0);
+	message2.num_items = 1;
+	message2.first_item_len = zeroHMAC.length();
+	message2.special = HMAC_VERIFY;
+	SRP_message response2 = server.response(message2);
+	if (response2.special != OK) {
+		cout << "HMAC validation not OK" << endl;
+	}
+	else {
+		cout << "HMAC validation OK" << endl;
+	}
+
+	// A = N
+	cout << endl << "Attempting to authenticate by providing A = N" << endl;
+	if (BN_copy(A, N) == NULL) {
+		cout << "Error while setting A" << endl;
+		BN_CTX_free(ctx);
+		bn_free_ptrs(&bn_ptrs);
+		return;
+	}
+	bn_to_bytevector(A, &ABV);
+	message.data.resize(emailBV.length() + ABV.length());
+	ABV.copyBytesByIndex(&message.data, 0, ABV.length(), emailBV.length());
+	cout << "Sending initial message to server..." << endl;
+	SRP_message response1N = server.response(message);
+	cout << "Response recieved from server" << endl;
+	if (response1N.special != EXCHANGE_KEYS || response1N.num_items != 2 || response1N.first_item_len == 0) {
+		cout << "Unexpected recieved from server" << endl;
+		BN_CTX_free(ctx);
+		bn_free_ptrs(&bn_ptrs);
+		return;
+	}
+	cout << "Sending zero key HMAC." << endl;
+	SRP_message response2N = server.response(message2);
+	if (response2N.special != OK) {
+		cout << "HMAC validation not OK" << endl;
+	}
+	else {
+		cout << "HMAC validation OK" << endl;
+	}
+
+	// A = 2*N
+	cout << endl << "Attempting to authenticate by providing A = 2*N" << endl;
+	BIGNUM *two = bn_from_word(2, &bn_ptrs);
+	if (!BN_mul(A, A, two, ctx)) {
+		cout << "Error while multiplying A" << endl;
+		BN_CTX_free(ctx);
+		bn_free_ptrs(&bn_ptrs);
+		return;
+	}
+	bn_to_bytevector(A, &ABV);
+	message.data.resize(emailBV.length() + ABV.length());
+	ABV.copyBytesByIndex(&message.data, 0, ABV.length(), emailBV.length());
+	cout << "Sending initial message to server..." << endl;
+	SRP_message response1_2N = server.response(message);
+	if (response1_2N.special != EXCHANGE_KEYS || response1_2N.num_items != 2 || response1_2N.first_item_len == 0) {
+		cout << "Unexpected recieved from server" << endl;
+		BN_CTX_free(ctx);
+		bn_free_ptrs(&bn_ptrs);
+		return;
+	}
+	cout << "Sending zero key HMAC." << endl;
+	SRP_message response2_2N = server.response(message2);
+	if (response2_2N.special != OK) {
+		cout << "HMAC validation not OK" << endl;
+	}
+	else {
+		cout << "HMAC validation OK" << endl;
+	}
+
+	// A = N^2
+	cout << endl << "Attempting to authenticate by providing A = N^2" << endl;
+	if (!BN_mul(A, N, N, ctx)) {
+		cout << "Error while multipying N" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		return;
+	}
+	bn_to_bytevector(A, &ABV);
+	message.data.resize(emailBV.length() + ABV.length());
+	ABV.copyBytesByIndex(&message.data, 0, ABV.length(), emailBV.length());
+	cout << "Sending initial message to server..." << endl;
+	SRP_message response1_N2 = server.response(message);
+	if (response1_N2.special != EXCHANGE_KEYS || response1_N2.num_items != 2 || response1_N2.first_item_len == 0) {
+		cout << "Unexpected recieved from server" << endl;
+		BN_CTX_free(ctx);
+		bn_free_ptrs(&bn_ptrs);
+		return;
+	}
+	cout << "Sending zero key HMAC." << endl;
+	SRP_message response2_N2 = server.response(message2);
+	if (response2_N2.special != OK) {
+		cout << "HMAC validation not OK" << endl;
+	}
+	else {
+		cout << "HMAC validation OK" << endl;
+	}
+
+
+	BN_CTX_free(ctx);
+	bn_free_ptrs(&bn_ptrs);
 
 }
 
@@ -597,6 +757,11 @@ int Set5() {
 	getchar();
 	cout << "Set 5 Challenge 36" << endl;
 	Set5Challenge36();
+	// Pause before continuing
+	cout << "Press enter to continue..." << endl;
+	getchar();
+	cout << "Set 5 Challenge 37" << endl;
+	Set5Challenge37();
 	// Pause before continuing
 	cout << "Press enter to continue..." << endl;
 	getchar();
