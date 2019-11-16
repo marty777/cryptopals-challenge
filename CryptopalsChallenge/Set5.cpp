@@ -438,7 +438,7 @@ void Set5Challenge36() {
 
 	char *email = "test@test.com";
 	char *password = "password";
-	SRPServer server = SRPServer(bigP, 2, 3, email, password);
+	SRPServer server = SRPServer(N, g, k, email, password);
 
 	// generate private key
 	BIGNUM *a = BN_new();
@@ -483,7 +483,9 @@ void Set5Challenge36() {
 	response1.data.copyBytesByIndex(&saltBV, 0, response1.first_item_len, 0);
 	ByteVector BBV = ByteVector(response1.data.length() - response1.first_item_len);
 	response1.data.copyBytesByIndex(&BBV, response1.first_item_len, response1.data.length() - response1.first_item_len, 0);
-	
+
+	BIGNUM *B = bn_from_bytevector(&BBV, &bn_ptrs);
+
 	// compute uH, u
 	ByteVector hashIn = ByteVector();
 	bv_concat(&ABV, &BBV, &hashIn);
@@ -499,8 +501,77 @@ void Set5Challenge36() {
 	ByteEncryption::sha256(&hashIn2, &xH);
 	BIGNUM *x = bn_from_bytevector(&xH, &bn_ptrs);
 
-	// generate S
+	// generate S = (B - k * g**x)**(a + u * x) % N
+	BIGNUM *S = BN_new();
+	BIGNUM *temp = BN_new();
+	BIGNUM *temp1 = BN_new();
+	BIGNUM *temp2 = BN_new();
+	bn_add_to_ptrs(S, &bn_ptrs);
+	bn_add_to_ptrs(temp, &bn_ptrs);
+	bn_add_to_ptrs(temp1, &bn_ptrs);
+	bn_add_to_ptrs(temp2, &bn_ptrs);
+	
+	if (!BN_mod_exp(temp1, g, x, N, ctx)) {
+		cout << "Error while generating client S" << endl;
+		BN_CTX_free(ctx);
+		bn_free_ptrs(&bn_ptrs);
+		return;
+	}
+	if (!BN_mod_mul(temp2, temp1, k, N, ctx)) {
+		cout << "Error while generating client S" << endl;
+		BN_CTX_free(ctx);
+		bn_free_ptrs(&bn_ptrs);
+		return;
+	}
+	if (!BN_mod_sub(temp, B, temp2, N, ctx)) {
+		cout << "Error while generating client S" << endl;
+		BN_CTX_free(ctx);
+		bn_free_ptrs(&bn_ptrs);
+		return;
+	}
+	if (!BN_mod_mul(temp1, u, x, N, ctx)) {
+		cout << "Error while generating client S" << endl;
+		BN_CTX_free(ctx);
+		bn_free_ptrs(&bn_ptrs);
+		return;
+	}
+	if (!BN_mod_add(temp2, a, temp1, N, ctx)) {
+		cout << "Error while generating client S" << endl;
+		BN_CTX_free(ctx);
+		bn_free_ptrs(&bn_ptrs);
+		return;
+	}
+	if (!BN_mod_exp(S, temp, temp2, N, ctx)) {
+		cout << "Error while generating client S" << endl;
+		BN_CTX_free(ctx);
+		bn_free_ptrs(&bn_ptrs);
+		return;
+	}
 
+	// generate K
+	ByteVector SBV = ByteVector();
+	bn_to_bytevector(S, &SBV);
+	ByteVector K = ByteVector();
+	ByteEncryption::sha256(&SBV, &K);
+
+	// generate HMAC(K,salt)
+	ByteVector HMAC = ByteVector();
+	ByteEncryption::sha256_HMAC(&saltBV, &K, &HMAC);
+
+	// prepare message
+	message.data.resize(HMAC.length());
+	HMAC.copyBytesByIndex(&message.data, 0, HMAC.length(), 0);
+	message.num_items = 1;
+	message.first_item_len = HMAC.length();
+	message.special = HMAC_VERIFY;
+	cout << "Sending HMAC to server for validation..." << endl;
+	SRP_message response2 = server.response(message);
+	if (response2.special != OK) {
+		cout << "HMAC validation not OK" << endl;
+	}
+	else {
+		cout << "HMAC validation OK" << endl;
+	}
 
 	BN_CTX_free(ctx);
 	bn_free_ptrs(&bn_ptrs);

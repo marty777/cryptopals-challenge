@@ -4,12 +4,13 @@
 #include "ByteEncryption.h"
 #include <iostream>
 
-SRPServer::SRPServer(ByteVector N, int g, int k, char *email, char *password) {
+SRPServer::SRPServer(BIGNUM *N, BIGNUM *g, BIGNUM *k, char *email, char *password) {
 	init_err = false;
 	_ctx = BN_CTX_new();
-	_N = bn_from_bytevector(&N);
-	_g = bn_from_word(g);
-	_k = bn_from_word(k);
+	_N = BN_dup(N);
+	_g = BN_dup(g);
+	_k = BN_dup(k);
+	
 	_I = ByteVector(email, ASCII);
 	_P = ByteVector(password, ASCII);
 	_salt = BN_new();
@@ -26,9 +27,11 @@ SRPServer::SRPServer(ByteVector N, int g, int k, char *email, char *password) {
 	ByteVector saltedPW = ByteVector(saltBV.length() + pwBV.length());
 	saltBV.copyBytesByIndex(&saltedPW, 0, saltBV.length(), 0);
 	pwBV.copyBytesByIndex(&saltedPW, 0, pwBV.length(), saltBV.length());
+	ByteVector hash = ByteVector();
+	ByteEncryption::sha256(&saltedPW, &hash);
 
 	// convert pw hash to BN integer
-	BIGNUM *x = bn_from_bytevector(&saltedPW);
+	BIGNUM *x = bn_from_bytevector(&hash);
 
 	// v = g ^ x % N
 	_v = BN_new();
@@ -44,33 +47,39 @@ SRPServer::SRPServer(ByteVector N, int g, int k, char *email, char *password) {
 	BN_rand_range(_b, _N);
 
 	_B = BN_new();
-	if (!BN_mod_exp(_B, _g, _b, _N, _ctx)) {
+	BIGNUM *temp = BN_new();
+	if (!BN_mod_exp(temp, _g, _b, _N, _ctx)) {
 		std::cerr << "Error computing public key in SRPServer" << std::endl;
 		BN_free(x);
+		BN_free(temp);
 		init_err = true;
 		return;
 	}
 	BIGNUM *kv = BN_new();
-	if (!BN_mul(kv, _k, _v, _ctx)) {
+	if (!BN_mod_mul(kv, _k, _v, _N, _ctx)) {
 		std::cerr << "Error computing public key in SRPServer" << std::endl;
 		BN_free(x);
 		BN_free(kv);
+		BN_free(temp);
 		init_err = true;
 		return;
 	}
-	if (!BN_add(_B, kv, _B)) {
+	if (!BN_mod_add(_B, kv, temp, _N, _ctx)) {
 		std::cerr << "Error computing public key in SRPServer" << std::endl;
 		BN_free(x);
 		BN_free(kv);
+		BN_free(temp);
 		init_err = true;
 		return;
 	}
-
+	
+	BN_free(x);
 	BN_free(kv);
+	BN_free(temp);
 	_A = NULL;
 	_S = NULL;
 
-	BN_free(x);
+	
 }
 
 
@@ -156,31 +165,36 @@ SRP_message SRPServer::key_exchange(SRP_message input) {
 		return response;
 	}
 
-
 	_A = bn_from_bytevector(&A);
-
+	
 	// compute uH, u
 	bn_to_bytevector(_A, &ABV);
 	bn_to_bytevector(_B, &BBV);
+
 	temp = ABV.length();
 	ABV.resize(ABV.length() + BBV.length());
 	BBV.copyBytesByIndex(&ABV, 0, BBV.length(), temp);
 	ByteEncryption::sha256(&ABV, &uH);
 	u = bn_from_bytevector(&uH, &bn_ptrs);
+
 	_S = BN_new();
+	BIGNUM *temp1 = BN_new();
+	BIGNUM *temp2 = BN_new();
+	bn_add_to_ptrs(temp1, &bn_ptrs);
+	bn_add_to_ptrs(temp2, &bn_ptrs);
 
 	// generate S = (A*(v^u))^b % N
-	if (!BN_mod_exp(_S, _v, u, _N, _ctx)) {
+	if (!BN_mod_exp(temp1, _v, u, _N, _ctx)) {
 		response.special = ERR;
 		bn_free_ptrs(&bn_ptrs);
 		return response;
 	}
-	if (!BN_mul(_S, _A, _S, _ctx)) {
+	if (!BN_mod_mul(temp2, _A, temp1, _N, _ctx)) {
 		response.special = ERR;
 		bn_free_ptrs(&bn_ptrs);
 		return response;
 	}
-	if (!BN_mod_exp(_S, _S, _b, _N, _ctx)) {
+	if (!BN_mod_exp(_S, temp2, _b, _N, _ctx)) {
 		response.special = ERR;
 		bn_free_ptrs(&bn_ptrs);
 		return response;
@@ -194,6 +208,8 @@ SRP_message SRPServer::key_exchange(SRP_message input) {
 	response.num_items = 2;
 	response.first_item_len = saltBV.length();
 	response.special = EXCHANGE_KEYS;
+
+	_state = 1;
 
 	return response;
 }
@@ -241,6 +257,8 @@ SRP_message SRPServer::hmac_validation(SRP_message input) {
 	else {
 		response.special = OK;
 	}
+
+	_state = 0;
 
 	return response;
 }

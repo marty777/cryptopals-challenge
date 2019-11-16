@@ -17,7 +17,7 @@ public:
 
 	bool init_err;
 
-	SRPServer(ByteVector N, int g, int k, char *email, char *password);
+	SRPServer(BIGNUM *N, BIGNUM *g, BIGNUM *k, char *email, char *password);
 	~SRPServer();
 	SRP_message response(SRP_message input);
 
