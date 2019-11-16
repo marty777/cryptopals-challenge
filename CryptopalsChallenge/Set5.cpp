@@ -436,7 +436,44 @@ void Set5Challenge36() {
 	BIGNUM *g = bn_from_word(2, &bn_ptrs);
 	BIGNUM *k = bn_from_word(3, &bn_ptrs);
 
-	SRPServer server = SRPServer(bigP, 2, 3, "test@test.com", "password");
+	char *email = "test@test.com";
+	char *password = "password";
+	SRPServer server = SRPServer(bigP, 2, 3, email, password);
+
+	// generate private key
+	BIGNUM *a = BN_new();
+	bn_add_to_ptrs(a, &bn_ptrs);
+	if (!BN_rand_range(a, N)) {
+		cout << "Error generating client private key" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		return;
+	}
+
+	// generate public key
+	BIGNUM *A = BN_new();
+	bn_add_to_ptrs(A, &bn_ptrs);
+	if (!BN_mod_exp(A, g, a, N, ctx)) {
+		cout << "Error generating client private key" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		return;
+	}
+
+	// initial exchange - send I, A to server and recieve salt, B
+	ByteVector emailBV = ByteVector(email, ASCII);
+	ByteVector ABV = ByteVector();
+	bn_to_bytevector(A, &ABV);
+	SRP_message message;
+	message.data = ByteVector(emailBV.length() + ABV.length());
+	emailBV.copyBytesByIndex(&message.data, 0, emailBV.length(), 0);
+	ABV.copyBytesByIndex(&message.data, 0, ABV.length(), emailBV.length());
+	message.num_items = 2;
+	message.first_item_len = emailBV.length();
+	message.special = EXCHANGE_KEYS;
+	SRP_message response1 = server.response(message);
+
+
+	BN_CTX_free(ctx);
+	bn_free_ptrs(&bn_ptrs);
 
 }
 

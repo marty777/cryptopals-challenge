@@ -197,14 +197,29 @@ SRP_message SRPServer::response(SRP_message input) {
 			return response;
 		}
 
-		// generate K
+		// generate K = SHA256(_S)
+		ByteVector S = ByteVector();
+		bn_to_bytevector(_S, &S);
+		ByteVector K = ByteVector();
+		ByteEncryption::sha256(&S, &K);
 
 		// generate HMAC-SHA265(K, salt)
+		ByteVector salt = ByteVector();
+		bn_to_bytevector(_salt, &salt);
+		ByteVector hmac = ByteVector();
+		ByteEncryption::sha256_HMAC(&salt, &K, &hmac);
 
 		// test input provided by client
+		if (!hmac.equal(&input.data)) {
+			response.special = NOTOK;
+			return response;
+		}
+		else {
+			response.special = OK;
+			return response;
+		}
 
 		break;
-	default:
-		break;
+	
 	}
 }

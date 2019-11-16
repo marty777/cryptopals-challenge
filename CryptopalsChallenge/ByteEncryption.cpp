@@ -998,6 +998,37 @@ void ByteEncryption::sha256(ByteVector *bv, ByteVector *output, size_t length_of
 
 }
 
+void ByteEncryption::sha256_HMAC(ByteVector *bv, ByteVector *key, ByteVector *output) {
+	size_t block_size = 64;
+	size_t hash_length = 32;
+	assert(key->length() >= hash_length && key->length() <= block_size);
+
+	ByteVector ipad = ByteVector(block_size);
+	ByteVector opad = ByteVector(block_size);
+	ipad.allBytes(0x36);
+	opad.allBytes(0x5C);
+
+	// pad the key to the blocksize
+	ByteVector k = ByteVector(key);
+	size_t k_len = k.length();
+	k.resize(block_size);
+	for (size_t i = k_len; i < block_size; i++) {
+		k[i] = 0x0;
+	}
+	opad.xorSelf(&k);
+	ipad.xorSelf(&k);
+	// append input bytes to k xor ipad and hash
+	ByteVector input = ByteVector();
+	bv_concat(&ipad, bv, &input);
+	ByteVector hash1 = ByteVector();
+	ByteEncryption::sha256(&input, &hash1);
+
+	// append previous hash to k xor opad and hash
+	ByteVector input2 = ByteVector();
+	bv_concat(&opad, &hash1, &input2);
+	ByteEncryption::sha256(&input2, output);
+}
+
 uint32_t md4_F(uint32_t a, uint32_t b, uint32_t c) {
 	return ((a&b) | ((~a)&c));
 }

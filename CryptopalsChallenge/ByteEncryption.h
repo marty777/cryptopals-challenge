@@ -66,6 +66,7 @@ public:
 	static void sha1_MAC(ByteVector *bv, ByteVector *key, ByteVector *output);
 
 	static void sha256(ByteVector *bv, ByteVector *output, size_t length_offset = 0, uint32_t state0 = 0x6a09e667, uint32_t state1 = 0xbb67ae85, uint32_t state2 = 0x3c6ef372, uint32_t state3 = 0xa54ff53a, uint32_t state4 = 0x510e527f, uint32_t state5 = 0x9b05688c, uint32_t state6 = 0x1f83d9ab, uint32_t state7 = 0x5be0cd19);
+	static void sha256_HMAC(ByteVector *bv, ByteVector *key, ByteVector *output);
 
 	static void md4(ByteVector *bv, ByteVector *output, size_t length_offset = 0, uint32_t state0 = 0x67452301, uint32_t state1 = 0xEFCDAB89, uint32_t state2 = 0x98BADCFE, uint32_t state3 = 0x10325476);
 	static void md4_MAC(ByteVector *bv, ByteVector *key, ByteVector *output);
