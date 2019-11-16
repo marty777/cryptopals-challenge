@@ -469,7 +469,37 @@ void Set5Challenge36() {
 	message.num_items = 2;
 	message.first_item_len = emailBV.length();
 	message.special = EXCHANGE_KEYS;
+	cout << "Sending initial message to server..." << endl;
 	SRP_message response1 = server.response(message);
+	cout << "Response recieved from server" << endl;
+	if (response1.special != EXCHANGE_KEYS || response1.num_items != 2 || response1.first_item_len == 0) {
+		cout << "Unexpected recieved from server" << endl;
+		BN_CTX_free(ctx);
+		bn_free_ptrs(&bn_ptrs);
+		return;
+	}
+	// extract response info
+	ByteVector saltBV = ByteVector(response1.first_item_len);
+	response1.data.copyBytesByIndex(&saltBV, 0, response1.first_item_len, 0);
+	ByteVector BBV = ByteVector(response1.data.length() - response1.first_item_len);
+	response1.data.copyBytesByIndex(&BBV, response1.first_item_len, response1.data.length() - response1.first_item_len, 0);
+	
+	// compute uH, u
+	ByteVector hashIn = ByteVector();
+	bv_concat(&ABV, &BBV, &hashIn);
+	ByteVector uH = ByteVector();
+	ByteEncryption::sha256(&hashIn, &uH);
+	BIGNUM *u = bn_from_bytevector(&uH, &bn_ptrs);
+
+	// generate xH and x
+	ByteVector passwordBV = ByteVector(password, ASCII);
+	ByteVector hashIn2 = ByteVector();
+	bv_concat(&saltBV, &passwordBV, &hashIn2);
+	ByteVector xH = ByteVector();
+	ByteEncryption::sha256(&hashIn2, &xH);
+	BIGNUM *x = bn_from_bytevector(&xH, &bn_ptrs);
+
+	// generate S
 
 
 	BN_CTX_free(ctx);

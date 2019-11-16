@@ -36,4 +36,7 @@ private:
 	BIGNUM *_B;
 	BIGNUM *_S;
 	int _state; // 0 = awaiting username, client public key, 1 = awaiting HMAC.
+
+	SRP_message key_exchange(SRP_message input);
+	SRP_message hmac_validation(SRP_message input);
 };

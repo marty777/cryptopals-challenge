@@ -4,7 +4,6 @@
 #include "ByteEncryption.h"
 #include <iostream>
 
-
 SRPServer::SRPServer(ByteVector N, int g, int k, char *email, char *password) {
 	init_err = false;
 	_ctx = BN_CTX_new();
@@ -98,18 +97,6 @@ SRP_message SRPServer::response(SRP_message input) {
 	response.first_item_len = 0;
 	response.data = ByteVector();
 
-	ByteVector I = ByteVector();
-	ByteVector A = ByteVector();
-	ByteVector HMAC = ByteVector();
-
-	ByteVector saltBV = ByteVector();
-	ByteVector BBV = ByteVector();
-	ByteVector ABV = ByteVector();
-	ByteVector uH = ByteVector();
-	BIGNUM *u;
-
-	size_t temp;
-
 	if (input.special == -1) {
 		_state = 0;
 		response.num_items = 0;
@@ -118,108 +105,142 @@ SRP_message SRPServer::response(SRP_message input) {
 	}
 	switch (_state) {
 	case 0: // waiting for client email and public key
-		if (input.special != EXCHANGE_KEYS) {
-			response.special = NOTOK;
-			return response;
-		}
-		if (input.num_items != 2) {
-			response.special = NOTOK;
-			return response;
-		}
-		if (input.first_item_len == 0) {
-			response.special = NOTOK;
-			return response;
-		}
-
-		I.resize(input.first_item_len);
-		A.resize(input.data.length() - input.first_item_len);
-		input.data.copyBytesByIndex(&I, 0, input.first_item_len, 0);
-		input.data.copyBytesByIndex(&A, input.first_item_len, input.data.length() - input.first_item_len, 0);
-
-		if (!I.equal(&_I)) {
-			response.special = NOTOK;
-			return response;
-		}
-
-		_A = bn_from_bytevector(&A);
-
-		// compute uH, u
-		bn_to_bytevector(_A, &ABV);
-		bn_to_bytevector(_B, &BBV);
-		temp = ABV.length();
-		ABV.resize(ABV.length() + BBV.length());
-		BBV.copyBytesByIndex(&ABV, 0, BBV.length(), temp);
-		ByteEncryption::sha256(&ABV, &uH);
-		u = bn_from_bytevector(&uH);
-
-		_S = BN_new();
-		// generate S = (A*(v^u))^b % N
-		if (!BN_exp(_S, _v, u, _ctx)) {
-			response.special = ERR;
-			return response;
-		}
-		if (!BN_mul(_S, _A, _S, _ctx)) {
-			response.special = ERR;
-			return response;
-		}
-		if (!BN_mod_exp(_S, _S, _b, _N, _ctx)) {
-			response.special = ERR;
-			return response;
-		}
-
-		BN_free(u);
-
-		bn_to_bytevector(_salt, &saltBV);
-		bn_to_bytevector(_B, &BBV);
-		bv_concat(&saltBV, &BBV, &response.data);
-		response.num_items = 2;
-		response.first_item_len = saltBV.length();
-		response.special = EXCHANGE_KEYS;
-
-		return response;
+		return key_exchange(input);
 		break;
 	case 1: // waiting for client HMAC
-		if (_S == NULL) {
-			response.special = ERR;
-			return response;
-		}
-		if (input.special != HMAC_VERIFY) {
-			response.special = NOTOK;
-			return response;
-		}
-		if (input.num_items != 1) {
-			
-			response.special = NOTOK;
-			return response;
-		}
-		if (input.first_item_len == 0) {
-			response.special = NOTOK;
-			return response;
-		}
-
-		// generate K = SHA256(_S)
-		ByteVector S = ByteVector();
-		bn_to_bytevector(_S, &S);
-		ByteVector K = ByteVector();
-		ByteEncryption::sha256(&S, &K);
-
-		// generate HMAC-SHA265(K, salt)
-		ByteVector salt = ByteVector();
-		bn_to_bytevector(_salt, &salt);
-		ByteVector hmac = ByteVector();
-		ByteEncryption::sha256_HMAC(&salt, &K, &hmac);
-
-		// test input provided by client
-		if (!hmac.equal(&input.data)) {
-			response.special = NOTOK;
-			return response;
-		}
-		else {
-			response.special = OK;
-			return response;
-		}
-
+		return hmac_validation(input);
 		break;
-	
 	}
+}
+
+SRP_message SRPServer::key_exchange(SRP_message input) {
+	std::vector<BIGNUM *> bn_ptrs;
+
+	SRP_message response;
+	response.num_items = 0;
+	response.first_item_len = 0;
+	response.data = ByteVector();
+
+	ByteVector I = ByteVector();
+	ByteVector A = ByteVector();
+	ByteVector HMAC = ByteVector();
+
+	ByteVector saltBV = ByteVector();
+	ByteVector BBV = ByteVector();
+	ByteVector ABV = ByteVector();
+	ByteVector uH = ByteVector();
+
+	BIGNUM *u;
+
+	size_t temp;
+
+	if (input.special != EXCHANGE_KEYS) {
+		response.special = NOTOK;
+		return response;
+	}
+	if (input.num_items != 2) {
+		response.special = NOTOK;
+		return response;
+	}
+	if (input.first_item_len == 0) {
+		response.special = NOTOK;
+		return response;
+	}
+	I.resize(input.first_item_len);
+	A.resize(input.data.length() - input.first_item_len);
+	input.data.copyBytesByIndex(&I, 0, input.first_item_len, 0);
+	input.data.copyBytesByIndex(&A, input.first_item_len, input.data.length() - input.first_item_len, 0);
+
+	if (!I.equal(&_I)) {
+		response.special = NOTOK;
+		return response;
+	}
+
+
+	_A = bn_from_bytevector(&A);
+
+	// compute uH, u
+	bn_to_bytevector(_A, &ABV);
+	bn_to_bytevector(_B, &BBV);
+	temp = ABV.length();
+	ABV.resize(ABV.length() + BBV.length());
+	BBV.copyBytesByIndex(&ABV, 0, BBV.length(), temp);
+	ByteEncryption::sha256(&ABV, &uH);
+	u = bn_from_bytevector(&uH, &bn_ptrs);
+	_S = BN_new();
+
+	// generate S = (A*(v^u))^b % N
+	if (!BN_mod_exp(_S, _v, u, _N, _ctx)) {
+		response.special = ERR;
+		bn_free_ptrs(&bn_ptrs);
+		return response;
+	}
+	if (!BN_mul(_S, _A, _S, _ctx)) {
+		response.special = ERR;
+		bn_free_ptrs(&bn_ptrs);
+		return response;
+	}
+	if (!BN_mod_exp(_S, _S, _b, _N, _ctx)) {
+		response.special = ERR;
+		bn_free_ptrs(&bn_ptrs);
+		return response;
+	}
+
+	bn_free_ptrs(&bn_ptrs);
+
+	bn_to_bytevector(_salt, &saltBV);
+	bn_to_bytevector(_B, &BBV);
+	bv_concat(&saltBV, &BBV, &response.data);
+	response.num_items = 2;
+	response.first_item_len = saltBV.length();
+	response.special = EXCHANGE_KEYS;
+
+	return response;
+}
+
+SRP_message SRPServer::hmac_validation(SRP_message input) {
+	SRP_message response;
+	response.num_items = 0;
+	response.first_item_len = 0;
+	response.data = ByteVector();
+
+	if (_S == NULL) {
+		response.special = ERR;
+		return response;
+	}
+	if (input.special != HMAC_VERIFY) {
+		response.special = NOTOK;
+		return response;
+	}
+	if (input.num_items != 1) {
+
+		response.special = NOTOK;
+		return response;
+	}
+	if (input.first_item_len == 0) {
+		response.special = NOTOK;
+		return response;
+	}
+
+	// generate K = SHA256(_S)
+	ByteVector S = ByteVector();
+	bn_to_bytevector(_S, &S);
+	ByteVector K = ByteVector();
+	ByteEncryption::sha256(&S, &K);
+
+	// generate HMAC-SHA265(K, salt)
+	ByteVector salt = ByteVector();
+	bn_to_bytevector(_salt, &salt);
+	ByteVector hmac = ByteVector();
+	ByteEncryption::sha256_HMAC(&salt, &K, &hmac);
+
+	// test input provided by client
+	if (!hmac.equal(&input.data)) {
+		response.special = NOTOK;
+	}
+	else {
+		response.special = OK;
+	}
+
+	return response;
 }
