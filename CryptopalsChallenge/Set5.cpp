@@ -738,6 +738,137 @@ void Set5Challenge37() {
 
 }
 
+void Set5Challenge38() {
+	vector<BIGNUM *> bn_ptrs;
+	BN_CTX *ctx = BN_CTX_new();
+
+	// Part 1 - test simplified protocol
+
+	ByteVector bigP = ByteVector("ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca237327ffffffffffffffff", HEX);
+	BIGNUM *N = bn_from_bytevector(&bigP, &bn_ptrs);
+	BIGNUM *g = bn_from_word(2, &bn_ptrs);
+	BIGNUM *k = bn_from_word(3, &bn_ptrs);
+
+	char *email = "test@test.com";
+	char *password = "password";
+	SRPServer server = SRPServer(N, g, k, email, password, true); // simplified SRP protocol server
+
+	// generate private key
+	BIGNUM *a = BN_new();
+	bn_add_to_ptrs(a, &bn_ptrs);
+	if (!BN_rand_range(a, N)) {
+		cout << "Error generating client private key" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		return;
+	}
+
+	// generate public key
+	BIGNUM *A = BN_new();
+	bn_add_to_ptrs(A, &bn_ptrs);
+	if (!BN_mod_exp(A, g, a, N, ctx)) {
+		cout << "Error generating client private key" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		return;
+	}
+
+	// initial exchange - send I, A to server and recieve salt, B, u
+	ByteVector emailBV = ByteVector(email, ASCII);
+	ByteVector ABV = ByteVector();
+	bn_to_bytevector(A, &ABV);
+	SRP_message message;
+	message.data = ByteVector(emailBV.length() + ABV.length());
+	emailBV.copyBytesByIndex(&message.data, 0, emailBV.length(), 0);
+	ABV.copyBytesByIndex(&message.data, 0, ABV.length(), emailBV.length());
+	message.num_items = 2;
+	message.first_item_len = emailBV.length();
+	message.special = EXCHANGE_KEYS;
+	cout << "Sending initial message to server..." << endl;
+	SRP_message response1 = server.response(message);
+	cout << "Response recieved from server" << endl;
+	if (response1.special != EXCHANGE_KEYS || response1.num_items != 3 || response1.first_item_len == 0 || response1.second_item_len == 0) {
+		cout << "Unexpected recieved from server" << endl;
+		BN_CTX_free(ctx);
+		bn_free_ptrs(&bn_ptrs);
+		return;
+	}
+	// extract response info
+	ByteVector saltBV = ByteVector(response1.first_item_len);
+	response1.data.copyBytesByIndex(&saltBV, 0, response1.first_item_len, 0);
+	ByteVector BBV = ByteVector(response1.second_item_len);
+	response1.data.copyBytesByIndex(&BBV, response1.first_item_len, response1.second_item_len, 0);
+	ByteVector uBV = ByteVector(response1.data.length() - response1.first_item_len - response1.second_item_len);
+	response1.data.copyBytesByIndex(&uBV, response1.first_item_len + response1.second_item_len, uBV.length(), 0);
+
+	BIGNUM *u = bn_from_bytevector(&uBV, &bn_ptrs);
+	BIGNUM *B = bn_from_bytevector(&BBV, &bn_ptrs);
+
+	// generate xH and x
+	ByteVector passwordBV = ByteVector(password, ASCII);
+	ByteVector hashIn2 = ByteVector();
+	bv_concat(&saltBV, &passwordBV, &hashIn2);
+	ByteVector xH = ByteVector();
+	ByteEncryption::sha256(&hashIn2, &xH);
+	BIGNUM *x = bn_from_bytevector(&xH, &bn_ptrs);
+
+	// generate S = (B)**(a + u * x) % N
+	BIGNUM *S = BN_new();
+	BIGNUM *temp = BN_new();
+	BIGNUM *temp1 = BN_new();
+	BIGNUM *temp2 = BN_new();
+	bn_add_to_ptrs(S, &bn_ptrs);
+	bn_add_to_ptrs(temp1, &bn_ptrs);
+	bn_add_to_ptrs(temp2, &bn_ptrs);
+
+	if (!BN_mod_mul(temp1, u, x, N, ctx)) {
+		cout << "Error while generating client S" << endl;
+		BN_CTX_free(ctx);
+		bn_free_ptrs(&bn_ptrs);
+		return;
+	}
+	if (!BN_mod_add(temp2, a, temp1, N, ctx)) {
+		cout << "Error while generating client S" << endl;
+		BN_CTX_free(ctx);
+		bn_free_ptrs(&bn_ptrs);
+		return;
+	}
+	if (!BN_mod_exp(S, B, temp2, N, ctx)) {
+		cout << "Error while generating client S" << endl;
+		BN_CTX_free(ctx);
+		bn_free_ptrs(&bn_ptrs);
+		return;
+	}
+
+	// generate K
+	ByteVector SBV = ByteVector();
+	bn_to_bytevector(S, &SBV);
+	ByteVector K = ByteVector();
+	ByteEncryption::sha256(&SBV, &K);
+
+	// generate HMAC(K,salt)
+	ByteVector HMAC = ByteVector();
+	ByteEncryption::sha256_HMAC(&saltBV, &K, &HMAC);
+
+	// prepare message
+	message.data.resize(HMAC.length());
+	HMAC.copyBytesByIndex(&message.data, 0, HMAC.length(), 0);
+	message.num_items = 1;
+	message.first_item_len = HMAC.length();
+	message.special = HMAC_VERIFY;
+	cout << "Sending HMAC to server for validation..." << endl;
+	SRP_message response2 = server.response(message);
+	if (response2.special != OK) {
+		cout << "HMAC validation not OK" << endl;
+	}
+	else {
+		cout << "HMAC validation OK" << endl;
+	}
+
+	// Part 2 - MITM component
+
+	BN_CTX_free(ctx);
+	bn_free_ptrs(&bn_ptrs);
+}
+
 int Set5() {
 	cout << "### SET 5 ###" << endl;
 	cout << "Set 5 Challenge 33" << endl;
@@ -762,6 +893,11 @@ int Set5() {
 	getchar();
 	cout << "Set 5 Challenge 37" << endl;
 	Set5Challenge37();
+	// Pause before continuing
+	cout << "Press enter to continue..." << endl;
+	getchar();
+	cout << "Set 5 Challenge 38" << endl;
+	Set5Challenge38();
 	// Pause before continuing
 	cout << "Press enter to continue..." << endl;
 	getchar();

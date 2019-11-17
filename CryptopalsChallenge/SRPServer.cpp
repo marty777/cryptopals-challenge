@@ -4,7 +4,7 @@
 #include "ByteEncryption.h"
 #include <iostream>
 
-SRPServer::SRPServer(BIGNUM *N, BIGNUM *g, BIGNUM *k, char *email, char *password) {
+SRPServer::SRPServer(BIGNUM *N, BIGNUM *g, BIGNUM *k, char *email, char *password, bool simple, bool mitm) {
 	init_err = false;
 	_ctx = BN_CTX_new();
 	_N = BN_dup(N);
@@ -13,6 +13,11 @@ SRPServer::SRPServer(BIGNUM *N, BIGNUM *g, BIGNUM *k, char *email, char *passwor
 	
 	_I = ByteVector(email, ASCII);
 	_P = ByteVector(password, ASCII);
+
+	// challenge 38
+	_simple = simple;
+	_mitm = mitm;
+
 	_salt = BN_new();
 
 	if (!BN_rand(_salt, 64, -1, 0)) { // random 64 bit integer
@@ -41,41 +46,56 @@ SRPServer::SRPServer(BIGNUM *N, BIGNUM *g, BIGNUM *k, char *email, char *passwor
 		init_err = true;
 		return;
 	}
+	BN_free(x);
 
 	_state = 0;
 	_b = BN_new();
 	BN_rand_range(_b, _N);
 
+
+	_simple_u = NULL;
 	_B = BN_new();
-	BIGNUM *temp = BN_new();
-	if (!BN_mod_exp(temp, _g, _b, _N, _ctx)) {
-		std::cerr << "Error computing public key in SRPServer" << std::endl;
-		BN_free(x);
-		BN_free(temp);
-		init_err = true;
-		return;
+	if (_simple) {
+		if (!BN_mod_exp(_B, _g, _b, _N, _ctx)) {
+			std::cerr << "Error computing simple public key in SRPServer" << std::endl;
+			init_err = true;
+			return;
+		}
+		_simple_u = BN_new();
+		if (!BN_rand(_simple_u, 128, -1, 0)) {
+			std::cerr << "Error generating simple u value in SRPServer" << std::endl;
+			init_err = true;
+			return;
+		}
 	}
-	BIGNUM *kv = BN_new();
-	if (!BN_mod_mul(kv, _k, _v, _N, _ctx)) {
-		std::cerr << "Error computing public key in SRPServer" << std::endl;
-		BN_free(x);
+	else {
+		BIGNUM *temp = BN_new();
+		if (!BN_mod_exp(temp, _g, _b, _N, _ctx)) {
+			std::cerr << "Error computing public key in SRPServer" << std::endl;
+			BN_free(temp);
+			init_err = true;
+			return;
+		}
+		BIGNUM *kv = BN_new();
+		if (!BN_mod_mul(kv, _k, _v, _N, _ctx)) {
+			std::cerr << "Error computing public key in SRPServer" << std::endl;
+			BN_free(kv);
+			BN_free(temp);
+			init_err = true;
+			return;
+		}
+		if (!BN_mod_add(_B, kv, temp, _N, _ctx)) {
+			std::cerr << "Error computing public key in SRPServer" << std::endl;
+			BN_free(kv);
+			BN_free(temp);
+			init_err = true;
+			return;
+		}
 		BN_free(kv);
 		BN_free(temp);
-		init_err = true;
-		return;
-	}
-	if (!BN_mod_add(_B, kv, temp, _N, _ctx)) {
-		std::cerr << "Error computing public key in SRPServer" << std::endl;
-		BN_free(x);
-		BN_free(kv);
-		BN_free(temp);
-		init_err = true;
-		return;
 	}
 	
-	BN_free(x);
-	BN_free(kv);
-	BN_free(temp);
+	
 	_A = NULL;
 	_S = NULL;
 
@@ -97,6 +117,9 @@ SRPServer::~SRPServer() {
 	}
 	if (_S != NULL) {
 		BN_free(_S);
+	}
+	if (_simple_u != NULL) {
+		BN_free(_simple_u);
 	}
 }
 
@@ -184,10 +207,19 @@ SRP_message SRPServer::key_exchange(SRP_message input) {
 	bn_add_to_ptrs(temp2, &bn_ptrs);
 
 	// generate S = (A*(v^u))^b % N
-	if (!BN_mod_exp(temp1, _v, u, _N, _ctx)) {
-		response.special = ERR;
-		bn_free_ptrs(&bn_ptrs);
-		return response;
+	if (_simple) {
+		if (!BN_mod_exp(temp1, _v, _simple_u, _N, _ctx)) {
+			response.special = ERR;
+			bn_free_ptrs(&bn_ptrs);
+			return response;
+		}
+	}
+	else {
+		if (!BN_mod_exp(temp1, _v, u, _N, _ctx)) {
+			response.special = ERR;
+			bn_free_ptrs(&bn_ptrs);
+			return response;
+		}
 	}
 	if (!BN_mod_mul(temp2, _A, temp1, _N, _ctx)) {
 		response.special = ERR;
@@ -201,16 +233,24 @@ SRP_message SRPServer::key_exchange(SRP_message input) {
 	}
 
 	bn_free_ptrs(&bn_ptrs);
-
-	bn_to_bytevector(_salt, &saltBV);
-	bn_to_bytevector(_B, &BBV);
-	bv_concat(&saltBV, &BBV, &response.data);
-	response.num_items = 2;
-	response.first_item_len = saltBV.length();
-	response.special = EXCHANGE_KEYS;
-
+	if (_simple) {
+		bn_to_bytevector(_salt, &saltBV);
+		bn_to_bytevector(_simple_u, &uH);
+		ByteVector temp = ByteVector();
+		bv_concat(&saltBV, &BBV, &temp);
+		bv_concat(&temp, &uH, &response.data);
+		response.num_items = 3;
+		response.first_item_len = saltBV.length();
+		response.second_item_len = BBV.length();
+	}
+	else {
+		bn_to_bytevector(_salt, &saltBV);
+		bv_concat(&saltBV, &BBV, &response.data);
+		response.num_items = 2;
+		response.first_item_len = saltBV.length();
+	}
 	_state = 1;
-
+	response.special = EXCHANGE_KEYS;
 	return response;
 }
 

@@ -2,11 +2,12 @@
 #include "openssl\bn.h"
 #include "ByteVector.h"
 
-// exchanged by client and server. Passes 0, 1 or 2 data objects as concatenated raw binary.
+// exchanged by client and server. Passes 0, 1, 2 or 3 data objects as concatenated raw binary.
 enum srp_message_special { RESET, EXCHANGE_KEYS, HMAC_VERIFY, OK, NOTOK, ERR };
 struct SRP_message {
 	ByteVector data;
 	size_t first_item_len;
+	size_t second_item_len;
 	int num_items;
 	srp_message_special special; // RESET = reset connection (client). EXCHANGE_KEYS = first exchange (set for client and server messages), HMAC_VERIFY = second exchange (set for client and server messages), OK = OK (server), NOTOK = NOT OK (server), ERR = Error (server)
 };
@@ -17,7 +18,7 @@ public:
 
 	bool init_err;
 
-	SRPServer(BIGNUM *N, BIGNUM *g, BIGNUM *k, char *email, char *password);
+	SRPServer(BIGNUM *N, BIGNUM *g, BIGNUM *k, char *email, char *password, bool simple = false, bool mitm = false);
 	~SRPServer();
 	SRP_message response(SRP_message input);
 
@@ -35,7 +36,10 @@ private:
 	BIGNUM *_b;
 	BIGNUM *_B;
 	BIGNUM *_S;
+	BIGNUM *_simple_u;
 	int _state; // 0 = awaiting username, client public key, 1 = awaiting HMAC.
+	bool _simple;
+	bool _mitm;
 
 	SRP_message key_exchange(SRP_message input);
 	SRP_message hmac_validation(SRP_message input);
