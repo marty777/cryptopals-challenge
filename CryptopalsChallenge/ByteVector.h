@@ -53,6 +53,7 @@ public:
 	void printHexStrByBlocksPartial(size_t blocksize, size_t start_index, size_t end_index);
 	void printASCIIStrByBlocks(size_t blocksize);
 
+	void duplicate(ByteVector *dest);
 	void copyBytes(byte *dest);
 	void copyBytes(ByteVector *dest);
 	void copyBytesByIndex(ByteVector * dest, size_t start_index, size_t length, size_t dest_index);

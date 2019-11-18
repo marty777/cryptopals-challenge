@@ -690,6 +690,14 @@ void ByteVector::printASCIIStrByBlocks(size_t blocksize) {
 	}
 }
 
+// resize destination vector and copy all bytes over
+void ByteVector::duplicate(ByteVector *dest) {
+	dest->resize(_v.size());
+	for (size_t i = 0; i < _v.size(); i++) {
+		(*dest)[i] = _v[i];
+	}
+}
+
 // copy to a pre-allocated byte array of appropriate size
 void ByteVector::copyBytes(byte *dest) {
 	for (size_t i = 0; i < _v.size(); i++) {
