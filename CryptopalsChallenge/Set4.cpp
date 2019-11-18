@@ -12,7 +12,8 @@
 using namespace std;
 
 void Set4Challenge25() {
-	char *filePath = "../challenge-files/set4/25.txt";
+	char *relativePath = "/challenge-files/set4/25.txt";
+	string filePath = executable_relative_path(relativePath);
 	ifstream f;
 	string input;
 
@@ -556,4 +557,5 @@ int Set4() {
 	// Pause before continuing
 	cout << "Press enter to continue..." << endl;
 	getchar();
+	return 0;
 }

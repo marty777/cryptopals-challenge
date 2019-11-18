@@ -901,4 +901,5 @@ int Set5() {
 	// Pause before continuing
 	cout << "Press enter to continue..." << endl;
 	getchar();
+	return 0;
 }

@@ -1,6 +1,13 @@
 #include "Utility.h"
 #include <assert.h>
+#include <string>
 
+std::string executable_relative_path(char *path) {
+	std::string argv_str(__argv[0]);
+	std::string base = argv_str.substr(0,argv_str.find_last_of("\\"));
+	std::string finalpath = base.append(path);
+	return finalpath;
+}
 
 byte byterotateleft(byte b, int shift) {
 	return (b << shift) | (b >> (8 - shift));

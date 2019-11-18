@@ -4,6 +4,7 @@
 #include "KeyValueParser.h"
 #include <iostream>
 #include <fstream>
+#include "Utility.h"
 
 
 using namespace std;
@@ -22,7 +23,8 @@ void Set2Challenge9() {
 void Set2Challenge10() {
 	char * key = "YELLOW SUBMARINE";					
 	char * testInput = "YELLOW SUBMARINEMERRY GENTLEMAN ERNEST WITNESSES"; // nonsense that's 48 bytes long
-	char *filePath = "../challenge-files/set2/10.txt";
+	char *relativePath = "/challenge-files/set2/10.txt";
+	string filePath = executable_relative_path(relativePath);
 
 	
 	ByteVector testIn = ByteVector(testInput, ASCII);

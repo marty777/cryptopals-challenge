@@ -4,6 +4,7 @@
 #include "ByteEncryptionAES.h"
 #include <iostream>
 #include <fstream>
+#include "Utility.h"
 
 using namespace std;
 
@@ -58,7 +59,9 @@ void Set1Challenge3() {
 }
 
 void Set1Challenge4() {
-	char *filePath = "../challenge-files/set1/4.txt";
+	
+	char *relativePath = "/challenge-files/set1/4.txt";
+	string filePath = executable_relative_path(relativePath);
 	ifstream in(filePath);
 	if (!in) {
 		cout << "Cannot open input file.\n";
@@ -224,8 +227,8 @@ void Set1Challenge6() {
 void Set1Challenge7() {
 	char *keyStr = "YELLOW SUBMARINE";
 	ByteVector keyVector = ByteVector("YELLOW SUBMARINE", ASCII);
-	
-	char *filePath = "../challenge-files/set1/7.txt";
+	char *relativePath = "/challenge-files/set1/7.txt";
+	string filePath = executable_relative_path(relativePath);
 	ifstream f;
 	string input;
 
@@ -267,7 +270,8 @@ void Set1Challenge7() {
 }
 
 void Set1Challenge8(){
-	char *filePath = "../challenge-files/set1/8.txt";
+	char *relativePath = "/challenge-files/set1/8.txt";
+	string filePath = executable_relative_path(relativePath);
 	ifstream in(filePath);
 	if (!in) {
 		cout << "Cannot open input file.\n";

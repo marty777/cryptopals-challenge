@@ -3,6 +3,8 @@
 #include <chrono>
 #include "curl.h"
 
+std::string executable_relative_path(char *path);
+
 byte byterotateleft(byte b, int shift);
 
 byte byterotateright(byte b, int shift);

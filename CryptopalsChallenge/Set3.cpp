@@ -154,7 +154,8 @@ void Set3Challenge19() {
 	vector<ByteVector> inputs;
 	size_t max_keylen = 0; // length of longest string in inputs.
 
-	char *filePath = "../challenge-files/set3/19.txt";
+	char *relativePath = "/challenge-files/set3/19.txt";
+	string filePath = executable_relative_path(relativePath);
 	ifstream in(filePath);
 	if (!in) {
 		cout << "Cannot open input file.\n";
@@ -314,7 +315,8 @@ void Set3Challenge20() {
 	size_t max_keylen = 0; // length of longest string in inputs.
 	size_t min_keylen = 1024;
 
-	char *filePath = "../challenge-files/set3/20.txt";
+	char *relativePath = "/challenge-files/set3/20.txt";
+	string filePath = executable_relative_path(relativePath);
 	ifstream in(filePath);
 	if (!in) {
 		cout << "Cannot open input file.\n";
