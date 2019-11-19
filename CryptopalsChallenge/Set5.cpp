@@ -888,8 +888,8 @@ void Set5Challenge38() {
 	ByteVector mitm_uBV = ByteVector(mitm_response1.data.length() - mitm_response1.first_item_len - mitm_response1.second_item_len);
 	mitm_response1.data.copyBytesByIndex(&mitm_uBV, mitm_response1.first_item_len + mitm_response1.second_item_len, mitm_uBV.length(), 0);
 
-	BIGNUM *mitm_u = bn_from_bytevector(&uBV, &bn_ptrs);
-	BIGNUM *mitm_B = bn_from_bytevector(&BBV, &bn_ptrs);
+	BIGNUM *mitm_u = bn_from_bytevector(&mitm_uBV, &bn_ptrs);
+	BIGNUM *mitm_B = bn_from_bytevector(&mitm_BBV, &bn_ptrs);
 
 	// generate xH and x
 	ByteVector mitm_hashIn2 = ByteVector();
@@ -921,9 +921,11 @@ void Set5Challenge38() {
 		return;
 	}
 
+
 	// generate K
 	ByteVector mitm_SBV = ByteVector();
 	bn_to_bytevector(mitm_S, &mitm_SBV);
+	
 	ByteVector mitm_K = ByteVector();
 	ByteEncryption::sha256(&mitm_SBV, &mitm_K);
 
@@ -948,6 +950,8 @@ void Set5Challenge38() {
 		cout << "HMAC validation OK" << endl;
 	}
 
+	// at this point if we were working with an actual MITM setup, we could pass the password to the actual server to validate, but I think the
+	// principle has been demonstrated.
 
 	BN_CTX_free(ctx);
 	bn_free_ptrs(&bn_ptrs);

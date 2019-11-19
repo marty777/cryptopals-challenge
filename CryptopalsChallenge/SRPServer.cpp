@@ -203,8 +203,6 @@ SRP_message SRPServer::key_exchange(SRP_message input) {
 	else {
 		if (!I.equal(&_I)) {
 			response.special = NOTOK;
-			std::cout << "_I len" << _I.length() << std::endl;
-			printf("Got here 1");
 			return response;
 		}
 	}
@@ -332,6 +330,7 @@ SRP_message SRPServer::hmac_validation(SRP_message input) {
 		BIGNUM *v = BN_new();
 		BIGNUM *S = BN_new();
 		BIGNUM *temp = BN_new();
+		BIGNUM *temp2 = BN_new();
 		bn_to_bytevector(_salt, &salt);
 		for (size_t i = 0; i < passwords.size(); i++) {
 
