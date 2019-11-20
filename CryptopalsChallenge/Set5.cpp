@@ -8,6 +8,7 @@
 #include <vector>
 #include <assert.h>
 #include "SRPServer.h"
+#include "RSAClient.h"
 
 using namespace std;
 
@@ -957,6 +958,24 @@ void Set5Challenge38() {
 	bn_free_ptrs(&bn_ptrs);
 }
 
+void Set5Challenge39() {
+	std::vector<BIGNUM *> bn_ptrs;
+
+	BIGNUM *test = bn_from_word(17, &bn_ptrs);
+	BIGNUM *modulus = bn_from_word(3120, &bn_ptrs);
+
+	BIGNUM *invmod = BN_new();
+	bn_add_to_ptrs(invmod, &bn_ptrs);
+
+	RSAClient client1 = RSAClient();
+
+	client1.invmod(test, modulus, invmod);
+	
+	cout << BN_bn2dec(invmod) << endl;
+
+	bn_free_ptrs(&bn_ptrs);
+}
+
 int Set5() {
 	cout << "### SET 5 ###" << endl;
 	cout << "Set 5 Challenge 33" << endl;
@@ -986,6 +1005,11 @@ int Set5() {
 	getchar();
 	cout << "Set 5 Challenge 38" << endl;
 	Set5Challenge38();
+	// Pause before continuing
+	cout << "Press enter to continue..." << endl;
+	getchar();
+	cout << "Set 5 Challenge 39" << endl;
+	Set5Challenge39();
 	// Pause before continuing
 	cout << "Press enter to continue..." << endl;
 	getchar();

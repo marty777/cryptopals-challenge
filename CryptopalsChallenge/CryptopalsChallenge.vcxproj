@@ -132,6 +132,7 @@
     <ClCompile Include="KeyValueParser.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="PlaintextEvaluator.cpp" />
+    <ClCompile Include="RSAClient.cpp" />
     <ClCompile Include="Set1.cpp" />
     <ClCompile Include="Set2.cpp" />
     <ClCompile Include="Set3.cpp" />
@@ -148,6 +149,7 @@
     <ClInclude Include="ByteVector.h" />
     <ClInclude Include="KeyValueParser.h" />
     <ClInclude Include="PlaintextEvaluator.h" />
+    <ClInclude Include="RSAClient.h" />
     <ClInclude Include="Set1.h" />
     <ClInclude Include="Set2.h" />
     <ClInclude Include="Set3.h" />
