@@ -7,5 +7,6 @@ void Set5Challenge36();
 void Set5Challenge37();
 void Set5Challenge38();
 void Set5Challenge39();
+void Set5Challenge40();
 
 int Set5();

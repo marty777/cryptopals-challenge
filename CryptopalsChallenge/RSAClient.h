@@ -16,6 +16,7 @@ public:
 	bool encrypt_bv(ByteVector *input, ByteVector *encrypted);
 	bool decrypt_bv(ByteVector *encrypted, ByteVector *output);
 	void print_vals();
+	bool public_key(BIGNUM *e_out, BIGNUM *n_out);
 
 private:
 	BIGNUM *p;
@@ -23,7 +24,5 @@ private:
 	BIGNUM *n;
 	BIGNUM *e;
 	BIGNUM *d;
-
-	
 };
 

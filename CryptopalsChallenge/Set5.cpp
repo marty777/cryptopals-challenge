@@ -994,6 +994,22 @@ void Set5Challenge39() {
 
 }
 
+void Set5Challenge40() {
+	vector<BIGNUM *> bn_ptrs;
+	BN_CTX *ctx = BN_CTX_new();
+
+	// Generate 3 different sets of private and public keys
+	RSAClient client1 = RSAClient(1024);
+	RSAClient client2 = RSAClient(1024);
+	RSAClient client3 = RSAClient(1024);
+
+
+	ByteVector theplaintext = ByteVector("I am the very model of a modern Major-General,\nI've information vegetable, animal, and mineral,\nI know the kings of England, and I quote the fights historical\nFrom Marathon to Waterloo, in order categorical", ASCII);
+
+	bn_free_ptrs(&bn_ptrs);
+	BN_CTX_free(ctx);
+}
+
 int Set5() {
 	cout << "### SET 5 ###" << endl;
 	cout << "Set 5 Challenge 33" << endl;
@@ -1028,6 +1044,11 @@ int Set5() {
 	getchar();
 	cout << "Set 5 Challenge 39" << endl;
 	Set5Challenge39();
+	// Pause before continuing
+	cout << "Press enter to continue..." << endl;
+	getchar();
+	cout << "Set 5 Challenge 40" << endl;
+	Set5Challenge40();
 	// Pause before continuing
 	cout << "Press enter to continue..." << endl;
 	getchar();

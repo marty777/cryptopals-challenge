@@ -203,6 +203,17 @@ void RSAClient::print_vals() {
 	printf("D:\t%s\n", BN_bn2hex(d));
 }
 
+// copies e and n to initialized BIGNUMs e_out and n_out
+// returns false if e or n are not initialized
+bool RSAClient::public_key(BIGNUM *e_out, BIGNUM *n_out) {
+	if (e == NULL || n == NULL) {
+		return false;
+	}
+	BN_copy(e_out, e);
+	BN_copy(n_out, n);
+	return true;
+}
+
 // returns false on BIGNUM error or if in and modulus are not coprime.
 bool RSAClient::invmod(BIGNUM *in, BIGNUM *modulus, BIGNUM *invmod) {
 	std::vector<BIGNUM *> bn_ptrs;
