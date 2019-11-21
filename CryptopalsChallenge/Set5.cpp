@@ -959,21 +959,39 @@ void Set5Challenge38() {
 }
 
 void Set5Challenge39() {
-	std::vector<BIGNUM *> bn_ptrs;
-
-	BIGNUM *test = bn_from_word(17, &bn_ptrs);
-	BIGNUM *modulus = bn_from_word(3120, &bn_ptrs);
-
-	BIGNUM *invmod = BN_new();
-	bn_add_to_ptrs(invmod, &bn_ptrs);
-
-	RSAClient client1 = RSAClient();
-
-	client1.invmod(test, modulus, invmod);
 	
-	cout << BN_bn2dec(invmod) << endl;
+	// note that due to the simplistic method of converting messages to integers, for a message of
+	// suitable length the encrypted value for two messages encrypted with different public keys
+	// is identical and thus decryptable with different private keys.
 
-	bn_free_ptrs(&bn_ptrs);
+	cout << "Testing RSA encryption with 512 bit primes (this may take a moment)" << endl;
+	RSAClient client1 = RSAClient(512, false);
+
+	ByteVector plain1 = ByteVector("This is a test message", ASCII);
+	ByteVector encrypted1 = ByteVector();
+	ByteVector decrypted1 = ByteVector();
+
+	cout << "Plaintext: " << endl << plain1.toStr(ASCII) << endl;
+	client1.encrypt_bv(&plain1, &encrypted1);
+	cout << "Encrypted with public key" << endl;
+	encrypted1.printHexStrByBlocks(16);
+	client1.decrypt_bv(&encrypted1, &decrypted1);
+	cout << "Decrypted with private key" << endl << decrypted1.toStr(ASCII) << endl;
+
+	cout << "Testing RSA encryption with 1024 bit primes (this may take a moment)" << endl;
+	RSAClient client2 = RSAClient(1024, false);
+
+	ByteVector plain2 = ByteVector("This is another test message", ASCII);
+	ByteVector encrypted2 = ByteVector();
+	ByteVector decrypted2 = ByteVector();
+
+	cout << "Plaintext: " << endl << plain2.toStr(ASCII) << endl;
+	client2.encrypt_bv(&plain2, &encrypted2);
+	cout << "Encrypted with public key" << endl;
+	encrypted2.printHexStrByBlocks(16);
+	client2.decrypt_bv(&encrypted2, &decrypted2);
+	cout << "Decrypted with private key" << endl << decrypted2.toStr(ASCII) << endl;
+
 }
 
 int Set5() {
