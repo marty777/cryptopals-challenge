@@ -3,10 +3,11 @@
 #include "Set3.h"
 #include "Set4.h"
 #include "Set5.h"
+#include "Set6.h"
 #include <iostream>
 #include <string>
 
-#define MAX_CHALLENGE_INDEX 40;
+#define MAX_CHALLENGE_INDEX 41;
 using namespace std;
 
 
@@ -155,6 +156,9 @@ int main() {
 		break;
 	case 40:
 		Set5Challenge40();
+		break;
+	case 41:
+		Set6Challenge41();
 		break;
 	default:
 		break;

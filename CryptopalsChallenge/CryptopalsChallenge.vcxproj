@@ -138,6 +138,7 @@
     <ClCompile Include="Set3.cpp" />
     <ClCompile Include="Set4.cpp" />
     <ClCompile Include="Set5.cpp" />
+    <ClCompile Include="Set6.cpp" />
     <ClCompile Include="SRPServer.cpp" />
     <ClCompile Include="Utility.cpp" />
   </ItemGroup>
@@ -155,6 +156,7 @@
     <ClInclude Include="Set3.h" />
     <ClInclude Include="Set4.h" />
     <ClInclude Include="Set5.h" />
+    <ClInclude Include="Set6.h" />
     <ClInclude Include="SRPServer.h" />
     <ClInclude Include="Utility.h" />
   </ItemGroup>
