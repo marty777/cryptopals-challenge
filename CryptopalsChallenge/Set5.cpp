@@ -4,6 +4,7 @@
 #include "Utility.h"
 #include <iostream>
 #include "openssl\bn.h"
+#include "openssl\err.h"
 #include "BNUtility.h"
 #include <vector>
 #include <assert.h>
@@ -12,7 +13,16 @@
 
 using namespace std;
 
-
+string getOpenSSLError()
+{
+	BIO *bio = BIO_new(BIO_s_mem());
+	ERR_print_errors(bio);
+	char *buf;
+	size_t len = BIO_get_mem_data(bio, &buf);
+	string ret(buf, len);
+	BIO_free(bio);
+	return ret;
+}
 
 void Set5Challenge33() {
 
@@ -999,12 +1009,194 @@ void Set5Challenge40() {
 	BN_CTX *ctx = BN_CTX_new();
 
 	// Generate 3 different sets of private and public keys
-	RSAClient client1 = RSAClient(1024);
-	RSAClient client2 = RSAClient(1024);
-	RSAClient client3 = RSAClient(1024);
+	cout << "Generating clients 1-3..." << endl;
+	RSAClient client1 = RSAClient(128);
+	RSAClient client2 = RSAClient(128);
+	RSAClient client3 = RSAClient(128);
 
+	ByteVector thesecretplaintext = ByteVector("This is a secret!", ASCII);
 
-	ByteVector theplaintext = ByteVector("I am the very model of a modern Major-General,\nI've information vegetable, animal, and mineral,\nI know the kings of England, and I quote the fights historical\nFrom Marathon to Waterloo, in order categorical", ASCII);
+	// get public keys from each client
+	BIGNUM *e1 = BN_new();
+	BIGNUM *n1 = BN_new();
+	BIGNUM *e2 = BN_new();
+	BIGNUM *n2 = BN_new();
+	BIGNUM *e3 = BN_new();
+	BIGNUM *n3 = BN_new();
+	bn_add_to_ptrs(e1, &bn_ptrs);
+	bn_add_to_ptrs(n1, &bn_ptrs);
+	bn_add_to_ptrs(e2, &bn_ptrs);
+	bn_add_to_ptrs(n2, &bn_ptrs);
+	bn_add_to_ptrs(e3, &bn_ptrs);
+	bn_add_to_ptrs(n3, &bn_ptrs);
+	client1.public_key(e1, n1);
+	client2.public_key(e2, n2);
+	client3.public_key(e3, n3);
+
+	cout << "Generating ciphertexts 1-3..." << endl;
+	// get each ciphertext
+	ByteVector encrypted1 = ByteVector();
+	ByteVector encrypted2 = ByteVector();
+	ByteVector encrypted3 = ByteVector();
+	client1.encrypt_bv(&thesecretplaintext, &encrypted1);
+	client2.encrypt_bv(&thesecretplaintext, &encrypted2);
+	client3.encrypt_bv(&thesecretplaintext, &encrypted3);
+	BIGNUM *c1 = bn_from_bytevector(&encrypted1, &bn_ptrs);
+	BIGNUM *c2 = bn_from_bytevector(&encrypted2, &bn_ptrs);
+	BIGNUM *c3 = bn_from_bytevector(&encrypted3, &bn_ptrs);
+
+	cout << "Attempting Hastad's broadcast attack..." << endl;
+	// I can't believe this works
+	BIGNUM *result = bn_from_word(0, &bn_ptrs);
+	BIGNUM *temp = BN_new();
+	BIGNUM *ms1 = BN_new();
+	BIGNUM *ms2 = BN_new();
+	BIGNUM *ms3 = BN_new();
+	bn_add_to_ptrs(temp, &bn_ptrs);
+	bn_add_to_ptrs(ms1, &bn_ptrs);
+	bn_add_to_ptrs(ms2, &bn_ptrs);
+	bn_add_to_ptrs(ms3, &bn_ptrs);
+	// ms1 = n2 * n3, ms2 = n1*n3, ms3 = n1*n2
+	if (!BN_mul(ms1, n2, n3, ctx)) {
+		cout << "BN error" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
+		return;
+	}
+	if (!BN_mul(ms2, n1, n3, ctx)) {
+		cout << "BN error" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
+		return;
+	}
+	if (!BN_mul(ms3, n1, n2, ctx)) {
+		cout << "BN error" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
+		return;
+	}
+
+	// result += c1 * (ms1) * invmod(ms1, n1)
+	if (NULL == BN_mod_inverse(temp, ms1, n1, ctx)) {
+		cout << "BN error" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
+		return;
+	}
+	if (!BN_mul(temp, temp, ms1, ctx)) {
+		cout << "BN error" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
+		return;
+	}
+	if (!BN_mul(temp, temp, c1, ctx)) {
+		cout << "BN error" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
+		return;
+	}
+	if (!BN_add(result, result, temp)) {
+		cout << "BN error" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
+		return;
+	}
+
+	// result += c2 * (ms2) * invmod(ms2, n2)
+	if (NULL == BN_mod_inverse(temp, ms2, n2, ctx)) {
+		cout << "BN error" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
+		return;
+	}
+	if (!BN_mul(temp, temp, ms2, ctx)) {
+		cout << "BN error" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
+		return;
+	}
+	if (!BN_mul(temp, temp, c2, ctx)) {
+		cout << "BN error" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
+		return;
+	}
+	if (!BN_add(result, result, temp)) {
+		cout << "BN error" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
+		return;
+	}
+
+	// result += c3 * (ms3) * invmod(ms3, n3)
+	if (NULL == BN_mod_inverse(temp, ms3, n3, ctx)) {
+		cout << "BN error" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
+		return;
+	}
+	if (!BN_mul(temp, temp, ms3, ctx)) {
+		cout << "BN error" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
+		return;
+	}
+	if (!BN_mul(temp, temp, c3, ctx)) {
+		cout << "BN error" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
+		return;
+	}
+	if (!BN_add(result, result, temp)) {
+		cout << "BN error" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
+		return;
+	}
+
+	// N = n1 * n2 * n3
+	BIGNUM *N = BN_new();
+	bn_add_to_ptrs(N, &bn_ptrs);
+	if (!BN_mul(N, n1, n2, ctx)) {
+		cout << "BN error" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
+		return;
+	}
+	if (!BN_mul(N, N, n3, ctx)) {
+		cout << "BN error" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
+		return;
+	}
+
+	// A complaint about the description of the challenge at https://cryptopals.com/sets/5/challenges/40. At time of writing
+	// the instructions indicate that this modulo step shouldn't be performed before taking the cube root of the result.
+
+	// result = result % N
+	if (!BN_mod(result, result, N, ctx)) {
+		cout << "BN error" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
+		return;
+	}
+
+	// get cube root of result
+	BIGNUM *three = bn_from_word(3, &bn_ptrs);
+	BIGNUM *cube_root = BN_new();
+	bn_add_to_ptrs(cube_root, &bn_ptrs);
+	if (!bn_nth_root(result, three, cube_root)) {
+		cout << "BN error" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
+		return;
+	}
+
+	cout << "Decrypted message: " << endl;
+	ByteVector message = ByteVector();
+	bn_to_bytevector(cube_root, &message);
+	cout << message.toStr(ASCII) << endl;
+
 
 	bn_free_ptrs(&bn_ptrs);
 	BN_CTX_free(ctx);

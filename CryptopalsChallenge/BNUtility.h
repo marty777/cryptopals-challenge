@@ -14,3 +14,9 @@ void bn_print(BIGNUM * b, bv_str_format format);
 void bn_add_to_ptrs(BIGNUM *bn, std::vector<BIGNUM *> *ptrs);
 
 void bn_free_ptrs(std::vector<BIGNUM *> *ptrs);
+
+bool bn_invmod(BIGNUM *in, BIGNUM *modulus, BIGNUM *invmod);
+
+bool bn_gcdextended(BIGNUM *a, BIGNUM *b, BIGNUM *x, BIGNUM *y, BIGNUM *gcd);
+
+bool bn_nth_root(BIGNUM *a, BIGNUM *n, BIGNUM *nearest_nth_root);

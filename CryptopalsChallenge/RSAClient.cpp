@@ -112,7 +112,7 @@ RSAClient::RSAClient(int bits, bool verbose)
 	BN_free(q_1);
 
 	// d invmod(e, et)
-	if (!invmod(e, et, d)) {
+	if (!bn_invmod(e, et, d)) {
 		init_err = true;
 		BN_free(et);
 		BN_CTX_free(ctx);
@@ -214,106 +214,3 @@ bool RSAClient::public_key(BIGNUM *e_out, BIGNUM *n_out) {
 	return true;
 }
 
-// returns false on BIGNUM error or if in and modulus are not coprime.
-bool RSAClient::invmod(BIGNUM *in, BIGNUM *modulus, BIGNUM *invmod) {
-	std::vector<BIGNUM *> bn_ptrs;
-	BN_CTX *ctx = BN_CTX_new();
-	BIGNUM *x = BN_new();
-	BIGNUM *y = BN_new();
-	BIGNUM *g = BN_new();
-	bn_add_to_ptrs(x, &bn_ptrs);
-	bn_add_to_ptrs(y, &bn_ptrs);
-	bn_add_to_ptrs(g, &bn_ptrs);
-
-	if (!gcdextended(in, modulus, x, y, g)) {
-		BN_CTX_free(ctx);
-		bn_free_ptrs(&bn_ptrs);
-		return false;
-	}
-	if (BN_cmp(g, BN_value_one()) != 0) {
-		//std::cout << "inverse doesn't exist. GCD = " << BN_bn2dec(g) << std::endl;
-		BN_CTX_free(ctx);
-		bn_free_ptrs(&bn_ptrs);
-		return false;
-	}
-
-	// inverse = (x%m + m) % m. The +m is to ensure the inverse is positive
-	if (!BN_mod(invmod, x, modulus, ctx)) {
-		BN_CTX_free(ctx);
-		bn_free_ptrs(&bn_ptrs);
-		return false;
-	}
-	if (!BN_mod_add(invmod, invmod, modulus, modulus, ctx)) {
-		BN_CTX_free(ctx);
-		bn_free_ptrs(&bn_ptrs);
-		return false;
-	}
-	
-	BN_CTX_free(ctx);
-	bn_free_ptrs(&bn_ptrs);
-	return true;
-
-}
-
-// recursive function for extended euclidean algorithm
-// returns false on BIGNUM error
-bool RSAClient::gcdextended(BIGNUM *a, BIGNUM *b, BIGNUM *x, BIGNUM *y, BIGNUM *gcd) {
-	BN_CTX *ctx = BN_CTX_new();
-	std::vector<BIGNUM *> bn_ptrs;
-
-	BIGNUM *zero = bn_from_word(0, &bn_ptrs);
-	if (BN_cmp(a, zero) == 0) {
-		BN_set_word(x, 0);
-		BN_set_word(y, 1);
-		BN_copy(gcd, b);
-		return true;
-	}
-
-	BIGNUM *x1 = BN_new();
-	BIGNUM *y1 = BN_new();
-	BIGNUM *a1 = BN_new();
-	BIGNUM *gcd1 = BN_new();
-	BIGNUM *temp1 = BN_new();
-	BIGNUM *temp2 = BN_new();
-	bn_add_to_ptrs(x1, &bn_ptrs);
-	bn_add_to_ptrs(y1, &bn_ptrs);
-	bn_add_to_ptrs(a1, &bn_ptrs);
-	bn_add_to_ptrs(gcd1, &bn_ptrs);
-	bn_add_to_ptrs(temp1, &bn_ptrs);
-	bn_add_to_ptrs(temp2, &bn_ptrs);
-	// a1 = b % a
-	if (!BN_mod(a1, b, a, ctx)) {
-		bn_free_ptrs(&bn_ptrs);
-		BN_CTX_free(ctx);
-		return false;
-	}
-
-	if (!gcdextended(a1, a, x1, y1, gcd1)) {
-		bn_free_ptrs(&bn_ptrs);
-		BN_CTX_free(ctx);
-		return false;
-	}
-
-	BN_copy(gcd, gcd1);
-	// x = y1 - (b/a) * x1
-	if (!BN_div(temp1, temp2, b, a, ctx)) {
-		bn_free_ptrs(&bn_ptrs);
-		BN_CTX_free(ctx);
-		return false;
-	}
-	if (!BN_mul(temp2, temp1, x1, ctx)) {
-		bn_free_ptrs(&bn_ptrs);
-		BN_CTX_free(ctx);
-		return false;
-	}
-	if (!BN_sub(x, y1, temp2)) {
-		bn_free_ptrs(&bn_ptrs);
-		BN_CTX_free(ctx);
-		return false;
-	}
-	// y = x1
-	BN_copy(y, x1);
-
-	bn_free_ptrs(&bn_ptrs);
-	BN_CTX_free(ctx);
-}
