@@ -1,7 +1,8 @@
 #include "RSAClient.h"
 #include "BNUtility.h"
+#include "Utility.h"
 #include <iostream>
-
+#include <assert.h>
 
 RSAClient::RSAClient(int bits, bool verbose)
 {
@@ -17,11 +18,11 @@ RSAClient::RSAClient(int bits, bool verbose)
 	if (verbose) {
 		std::cout << "Generating P..." << std::endl;
 	}
-	BN_generate_prime_ex(p, bits, 0, NULL, NULL, NULL);
+	BN_generate_prime_ex(p, bits/2, 0, NULL, NULL, NULL);
 	if (verbose) {
 		std::cout << "Generating Q..." << std::endl;
 	}
-	BN_generate_prime_ex(q, bits, 0, NULL, NULL, NULL);
+	BN_generate_prime_ex(q, bits/2, 0, NULL, NULL, NULL);
 	if (verbose) {
 		std::cout << "Computing N..." << std::endl;
 	}
@@ -134,42 +135,168 @@ RSAClient::RSAClient(int bits, bool verbose)
 }
 
 // returns false on BIGNUM error
-bool RSAClient::encrypt_bv(ByteVector *input, ByteVector *encrypted) {
+bool RSAClient::encrypt_bv(ByteVector *input, ByteVector *encrypted, bool padded, int padtype) {
 	BN_CTX *ctx = BN_CTX_new();
 	std::vector<BIGNUM *> bn_ptrs;
 	BIGNUM *out = BN_new();
 	bn_add_to_ptrs(out, &bn_ptrs);
 
-	BIGNUM *in = bn_from_bytevector(input, &bn_ptrs);
+	if (padded) {
 
-	if (!BN_mod_exp(out, in, e, n, ctx)) {
-		bn_free_ptrs(&bn_ptrs);
-		BN_CTX_free(ctx);
-		return false;
+		int blocksize = BN_num_bytes(n);
+		assert(blocksize >= 12);
+		int datablock_size = blocksize - 11;
+		int blocknum = input->length() / datablock_size;
+		if (input->length() % datablock_size != 0) {
+			blocknum++;
+		}
+		ByteVector inblock = ByteVector(blocksize);
+		ByteVector outblock = ByteVector(blocksize);
+		encrypted->resize(blocksize * blocknum);
+		for (size_t i = 0; i < input->length(); i += datablock_size) {
+			size_t thislen = (input->length() - i < datablock_size ? input->length() - i : datablock_size);
+			size_t padlen = blocksize - thislen - 3;
+			inblock[0] = 0x00;
+			inblock[1] = (byte) (0xff & padtype);
+			for (size_t j = 2; j < padlen + 2; j++) {
+				if (padtype == 1) {
+					inblock[j] = 0xff;
+				}
+				if (padtype == 2) {
+					inblock[j] = (byte) rand_range(1, 255);
+				}
+				else {
+					inblock[j] = 0x00;
+				}
+			}
+			inblock[2 + padlen] = 0x00;
+			input->copyBytesByIndex(&inblock, i, thislen, 3 + padlen);
+			BIGNUM *in = bn_from_bytevector(&inblock, &bn_ptrs);
+
+			if (!BN_mod_exp(out, in, e, n, ctx)) {
+				bn_free_ptrs(&bn_ptrs);
+				BN_CTX_free(ctx);
+				return false;
+			}
+
+			bn_to_bytevector(out, &outblock);
+			if (outblock.length() < blocksize) {
+				outblock.copyBytesByIndex(encrypted, 0, outblock.length(), i*blocksize);
+				for (size_t j = outblock.length(); j < blocksize; j++) {
+					(*encrypted)[i*blocksize + j] = 0x00;
+				}
+			}
+			else {
+				outblock.copyBytesByIndex(encrypted, 0, outblock.length(), i*blocksize);
+			}
+		}
 	}
+	else {
+		BIGNUM *in = bn_from_bytevector(input, &bn_ptrs);
 
-	bn_to_bytevector(out, encrypted);
+		if (!BN_mod_exp(out, in, e, n, ctx)) {
+			bn_free_ptrs(&bn_ptrs);
+			BN_CTX_free(ctx);
+			return false;
+		}
+
+		bn_to_bytevector(out, encrypted);
+	}
 
 	bn_free_ptrs(&bn_ptrs);
 	BN_CTX_free(ctx);
 	return true;
 }
 // returns false on BIGNUM error
-bool RSAClient::decrypt_bv(ByteVector *encrypted, ByteVector *output) {
+bool RSAClient::decrypt_bv(ByteVector *encrypted, ByteVector *output, bool padded, int padtype) {
 	BN_CTX *ctx = BN_CTX_new();
 	std::vector<BIGNUM *> bn_ptrs;
 	BIGNUM *out = BN_new();
 	bn_add_to_ptrs(out, &bn_ptrs);
 
-	BIGNUM *in = bn_from_bytevector(encrypted, &bn_ptrs);
+	if (padded) {
+		int blocksize = BN_num_bytes(n);
+		assert(blocksize >= 12);
+		int datablock_size = blocksize - 11;
+		int blocknum = encrypted->length() / blocksize;
+		
+		ByteVector inblock = ByteVector(blocksize);
+		ByteVector outblock = ByteVector(blocksize);
+		output->resize(datablock_size * blocknum);
 
-	if (!BN_mod_exp(out, in, d, n, ctx)) {
-		bn_free_ptrs(&bn_ptrs);
-		BN_CTX_free(ctx);
-		return false;
+		for (size_t i = 0; i < encrypted->length(); i += blocksize) {
+			encrypted->copyBytesByIndex(&inblock, i, blocksize, 0);
+
+			BIGNUM *in = bn_from_bytevector(&inblock, &bn_ptrs);
+			if (!BN_mod_exp(out, in, d, n, ctx)) {
+				bn_free_ptrs(&bn_ptrs);
+				BN_CTX_free(ctx);
+				return false;
+			}
+
+			bn_to_bytevector(out, &outblock);
+			if (outblock[0] != 0x00) {
+				std::cerr << "bad byte 0 expected 0x00" << i+0 << std::endl;
+				bn_free_ptrs(&bn_ptrs);
+				BN_CTX_free(ctx);
+				return false;
+			}
+			if (outblock[1] != 0x00 || 0x01 || 0x02) {
+				std::cerr << "bad byte 1 unknown blocktype " << (int)outblock[1] << " " << i + 0 << std::endl;
+				bn_free_ptrs(&bn_ptrs);
+				BN_CTX_free(ctx);
+				return false;
+			}
+
+			size_t dataindex = 2;
+			while (dataindex < blocksize) {
+				if (outblock[1] == 0x00) { // type 0, looking for first non-zero byte
+					if (outblock[dataindex] != 0) {
+						break;
+					}
+				}
+				else if (outblock[1] == 0x01) { // type 1, looking for first non-0xff byte + 1
+					if (outblock[dataindex] == 0x00) {
+						dataindex++;
+						break;
+					}
+					else if(outblock[dataindex] != 0xff){
+						std::cerr << "bad byte padding byte for type 1 " << (int)outblock[dataindex] << " " << i + dataindex << std::endl;
+						bn_free_ptrs(&bn_ptrs);
+						BN_CTX_free(ctx);
+						return false;
+					}
+				}
+				else if (outblock[1] == 0x02) {
+					if (outblock[dataindex] == 0x00) {
+						dataindex++;
+						break;
+					}
+				}
+				dataindex++;
+			}
+			if (dataindex == blocksize) {
+				std::cerr << "No data found in block " << " " << i + dataindex << std::endl;
+				bn_free_ptrs(&bn_ptrs);
+				BN_CTX_free(ctx);
+				return false;
+			}
+			outblock.copyBytesByIndex(output, dataindex, outblock.length() - dataindex, (i/blocksize)*datablock_size);
+ 		}
+
 	}
+	else {
 
-	bn_to_bytevector(out, output);
+		BIGNUM *in = bn_from_bytevector(encrypted, &bn_ptrs);
+
+		if (!BN_mod_exp(out, in, d, n, ctx)) {
+			bn_free_ptrs(&bn_ptrs);
+			BN_CTX_free(ctx);
+			return false;
+		}
+
+		bn_to_bytevector(out, output);
+	}
 
 	bn_free_ptrs(&bn_ptrs);
 	BN_CTX_free(ctx);

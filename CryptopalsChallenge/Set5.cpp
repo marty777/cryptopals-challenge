@@ -974,7 +974,7 @@ void Set5Challenge39() {
 	// suitable length the encrypted value for two messages encrypted with different public keys
 	// is identical and thus decryptable with different private keys.
 
-	cout << "Testing RSA encryption with 512 bit primes (this may take a moment)" << endl;
+	cout << "Testing RSA encryption with 512 bit N (this may take a moment)" << endl;
 	RSAClient client1 = RSAClient(512, false);
 
 	ByteVector plain1 = ByteVector("This is a test message", ASCII);
@@ -988,7 +988,7 @@ void Set5Challenge39() {
 	client1.decrypt_bv(&encrypted1, &decrypted1);
 	cout << "Decrypted with private key" << endl << decrypted1.toStr(ASCII) << endl;
 
-	cout << "Testing RSA encryption with 1024 bit primes (this may take a moment)" << endl;
+	cout << "Testing RSA encryption with 1024 bit N (this may take a moment)" << endl;
 	RSAClient client2 = RSAClient(1024, false);
 
 	ByteVector plain2 = ByteVector("This is another test message", ASCII);
@@ -1010,9 +1010,9 @@ void Set5Challenge40() {
 
 	// Generate 3 different sets of private and public keys
 	cout << "Generating clients 1-3..." << endl;
-	RSAClient client1 = RSAClient(128);
-	RSAClient client2 = RSAClient(128);
-	RSAClient client3 = RSAClient(128);
+	RSAClient client1 = RSAClient(512);
+	RSAClient client2 = RSAClient(512);
+	RSAClient client3 = RSAClient(512);
 
 	ByteVector thesecretplaintext = ByteVector("This is a secret!", ASCII);
 
