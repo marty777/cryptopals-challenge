@@ -118,6 +118,7 @@ void Set6Challenge42() {
 	ByteVector decrypted = ByteVector();
 
 	client1.encrypt_bv(&bv, &encrypted, true, 0);
+	cout << "Got here " << endl;
 	client1.decrypt_bv(&encrypted, &decrypted, true, 0);
 	cout << "Result:" << endl << decrypted.toStr(ASCII) << endl;
 }

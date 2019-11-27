@@ -154,6 +154,7 @@ bool RSAClient::encrypt_bv(ByteVector *input, ByteVector *encrypted, bool padded
 		ByteVector outblock = ByteVector(blocksize);
 		encrypted->resize(blocksize * blocknum);
 		for (size_t i = 0; i < input->length(); i += datablock_size) {
+			printf("%d %d %d\n", i, input->length(), datablock_size);
 			size_t thislen = (input->length() - i < datablock_size ? input->length() - i : datablock_size);
 			size_t padlen = blocksize - thislen - 3;
 			inblock[0] = 0x00;
@@ -171,6 +172,10 @@ bool RSAClient::encrypt_bv(ByteVector *input, ByteVector *encrypted, bool padded
 			}
 			inblock[2 + padlen] = 0x00;
 			input->copyBytesByIndex(&inblock, i, thislen, 3 + padlen);
+
+			printf("Inblock:\n");
+			inblock.printHexStrByBlocks(16);
+
 			BIGNUM *in = bn_from_bytevector(&inblock, &bn_ptrs);
 
 			if (!BN_mod_exp(out, in, e, n, ctx)) {
@@ -180,6 +185,20 @@ bool RSAClient::encrypt_bv(ByteVector *input, ByteVector *encrypted, bool padded
 			}
 
 			bn_to_bytevector(out, &outblock);
+			printf("Outblock %d %d\n", outblock.length(), BN_num_bits(out));
+			outblock.printHexStrByBlocks(16);
+
+			ByteVector decrypt_test = ByteVector();
+			BIGNUM *test = BN_new();
+			bn_add_to_ptrs(test, &bn_ptrs);
+			if (!BN_mod_exp(test, out, d, n, ctx)) {
+				bn_free_ptrs(&bn_ptrs);
+				BN_CTX_free(ctx);
+				return false;
+			}
+			bn_to_bytevector(test, &decrypt_test);
+			decrypt_test.printHexStrByBlocks(16);
+
 			if (outblock.length() < blocksize) {
 				outblock.copyBytesByIndex(encrypted, 0, outblock.length(), i*blocksize);
 				for (size_t j = outblock.length(); j < blocksize; j++) {
@@ -187,7 +206,7 @@ bool RSAClient::encrypt_bv(ByteVector *input, ByteVector *encrypted, bool padded
 				}
 			}
 			else {
-				outblock.copyBytesByIndex(encrypted, 0, outblock.length(), i*blocksize);
+				outblock.copyBytesByIndex(encrypted, 0, outblock.length(), (i/datablock_size)*blocksize);
 			}
 		}
 	}
@@ -226,6 +245,9 @@ bool RSAClient::decrypt_bv(ByteVector *encrypted, ByteVector *output, bool padde
 
 		for (size_t i = 0; i < encrypted->length(); i += blocksize) {
 			encrypted->copyBytesByIndex(&inblock, i, blocksize, 0);
+			
+			printf("Position %d:\nInblock:\n", i);
+			inblock.printHexStrByBlocks(16);
 
 			BIGNUM *in = bn_from_bytevector(&inblock, &bn_ptrs);
 			if (!BN_mod_exp(out, in, d, n, ctx)) {
@@ -235,13 +257,25 @@ bool RSAClient::decrypt_bv(ByteVector *encrypted, ByteVector *output, bool padde
 			}
 
 			bn_to_bytevector(out, &outblock);
+			
+			// if the output is less than blocksize bytes, left-pad with zeros
+			if (outblock.length() < blocksize) {
+				ByteVector temp = ByteVector(&outblock);
+				outblock.resize(blocksize);
+				outblock.allBytes(0);
+				temp.copyBytesByIndex(&outblock, 0, temp.length(), blocksize - 1 - temp.length());
+			} 
+
+			printf("Outblock:\n");
+			outblock.printHexStrByBlocks(16);
+
 			if (outblock[0] != 0x00) {
 				std::cerr << "bad byte 0 expected 0x00" << i+0 << std::endl;
 				bn_free_ptrs(&bn_ptrs);
 				BN_CTX_free(ctx);
 				return false;
 			}
-			if (outblock[1] != 0x00 || 0x01 || 0x02) {
+			if (outblock[1] != 0x00 && outblock[1] != 0x01 && outblock[1] != 0x02) {
 				std::cerr << "bad byte 1 unknown blocktype " << (int)outblock[1] << " " << i + 0 << std::endl;
 				bn_free_ptrs(&bn_ptrs);
 				BN_CTX_free(ctx);
@@ -282,6 +316,7 @@ bool RSAClient::decrypt_bv(ByteVector *encrypted, ByteVector *output, bool padde
 				return false;
 			}
 			outblock.copyBytesByIndex(output, dataindex, outblock.length() - dataindex, (i/blocksize)*datablock_size);
+			
  		}
 
 	}
