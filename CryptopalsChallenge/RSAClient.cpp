@@ -1,4 +1,5 @@
 #include "RSAClient.h"
+#include "ByteEncryption.h"
 #include "BNUtility.h"
 #include "Utility.h"
 #include <iostream>
@@ -154,7 +155,6 @@ bool RSAClient::encrypt_bv(ByteVector *input, ByteVector *encrypted, bool padded
 		ByteVector outblock = ByteVector(blocksize);
 		encrypted->resize(blocksize * blocknum);
 		for (size_t i = 0; i < input->length(); i += datablock_size) {
-			printf("%d %d %d\n", i, input->length(), datablock_size);
 			size_t thislen = (input->length() - i < datablock_size ? input->length() - i : datablock_size);
 			size_t padlen = blocksize - thislen - 3;
 			inblock[0] = 0x00;
@@ -163,7 +163,7 @@ bool RSAClient::encrypt_bv(ByteVector *input, ByteVector *encrypted, bool padded
 				if (padtype == 1) {
 					inblock[j] = 0xff;
 				}
-				if (padtype == 2) {
+				else if (padtype == 2) {
 					inblock[j] = (byte) rand_range(1, 255);
 				}
 				else {
@@ -172,9 +172,6 @@ bool RSAClient::encrypt_bv(ByteVector *input, ByteVector *encrypted, bool padded
 			}
 			inblock[2 + padlen] = 0x00;
 			input->copyBytesByIndex(&inblock, i, thislen, 3 + padlen);
-
-			printf("Inblock:\n");
-			inblock.printHexStrByBlocks(16);
 
 			BIGNUM *in = bn_from_bytevector(&inblock, &bn_ptrs);
 
@@ -185,9 +182,7 @@ bool RSAClient::encrypt_bv(ByteVector *input, ByteVector *encrypted, bool padded
 			}
 
 			bn_to_bytevector(out, &outblock);
-			printf("Outblock %d %d\n", outblock.length(), BN_num_bits(out));
-			outblock.printHexStrByBlocks(16);
-
+			
 			ByteVector decrypt_test = ByteVector();
 			BIGNUM *test = BN_new();
 			bn_add_to_ptrs(test, &bn_ptrs);
@@ -246,9 +241,6 @@ bool RSAClient::decrypt_bv(ByteVector *encrypted, ByteVector *output, bool padde
 		for (size_t i = 0; i < encrypted->length(); i += blocksize) {
 			encrypted->copyBytesByIndex(&inblock, i, blocksize, 0);
 			
-			printf("Position %d:\nInblock:\n", i);
-			inblock.printHexStrByBlocks(16);
-
 			BIGNUM *in = bn_from_bytevector(&inblock, &bn_ptrs);
 			if (!BN_mod_exp(out, in, d, n, ctx)) {
 				bn_free_ptrs(&bn_ptrs);
@@ -263,11 +255,8 @@ bool RSAClient::decrypt_bv(ByteVector *encrypted, ByteVector *output, bool padde
 				ByteVector temp = ByteVector(&outblock);
 				outblock.resize(blocksize);
 				outblock.allBytes(0);
-				temp.copyBytesByIndex(&outblock, 0, temp.length(), blocksize - 1 - temp.length());
+				temp.copyBytesByIndex(&outblock, 0, temp.length(), blocksize - temp.length());
 			} 
-
-			printf("Outblock:\n");
-			outblock.printHexStrByBlocks(16);
 
 			if (outblock[0] != 0x00) {
 				std::cerr << "bad byte 0 expected 0x00" << i+0 << std::endl;
@@ -338,6 +327,77 @@ bool RSAClient::decrypt_bv(ByteVector *encrypted, ByteVector *output, bool padde
 	return true;
 }
 
+// The following is not a correct implemenation of RFC 2313. I only have MD4 hashing available at the moment, and I'm not using BER encoding
+// as specified. There are only two fields in the data, a single byte giving the hash algorithm and the remainder being the 16 bytes of the hash,
+// so this should be possible to interpret unambiguously.
+bool RSAClient::sign_bv(ByteVector *input, ByteVector *signature) {
+	BN_CTX *ctx = BN_CTX_new();
+	std::vector<BIGNUM *> bn_ptrs;
+
+	// if our data field isn't large enough to store an md4 hash in a single block.
+	int blocksize = BN_num_bytes(n);
+	assert(blocksize >= 12);
+	int datablock_size = blocksize - 11;
+	assert(datablock_size >= 16 + 1); // 16 byte hash + 1 byte denoting MD4
+
+	// generate hash of input vector. 
+	ByteVector hash = ByteVector();
+	ByteEncryption::md4(input, &hash);
+
+	// fill out the block
+	ByteVector data = ByteVector(datablock_size);
+	data[0] = 0x02; // denotes MD4
+	hash.copyBytesByIndex(&data, 0, hash.length(), 1);
+	ByteVector inblock = ByteVector(blocksize);
+	inblock[0] = 0x00;
+	inblock[1] = 0x01;
+	for (size_t i = 2; i < blocksize - datablock_size - 1; i++) {
+		inblock[i] = 0xff;
+	}
+	inblock[blocksize - datablock_size - 1];
+	data.copyBytesByIndex(&inblock, 0, data.length(), blocksize - datablock_size);
+
+	// encrypt using private key
+	BIGNUM *in = bn_from_bytevector(&inblock, &bn_ptrs);
+	BIGNUM *out = BN_new();
+	bn_add_to_ptrs(out, &bn_ptrs);
+	if (!BN_mod_exp(out, in, d, n, ctx)) {
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
+		return false;
+	}
+	
+	bn_to_bytevector(out, signature);
+
+	bn_free_ptrs(&bn_ptrs);
+	BN_CTX_free(ctx);
+	return true;
+}
+
+// check that signature hash matches data
+bool RSAClient::verify_signature_bv(ByteVector *signature, ByteVector *data) {
+	BN_CTX *ctx = BN_CTX_new();
+	std::vector<BIGNUM *> bn_ptrs;
+
+	ByteVector hash = ByteVector();
+	ByteEncryption::md4(data, &hash);
+
+	BIGNUM *in = bn_from_bytevector(signature, &bn_ptrs);
+	BIGNUM *out = BN_new();
+	bn_add_to_ptrs(out, &bn_ptrs);
+	if (!BN_mod_exp(out, in, e, n, ctx)) {
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
+		return false;
+	}
+
+	ByteVector sigblock = ByteVector();
+	bn_to_bytevector(out, &sigblock);
+
+	sigblock.printHexStrByBlocks(16);
+
+	//...
+}
 
 RSAClient::~RSAClient()
 {

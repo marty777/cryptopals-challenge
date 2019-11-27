@@ -112,15 +112,19 @@ void Set6Challenge41() {
 }
 
 void Set6Challenge42() {
-	RSAClient client1 = RSAClient(512);
+	RSAClient client1 = RSAClient(1024);
 	ByteVector bv = ByteVector("The length of the data D shall not be more than k-11 octets, which is positive since the length k of the modulus is at least 12 octets. This limitation guarantees that the length of the padding string PS is at least eight octets, which is a security condition.", ASCII);
 	ByteVector encrypted = ByteVector();
 	ByteVector decrypted = ByteVector();
 
-	client1.encrypt_bv(&bv, &encrypted, true, 0);
-	cout << "Got here " << endl;
-	client1.decrypt_bv(&encrypted, &decrypted, true, 0);
+	client1.encrypt_bv(&bv, &encrypted, true, 2);
+	client1.decrypt_bv(&encrypted, &decrypted, true, 2);
 	cout << "Result:" << endl << decrypted.toStr(ASCII) << endl;
+
+	ByteVector signature = ByteVector();
+	client1.sign_bv(&bv, &signature);
+	signature.printHexStrByBlocks(16);
+	client1.verify_signature_bv(&signature, &bv);
 }
 
 int Set6() {
