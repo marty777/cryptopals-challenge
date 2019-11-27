@@ -345,18 +345,18 @@ bool RSAClient::sign_bv(ByteVector *input, ByteVector *signature) {
 	ByteEncryption::md4(input, &hash);
 
 	// fill out the block
-	ByteVector data = ByteVector(datablock_size);
+	ByteVector data = ByteVector(1 + hash.length());
 	data[0] = 0x02; // denotes MD4
 	hash.copyBytesByIndex(&data, 0, hash.length(), 1);
 	ByteVector inblock = ByteVector(blocksize);
 	inblock[0] = 0x00;
 	inblock[1] = 0x01;
-	for (size_t i = 2; i < blocksize - datablock_size - 1; i++) {
+	for (size_t i = 2; i < blocksize - data.length() - 1; i++) {
 		inblock[i] = 0xff;
 	}
-	inblock[blocksize - datablock_size - 1];
-	data.copyBytesByIndex(&inblock, 0, data.length(), blocksize - datablock_size);
-
+	inblock[blocksize - data.length() - 1] = 0;
+	data.copyBytesByIndex(&inblock, 0, data.length(), blocksize - data.length());
+	
 	// encrypt using private key
 	BIGNUM *in = bn_from_bytevector(&inblock, &bn_ptrs);
 	BIGNUM *out = BN_new();
@@ -379,6 +379,12 @@ bool RSAClient::verify_signature_bv(ByteVector *signature, ByteVector *data) {
 	BN_CTX *ctx = BN_CTX_new();
 	std::vector<BIGNUM *> bn_ptrs;
 
+	// if our data field isn't large enough to store an md4 hash in a single block.
+	int blocksize = BN_num_bytes(n);
+	assert(blocksize >= 12);
+	int datablock_size = blocksize - 11;
+	assert(datablock_size >= 16 + 1); // 16 byte hash + 1 byte denoting MD4
+
 	ByteVector hash = ByteVector();
 	ByteEncryption::md4(data, &hash);
 
@@ -394,9 +400,81 @@ bool RSAClient::verify_signature_bv(ByteVector *signature, ByteVector *data) {
 	ByteVector sigblock = ByteVector();
 	bn_to_bytevector(out, &sigblock);
 
-	sigblock.printHexStrByBlocks(16);
+	// if the output is less than blocksize bytes, left-pad with zeros
+	if (sigblock.length() < blocksize) {
+		ByteVector temp = ByteVector(&sigblock);
+		sigblock.resize(blocksize);
+		sigblock.allBytes(0);
+		temp.copyBytesByIndex(&sigblock, 0, temp.length(), blocksize - temp.length());
+	}
 
-	//...
+	if (sigblock[0] != 0x00) {
+		std::cerr << "bad byte 0 expected 0x00" << std::endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
+		return false;
+	}
+	if (sigblock[1] != 0x00 && sigblock[1] != 0x01 && sigblock[1] != 0x02) {
+		std::cerr << "bad byte 1 unknown blocktype " << (int)sigblock[1] << std::endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
+		return false;
+	}
+
+	size_t dataindex = 2;
+	while (dataindex < blocksize) {
+		if (sigblock[1] == 0x00) { // type 0, looking for first non-zero byte
+			if (sigblock[dataindex] != 0) {
+				break;
+			}
+		}
+		else if (sigblock[1] == 0x01) { // type 1, looking for first non-0xff byte + 1
+			if (sigblock[dataindex] == 0x00) {
+				dataindex++;
+				break;
+			}
+			else if (sigblock[dataindex] != 0xff) {
+				std::cerr << "bad byte padding byte for type 1 " << (int)sigblock[dataindex] << std::endl;
+				bn_free_ptrs(&bn_ptrs);
+				BN_CTX_free(ctx);
+				return false;
+			}
+		}
+		else if (sigblock[1] == 0x02) {
+			if (sigblock[dataindex] == 0x00) {
+				dataindex++;
+				break;
+			}
+		}
+		dataindex++;
+	}
+	if (dataindex == blocksize) {
+		std::cerr << "No data found in block " << " " << dataindex << std::endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
+		return false;
+	}
+
+	if (!sigblock[dataindex] == 0x02) {
+		std::cerr << "Unknown digest format " << (int)sigblock[dataindex] << std::endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
+		return false;
+	}
+
+	ByteVector hashdata = ByteVector(sigblock.length() - dataindex - 1);
+	sigblock.copyBytesByIndex(&hashdata, dataindex + 1, sigblock.length() - dataindex - 1, 0);
+	
+	if (!hashdata.equal(&hash)) {
+		std::cerr << "Signature does not match digest " << (int)sigblock[dataindex] << std::endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
+		return false;
+	}
+
+	bn_free_ptrs(&bn_ptrs);
+	BN_CTX_free(ctx);
+	return true;
 }
 
 RSAClient::~RSAClient()
