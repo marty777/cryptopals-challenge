@@ -157,6 +157,7 @@ bool RSAClient::encrypt_bv(ByteVector *input, ByteVector *encrypted, bool padded
 		for (size_t i = 0; i < input->length(); i += datablock_size) {
 			size_t thislen = (input->length() - i < datablock_size ? input->length() - i : datablock_size);
 			size_t padlen = blocksize - thislen - 3;
+			inblock.allBytes(0);
 			inblock[0] = 0x00;
 			inblock[1] = (byte) (0xff & padtype);
 			for (size_t j = 2; j < padlen + 2; j++) {
@@ -171,8 +172,9 @@ bool RSAClient::encrypt_bv(ByteVector *input, ByteVector *encrypted, bool padded
 				}
 			}
 			inblock[2 + padlen] = 0x00;
+			
 			input->copyBytesByIndex(&inblock, i, thislen, 3 + padlen);
-
+			
 			BIGNUM *in = bn_from_bytevector(&inblock, &bn_ptrs);
 
 			if (!BN_mod_exp(out, in, e, n, ctx)) {
@@ -183,7 +185,7 @@ bool RSAClient::encrypt_bv(ByteVector *input, ByteVector *encrypted, bool padded
 
 			bn_to_bytevector(out, &outblock);
 			
-			ByteVector decrypt_test = ByteVector();
+			/*ByteVector decrypt_test = ByteVector();
 			BIGNUM *test = BN_new();
 			bn_add_to_ptrs(test, &bn_ptrs);
 			if (!BN_mod_exp(test, out, d, n, ctx)) {
@@ -192,7 +194,7 @@ bool RSAClient::encrypt_bv(ByteVector *input, ByteVector *encrypted, bool padded
 				return false;
 			}
 			bn_to_bytevector(test, &decrypt_test);
-			decrypt_test.printHexStrByBlocks(16);
+			decrypt_test.printHexStrByBlocks(16);*/
 
 			if (outblock.length() < blocksize) {
 				outblock.copyBytesByIndex(encrypted, 0, outblock.length(), i*blocksize);
@@ -238,6 +240,7 @@ bool RSAClient::decrypt_bv(ByteVector *encrypted, ByteVector *output, bool padde
 		ByteVector outblock = ByteVector(blocksize);
 		output->resize(datablock_size * blocknum);
 
+		size_t datatotal = 0; // actual byte count for cases where datablock_size and data are not aligned
 		for (size_t i = 0; i < encrypted->length(); i += blocksize) {
 			encrypted->copyBytesByIndex(&inblock, i, blocksize, 0);
 			
@@ -304,10 +307,12 @@ bool RSAClient::decrypt_bv(ByteVector *encrypted, ByteVector *output, bool padde
 				BN_CTX_free(ctx);
 				return false;
 			}
+			datatotal += (blocksize - dataindex);
+			outblock.printHexStrByBlocks(16);
 			outblock.copyBytesByIndex(output, dataindex, outblock.length() - dataindex, (i/blocksize)*datablock_size);
-			
  		}
-
+		// if the output isn't a multiple of datablock_size
+		output->resize(datatotal);
 	}
 	else {
 

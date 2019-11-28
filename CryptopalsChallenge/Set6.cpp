@@ -120,9 +120,9 @@ void Set6Challenge42() {
 	ByteVector decrypted = ByteVector();
 
 	cout << "Encrypting multiblock message..." << endl;
-	client1.encrypt_bv(&bv, &encrypted, true, 2);
+	client1.encrypt_bv(&bv, &encrypted, true, 1);
 	cout << "Decrypting multiblock message..." << endl;
-	client1.decrypt_bv(&encrypted, &decrypted, true, 2);
+	client1.decrypt_bv(&encrypted, &decrypted, true, 1);
 	cout << "Result " << (bv.equal(&decrypted) ? " (matches original):" : " (does not match original):") << endl << decrypted.toStr(ASCII) << endl;
 
 	ByteVector signature = ByteVector();
