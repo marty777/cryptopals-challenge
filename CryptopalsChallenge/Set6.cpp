@@ -208,17 +208,31 @@ void Set6Challenge42() {
 		cout << "Forged valid signature for string '" << himom.toStr(ASCII) << "'" << endl;
 	}
 	else {
-		cout << "Did not forged valid signature for string '" << himom.toStr(ASCII) << "'" << endl;
+		cout << "Did not forge valid signature for string '" << himom.toStr(ASCII) << "'" << endl;
 	}
 
 	bn_free_ptrs(&bn_ptrs);
 	BN_CTX_free(ctx);
 }
 
+void Set6Challenge43() {
+
+}
+
 int Set6() {
 	cout << "### SET 6 ###" << endl;
 	cout << "Set 6 Challenge 41" << endl;
 	Set6Challenge41();
+	// Pause before continuing
+	cout << "Press enter to continue..." << endl;
+	getchar();
+	cout << "Set 6 Challenge 42" << endl;
+	Set6Challenge42();
+	// Pause before continuing
+	cout << "Press enter to continue..." << endl;
+	getchar();
+	cout << "Set 6 Challenge 43" << endl;
+	Set6Challenge43();
 	// Pause before continuing
 	cout << "Press enter to continue..." << endl;
 	getchar();
