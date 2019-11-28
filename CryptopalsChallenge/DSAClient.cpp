@@ -1,6 +1,7 @@
 #include "DSAClient.h"
 #include "ByteVector.h"
 #include "BNUtility.h"
+#include "ByteEncryption.h"
 
 DSAClient::DSAClient()
 {
@@ -86,6 +87,92 @@ BIGNUM *DSAClient::getUserPublicKey(int userID) {
 		}
 	}
 	return NULL;
+}
+
+bool DSAClient::generateSignature(ByteVector *data, DSASignature *signature, int userID) {
+	BIGNUM *x = NULL;
+	BIGNUM *y = NULL;
+	// get user keys
+	for (size_t i = 0; i < userkeys.size(); i++) {
+		if (userkeys[i].user_id == userID) {
+			x = BN_dup(userkeys[i].x);
+			y = BN_dup(userkeys[i].y);
+		}
+	}
+
+	if (x == NULL || y == NULL) {
+		return false;
+	}
+
+	// From wikipedia, it looks like SHA-1 and SHA-2 are used with DSA. I only have SHA-1 implemented so...
+	ByteVector hash = ByteVector();
+	ByteEncryption::sha1(data, &hash);
+	// note that the hash may need to be truncated depending on N
+	int n = BN_num_bits(q);
+	if (hash.length() * 8 > n) {
+		printf("Truncating hash %d %d\n", n, hash.length() * 8);
+
+	}
+
+	BN_CTX *ctx = BN_CTX_new();
+	std::vector<BIGNUM *> bn_ptrs;
+	bn_add_to_ptrs(x, &bn_ptrs);
+	bn_add_to_ptrs(y, &bn_ptrs);
+
+	BIGNUM *zero = bn_from_word(0, &bn_ptrs);
+	BIGNUM *s = bn_from_word(0, &bn_ptrs);
+	BIGNUM *r = BN_new();
+	bn_add_to_ptrs(r, &bn_ptrs);
+
+	while (BN_cmp(s, zero) == 0) {
+		// generate k as random on {1, q-1}
+		BIGNUM *k = BN_new();
+		BIGNUM *two = bn_from_word(2, &bn_ptrs);
+		BIGNUM *range = BN_dup(q);
+		bn_add_to_ptrs(k, &bn_ptrs);
+		bn_add_to_ptrs(range, &bn_ptrs);
+		if (!BN_sub(range, range, two)) {
+			bn_free_ptrs(&bn_ptrs);
+			BN_CTX_free(ctx);
+			return false;
+		}
+		if (!BN_rand_range(k, range)) {
+			bn_free_ptrs(&bn_ptrs);
+			BN_CTX_free(ctx);
+			return false;
+		}
+		if (!BN_add(k, k, BN_value_one())) {
+			bn_free_ptrs(&bn_ptrs);
+			BN_CTX_free(ctx);
+			return false;
+		}
+
+		// generate r =( g ^ k % p) % q
+		BIGNUM *r = BN_new();
+		bn_add_to_ptrs(r, &bn_ptrs);
+		if (!BN_mod_exp(r, g, k, p, ctx)) {
+			bn_free_ptrs(&bn_ptrs);
+			BN_CTX_free(ctx);
+			return false;
+		}
+		if (!BN_mod(r, r, q, ctx)) {
+			bn_free_ptrs(&bn_ptrs);
+			BN_CTX_free(ctx);
+			return false;
+		}
+
+		// generate s = k^-1 * (Hash(data) + xr) % q
+		// if s = 0, go around the loop with another k
+
+	}
+
+	bn_free_ptrs(&bn_ptrs);
+	BN_CTX_free(ctx);
+	return true;
+}
+bool DSAClient::verifySignature(ByteVector *data, DSASignature *signature, int userID) {
+
+	return false;
 }
 
 // We're mostly using pre-generated ones

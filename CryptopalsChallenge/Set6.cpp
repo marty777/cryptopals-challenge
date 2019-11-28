@@ -6,6 +6,7 @@
 #include "BNUtility.h"
 #include <vector>
 #include "RSAClient.h"
+#include "DSAClient.h"
 
 using namespace std;
 
@@ -216,6 +217,25 @@ void Set6Challenge42() {
 }
 
 void Set6Challenge43() {
+	DSAClient client = DSAClient();
+	int userID = 1;
+	client.generateUserKey(userID);
+	
+	// could have used a note in the challenge instructions that the string matching the provided SHA1 hash has a LF character at the end. That took a while to seach for.
+	ByteVector data = ByteVector("For those that envy a MC it can be hazardous to your health\nSo be friendly, a matter of life and death, just like a etch-a-sketch\n", ASCII);
+	ByteVector expectedHash = ByteVector("d2d0714f014a9784047eaeccf956520045c45265", HEX);
+	ByteVector verifyHash = ByteVector();
+	ByteEncryption::sha1(&data, &verifyHash);
+	if (!expectedHash.equal(&verifyHash)) {
+		cout << "Expected hash of input string does not match" << endl;
+		return;
+	}
+	
+
+
+	DSASignature sig;
+	//client.generateSignature(&data, &sig, userID);
+
 
 }
 
