@@ -1,6 +1,7 @@
 #include "Set6.h"
 #include <iostream>
 #include "ByteVector.h"
+#include "ByteEncryption.h"
 #include "openssl\bn.h"
 #include "BNUtility.h"
 #include <vector>
@@ -113,6 +114,9 @@ void Set6Challenge41() {
 
 void Set6Challenge42() {
 
+	vector<BIGNUM *> bn_ptrs;
+	BN_CTX *ctx = BN_CTX_new();
+
 	cout << "Testing RSA block padding..." << endl;
 	RSAClient client1 = RSAClient(1024);
 	ByteVector bv = ByteVector("The length of the data D shall not be more than k-11 octets, which is positive since the length k of the modulus is at least 12 octets. This limitation guarantees that the length of the padding string PS is at least eight octets, which is a security condition.", ASCII);
@@ -125,14 +129,52 @@ void Set6Challenge42() {
 	client1.decrypt_bv(&encrypted, &decrypted, true, 1);
 	cout << "Result " << (bv.equal(&decrypted) ? " (matches original):" : " (does not match original):") << endl << decrypted.toStr(ASCII) << endl;
 
+	cout << "Testing MD4 RSA signing of data..." << endl;
 	ByteVector signature = ByteVector();
 	client1.sign_bv(&bv, &signature);
 	if (client1.verify_signature_bv(&signature, &bv)) {
-		cout << "Signature validates digest\n" << endl;
+		cout << "Public key of signature validates digest\n" << endl;
 	}
 	else {
-		cout << "Signature does not validate digest\n" << endl;
+		cout << "Public key of signature does not validate digest\n" << endl;
 	}
+
+	cout << "Forging signature..." << endl;
+	ByteVector input = ByteVector("hi mom", ASCII);
+	ByteVector hash = ByteVector();
+	ByteEncryption::md4(&input, &hash);
+	ByteVector data = ByteVector(hash.length() + 5);
+	data[0] = 0x00;
+	data[1] = 0x01;
+	data[2] = 0xff;
+	data[3] = 0x00; // end of padding
+	data[4] = 0x02; // digest specification field in our signature format indicating MD4
+	hash.copyBytesByIndex(&data, 0, hash.length(), 5);
+
+	data.printHexStrByBlocks(16);
+
+	BIGNUM *data_bn = bn_from_bytevector(&data, &bn_ptrs);
+	BIGNUM *cube = BN_new();
+	bn_add_to_ptrs(cube, &bn_ptrs);
+
+	BIGNUM *clientE = BN_new();
+	BIGNUM *clientN = BN_new();
+	bn_add_to_ptrs(clientE, &bn_ptrs);
+	bn_add_to_ptrs(clientN, &bn_ptrs);
+	client1.public_key(clientE, clientN);
+
+	//printf("data\t%s\n", BN_bn2dec(data_bn));
+	//bn_nth_root(data_bn, clientE, cube);
+	//printf("root\t%s\n", BN_bn2dec(cube));
+
+	//BIGNUM *test = BN_new();
+	//bn_add_to_ptrs(test, &bn_ptrs);
+
+	//BN_exp(test, cube, clientE, ctx);
+	//printf("cube\t%s\n", BN_bn2dec(test));
+
+	bn_free_ptrs(&bn_ptrs);
+	BN_CTX_free(ctx);
 }
 
 int Set6() {

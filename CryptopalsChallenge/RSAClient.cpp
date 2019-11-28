@@ -308,7 +308,6 @@ bool RSAClient::decrypt_bv(ByteVector *encrypted, ByteVector *output, bool padde
 				return false;
 			}
 			datatotal += (blocksize - dataindex);
-			outblock.printHexStrByBlocks(16);
 			outblock.copyBytesByIndex(output, dataindex, outblock.length() - dataindex, (i/blocksize)*datablock_size);
  		}
 		// if the output isn't a multiple of datablock_size
