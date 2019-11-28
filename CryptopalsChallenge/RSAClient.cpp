@@ -465,9 +465,10 @@ bool RSAClient::verify_signature_bv(ByteVector *signature, ByteVector *data) {
 		BN_CTX_free(ctx);
 		return false;
 	}
+	size_t hashlen = 16; // Since we've verified we're using MD4
 
-	ByteVector hashdata = ByteVector(sigblock.length() - dataindex - 1);
-	sigblock.copyBytesByIndex(&hashdata, dataindex + 1, sigblock.length() - dataindex - 1, 0);
+	ByteVector hashdata = ByteVector(hashlen);
+	sigblock.copyBytesByIndex(&hashdata, dataindex + 1, hashlen, 0);
 	
 	if (!hashdata.equal(&hash)) {
 		std::cerr << "Signature does not match digest " << (int)sigblock[dataindex] << std::endl;

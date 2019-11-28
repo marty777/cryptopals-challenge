@@ -133,16 +133,16 @@ void Set6Challenge42() {
 	ByteVector signature = ByteVector();
 	client1.sign_bv(&bv, &signature);
 	if (client1.verify_signature_bv(&signature, &bv)) {
-		cout << "Public key of signature validates digest\n" << endl;
+		cout << "Public key of signature validates digest" << endl;
 	}
 	else {
-		cout << "Public key of signature does not validate digest\n" << endl;
+		cout << "Public key of signature does not validate digest" << endl;
 	}
 
 	cout << "Forging signature..." << endl;
-	ByteVector input = ByteVector("hi mom", ASCII);
+	ByteVector himom = ByteVector("hi mom", ASCII);
 	ByteVector hash = ByteVector();
-	ByteEncryption::md4(&input, &hash);
+	ByteEncryption::md4(&himom, &hash);
 	ByteVector data = ByteVector(hash.length() + 5);
 	data[0] = 0x00;
 	data[1] = 0x01;
@@ -151,11 +151,11 @@ void Set6Challenge42() {
 	data[4] = 0x02; // digest specification field in our signature format indicating MD4
 	hash.copyBytesByIndex(&data, 0, hash.length(), 5);
 
-	data.printHexStrByBlocks(16);
-
 	BIGNUM *data_bn = bn_from_bytevector(&data, &bn_ptrs);
-	BIGNUM *cube = BN_new();
-	bn_add_to_ptrs(cube, &bn_ptrs);
+	BIGNUM *three = bn_from_word(3, &bn_ptrs);
+	BIGNUM *cube_root_N = BN_new();
+	bn_add_to_ptrs(cube_root_N, &bn_ptrs);
+	
 
 	BIGNUM *clientE = BN_new();
 	BIGNUM *clientN = BN_new();
@@ -163,15 +163,53 @@ void Set6Challenge42() {
 	bn_add_to_ptrs(clientN, &bn_ptrs);
 	client1.public_key(clientE, clientN);
 
-	//printf("data\t%s\n", BN_bn2dec(data_bn));
-	//bn_nth_root(data_bn, clientE, cube);
-	//printf("root\t%s\n", BN_bn2dec(cube));
+	bn_nth_root(clientN, three, cube_root_N);
+	
+	// right-pad forged signature with zeroes to proper length for a block less 1.
+	// The less 1 is because of the initial zero byte in our padding. For it to 
+	// be re-appended after cubing, the result needs to be one byte short
+	int N_bytes = BN_num_bytes(clientN);
+	int data_bytes = BN_num_bytes(data_bn);
+	if (N_bytes <= data_bytes) { // we've picked a bad key size or something in the setup
+		cout << "Something's wrong" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
+		return;
+	}
+	// data_bn should be one byte shorter than N
+	if (!BN_lshift(data_bn, data_bn, (N_bytes - data_bytes - 1)*8)) {
+		cout << "BN error" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
+		return;
+	}
 
-	//BIGNUM *test = BN_new();
-	//bn_add_to_ptrs(test, &bn_ptrs);
+	BIGNUM *cuberoot = BN_new();
+	bn_add_to_ptrs(cuberoot, &bn_ptrs);
+	if (!bn_nth_root(data_bn, three, cuberoot)) {
+		cout << "BN error" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
+		return;
+	}
+	if (!BN_add(cuberoot, cuberoot, BN_value_one())) {
+		cout << "BN error" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
+		return;
+	}
+	
+	// we could check this result and maybe tweak it slightly if it's off, but let's live dangerously.
 
-	//BN_exp(test, cube, clientE, ctx);
-	//printf("cube\t%s\n", BN_bn2dec(test));
+	ByteVector forgedsig = ByteVector();
+	bn_to_bytevector(cuberoot, &forgedsig);
+
+	if (client1.verify_signature_bv(&forgedsig, &himom)) {
+		cout << "Forged valid signature for string '" << himom.toStr(ASCII) << "'" << endl;
+	}
+	else {
+		cout << "Did not forged valid signature for string '" << himom.toStr(ASCII) << "'" << endl;
+	}
 
 	bn_free_ptrs(&bn_ptrs);
 	BN_CTX_free(ctx);
