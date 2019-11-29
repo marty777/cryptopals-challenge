@@ -216,7 +216,49 @@ void Set6Challenge42() {
 	BN_CTX_free(ctx);
 }
 
+BIGNUM * DSA_xfromk(DSASignature *sig, ByteVector *data, BIGNUM *k, BIGNUM *q) {
+	vector<BIGNUM *> bn_ptrs;
+	BN_CTX *ctx = BN_CTX_new();
+	
+	ByteVector hash = ByteVector();
+	ByteEncryption::sha1(data, &hash);
+	BIGNUM *hash_bn = bn_from_bytevector(&hash, &bn_ptrs);
+	BIGNUM *r_inv = BN_new();
+	BIGNUM *x = BN_new();
+	bn_add_to_ptrs(r_inv, &bn_ptrs);
+	if (!BN_mod_inverse(r_inv, sig->r, q, ctx)) {
+		bn_free_ptrs(&bn_ptrs);
+		BN_free(x);
+		return NULL;
+	}
+
+	if (!BN_mod_mul(x, sig->s, k, q, ctx)) {
+		bn_free_ptrs(&bn_ptrs);
+		BN_free(x);
+		return NULL;
+	}
+	if (!BN_mod_sub(x, x, hash_bn, q, ctx)) {
+		bn_free_ptrs(&bn_ptrs);
+		BN_free(x);
+		return NULL;
+	}
+	if (!BN_mod_mul(x, x, r_inv, q, ctx)) {
+		bn_free_ptrs(&bn_ptrs);
+		BN_free(x);
+		return NULL;
+	}
+
+	bn_free_ptrs(&bn_ptrs);
+	BN_CTX_free(ctx);
+
+	return x;
+}
+
 void Set6Challenge43() {
+
+	vector<BIGNUM *> bn_ptrs;
+	BN_CTX *ctx = BN_CTX_new();
+
 	DSAClient client = DSAClient();
 	int userID = 1;
 	client.generateUserKey(userID);
@@ -231,9 +273,9 @@ void Set6Challenge43() {
 		return;
 	}
 	
-
-
 	DSASignature sig;
+	sig.r = NULL;
+	sig.s = NULL;
 	cout << "Generating test signature..." << endl;
 	if (!client.generateSignature(&data, &sig, userID)) {
 		cout << "Issue generating signature" << endl;
@@ -248,9 +290,82 @@ void Set6Challenge43() {
 		cout << "Signature did not verify" << endl;
 	}
 
+	
+	// test out recovering x with known k with several trials
+	cout << "Testing recovery of x with known k..." << endl;
+	BIGNUM *q = client.getQ();
+	bn_add_to_ptrs(q, &bn_ptrs);
+
+	int successes = 0;
+	for (int i = 2; i < 12; i++) {
+		vector<BIGNUM *> bn_ptrs2;
+		client.generateUserKey(i);
+		ByteVector testdata = ByteVector(256);
+		testdata.random();
+		ByteVector testhash = ByteVector();
+		ByteEncryption::sha1(&testdata, &testhash);
+		BIGNUM *testhash_bn = bn_from_bytevector(&testhash, &bn_ptrs2);
+		BIGNUM *testk = BN_new();
+		bn_add_to_ptrs(testk, &bn_ptrs2);
+		client.generateSignature(&testdata, &sig, i, testk);
+		BIGNUM *actualx = client.getX(i);
+		BIGNUM * testx = DSA_xfromk(&sig, &testdata, testk, q);
+		if (testx != NULL) {
+			if (BN_cmp(testx, actualx) == 0) {
+				successes++;
+			}
+			else {
+				cout << "Trial " << i << " failed " << endl << BN_bn2dec(testx) << endl << BN_bn2dec(actualx) << endl;
+			}
+		}
+		else {
+			cout << i << ": DSA_xfromk returned NULL" << endl;
+			bn_free_ptrs(&bn_ptrs2);
+			break;
+		}
+		bn_free_ptrs(&bn_ptrs2);
+	}
+	if (successes == 10) {
+		cout << "All trials successful" << endl;
+	}
+	else {
+		cout << successes << " out of 10 trials successful" << endl;
+	}
+
+	
+
+	// Now try out the provided signature
+	ByteVector verificationHash = ByteVector("0954edd5e0afe5542a4adf012611a91912a3ec16", HEX);
+	DSAClient finalclient = DSAClient(true); 
+	BIGNUM *final_q = finalclient.getQ();
+	BIGNUM *final_k = bn_from_word(0, &bn_ptrs);
+	BIGNUM *two_16 = bn_from_word(65536, &bn_ptrs); // 2^16
+	BN_dec2bn(&sig.r, "548099063082341131477253921760299949438196259240");
+	BN_dec2bn(&sig.s, "857042759984254168557880549501802188789837994940");
+	bn_add_to_ptrs(final_q, &bn_ptrs);
+	while (BN_cmp(final_k, two_16) <= 0) {
+		BIGNUM * testx = DSA_xfromk(&sig, &data, final_k, final_q);
+		if (testx == NULL) {
+			cout << "DSA_xfromk returned NULL on final_k " << BN_bn2dec(final_k) << endl;
+			bn_free_ptrs(&bn_ptrs);
+			return;
+		}
+
+		// ...
+
+		BN_free(testx);
+		if (!BN_add(final_k, final_k, BN_value_one())) {
+			cout << "Issue incrementing final k" << endl;
+			bn_free_ptrs(&bn_ptrs);
+			return;
+		}
+	}
+
 	BN_free(sig.r);
 	BN_free(sig.s);
 
+	bn_free_ptrs(&bn_ptrs);
+	BN_CTX_free(ctx);
 }
 
 int Set6() {

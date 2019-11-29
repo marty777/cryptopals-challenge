@@ -20,13 +20,15 @@ public:
 
 	bool init_err;
 
-	DSAClient();
+	DSAClient(bool fixedG = false);
 	~DSAClient();
 
 	bool generateUserKey(int userID);
 	BIGNUM *getUserPublicKey(int userID);
+	BIGNUM *getQ();
+	BIGNUM *getX(int userID);
 
-	bool generateSignature(ByteVector *data, DSASignature *signature, int userID);
+	bool generateSignature(ByteVector *data, DSASignature *signature, int userID, BIGNUM *return_k = NULL);
 	bool verifySignature(ByteVector *data, DSASignature *signature, int userID);
 
 private:
@@ -35,6 +37,6 @@ private:
 	BIGNUM *g;
 	std::vector<DSAUserKey> userkeys;
 
-	bool generateParameters();
+	bool generateParameters(bool fixedG = false);
 };
 
