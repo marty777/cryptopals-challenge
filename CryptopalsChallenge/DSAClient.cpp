@@ -2,6 +2,7 @@
 #include "ByteVector.h"
 #include "BNUtility.h"
 #include "ByteEncryption.h"
+#include <vector>
 
 DSAClient::DSAClient(bool fixedG)
 {
@@ -91,6 +92,16 @@ BIGNUM *DSAClient::getUserPublicKey(int userID) {
 
 BIGNUM *DSAClient::getQ() {
 	BIGNUM *ret = BN_dup(q);
+	return ret;
+}
+
+BIGNUM *DSAClient::getP() {
+	BIGNUM *ret = BN_dup(p);
+	return ret;
+}
+
+BIGNUM *DSAClient::getG() {
+	BIGNUM *ret = BN_dup(g);
 	return ret;
 }
 
@@ -423,4 +434,43 @@ bool DSAClient::generateParameters(bool fixedG) {
 	bn_free_ptrs(&bn_ptrs);
 	BN_CTX_free(ctx);
 	return true;
+}
+
+// for challenge 43
+BIGNUM * DSA_xfromk(DSASignature *sig, ByteVector *data, BIGNUM *k, BIGNUM *q) {
+	std::vector<BIGNUM *> bn_ptrs;
+	BN_CTX *ctx = BN_CTX_new();
+
+	ByteVector hash = ByteVector();
+	ByteEncryption::sha1(data, &hash);
+	BIGNUM *hash_bn = bn_from_bytevector(&hash, &bn_ptrs);
+	BIGNUM *r_inv = BN_new();
+	BIGNUM *x = BN_new();
+	bn_add_to_ptrs(r_inv, &bn_ptrs);
+	if (!BN_mod_inverse(r_inv, sig->r, q, ctx)) {
+		bn_free_ptrs(&bn_ptrs);
+		BN_free(x);
+		return NULL;
+	}
+
+	if (!BN_mod_mul(x, sig->s, k, q, ctx)) {
+		bn_free_ptrs(&bn_ptrs);
+		BN_free(x);
+		return NULL;
+	}
+	if (!BN_mod_sub(x, x, hash_bn, q, ctx)) {
+		bn_free_ptrs(&bn_ptrs);
+		BN_free(x);
+		return NULL;
+	}
+	if (!BN_mod_mul(x, x, r_inv, q, ctx)) {
+		bn_free_ptrs(&bn_ptrs);
+		BN_free(x);
+		return NULL;
+	}
+
+	bn_free_ptrs(&bn_ptrs);
+	BN_CTX_free(ctx);
+
+	return x;
 }

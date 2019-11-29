@@ -26,6 +26,8 @@ public:
 	bool generateUserKey(int userID);
 	BIGNUM *getUserPublicKey(int userID);
 	BIGNUM *getQ();
+	BIGNUM *getP();
+	BIGNUM *getG();
 	BIGNUM *getX(int userID);
 
 	bool generateSignature(ByteVector *data, DSASignature *signature, int userID, BIGNUM *return_k = NULL);
@@ -40,3 +42,4 @@ private:
 	bool generateParameters(bool fixedG = false);
 };
 
+BIGNUM * DSA_xfromk(DSASignature *sig, ByteVector *data, BIGNUM *k, BIGNUM *q);

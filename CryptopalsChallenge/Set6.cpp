@@ -216,44 +216,6 @@ void Set6Challenge42() {
 	BN_CTX_free(ctx);
 }
 
-BIGNUM * DSA_xfromk(DSASignature *sig, ByteVector *data, BIGNUM *k, BIGNUM *q) {
-	vector<BIGNUM *> bn_ptrs;
-	BN_CTX *ctx = BN_CTX_new();
-	
-	ByteVector hash = ByteVector();
-	ByteEncryption::sha1(data, &hash);
-	BIGNUM *hash_bn = bn_from_bytevector(&hash, &bn_ptrs);
-	BIGNUM *r_inv = BN_new();
-	BIGNUM *x = BN_new();
-	bn_add_to_ptrs(r_inv, &bn_ptrs);
-	if (!BN_mod_inverse(r_inv, sig->r, q, ctx)) {
-		bn_free_ptrs(&bn_ptrs);
-		BN_free(x);
-		return NULL;
-	}
-
-	if (!BN_mod_mul(x, sig->s, k, q, ctx)) {
-		bn_free_ptrs(&bn_ptrs);
-		BN_free(x);
-		return NULL;
-	}
-	if (!BN_mod_sub(x, x, hash_bn, q, ctx)) {
-		bn_free_ptrs(&bn_ptrs);
-		BN_free(x);
-		return NULL;
-	}
-	if (!BN_mod_mul(x, x, r_inv, q, ctx)) {
-		bn_free_ptrs(&bn_ptrs);
-		BN_free(x);
-		return NULL;
-	}
-
-	bn_free_ptrs(&bn_ptrs);
-	BN_CTX_free(ctx);
-
-	return x;
-}
-
 void Set6Challenge43() {
 
 	vector<BIGNUM *> bn_ptrs;
@@ -326,39 +288,159 @@ void Set6Challenge43() {
 		bn_free_ptrs(&bn_ptrs2);
 	}
 	if (successes == 10) {
-		cout << "All trials successful" << endl;
+		cout << "All tests successful" << endl;
 	}
 	else {
-		cout << successes << " out of 10 trials successful" << endl;
+		cout << successes << " out of 10 tests successful" << endl;
 	}
 
 	
 
 	// Now try out the provided signature
+	cout << "Trialing restricted k to determine private key corresponding to provided public key and signature (this may take some time)..." << endl;
 	ByteVector verificationHash = ByteVector("0954edd5e0afe5542a4adf012611a91912a3ec16", HEX);
 	DSAClient finalclient = DSAClient(true); 
+	BIGNUM *final_y = BN_new();
+	BN_hex2bn(&final_y, "84ad4719d044495496a3201c8ff484feb45b962e7302e56a392aee4abab3e4bdebf2955b4736012f21a08084056b19bcd7fee56048e004e44984e2f411788efdc837a0d2e5abb7b555039fd243ac01f0fb2ed1dec568280ce678e931868d23eb095fde9d3779191b8c0299d6e07bbb283e6633451e535c45513b2d33c99ea17");
 	BIGNUM *final_q = finalclient.getQ();
+	BIGNUM *final_p = finalclient.getP();
+	BIGNUM *final_g = finalclient.getG();
 	BIGNUM *final_k = bn_from_word(0, &bn_ptrs);
 	BIGNUM *two_16 = bn_from_word(65536, &bn_ptrs); // 2^16
+	// provided s and r (presumably in decimal rather than hex)
 	BN_dec2bn(&sig.r, "548099063082341131477253921760299949438196259240");
 	BN_dec2bn(&sig.s, "857042759984254168557880549501802188789837994940");
+
+	BIGNUM *test_y = BN_new();
 	bn_add_to_ptrs(final_q, &bn_ptrs);
+	bn_add_to_ptrs(final_p, &bn_ptrs);
+	bn_add_to_ptrs(final_g, &bn_ptrs);
+	bn_add_to_ptrs(final_y, &bn_ptrs);
+	bn_add_to_ptrs(test_y, &bn_ptrs);
+	bool found = false;
 	while (BN_cmp(final_k, two_16) <= 0) {
 		BIGNUM * testx = DSA_xfromk(&sig, &data, final_k, final_q);
 		if (testx == NULL) {
 			cout << "DSA_xfromk returned NULL on final_k " << BN_bn2dec(final_k) << endl;
 			bn_free_ptrs(&bn_ptrs);
+			BN_CTX_free(ctx);
 			return;
 		}
 
-		// ...
+		// given s,r, the hash, and our presumed k
+		// determine x and see if it corresponds to the provided public key y
+		if (!BN_mod_exp(test_y, final_g, testx, final_p, ctx)) {
+			cout << "Issue generating test y for k = " << BN_bn2dec(final_k) << endl;
+			bn_free_ptrs(&bn_ptrs);
+			BN_CTX_free(ctx);
+			return;
+		}
+
+		if (BN_cmp(test_y, final_y) == 0) {
+			found = true;
+			break;
+		}
 
 		BN_free(testx);
 		if (!BN_add(final_k, final_k, BN_value_one())) {
 			cout << "Issue incrementing final k" << endl;
 			bn_free_ptrs(&bn_ptrs);
+			BN_CTX_free(ctx);
 			return;
 		}
+	}
+
+
+	if (!found) {
+		cout << "No match found" << endl;
+	}
+	else {
+		cout << "Matching k found " << BN_bn2dec(final_k) << endl;
+		BIGNUM *final_x = DSA_xfromk(&sig, &data, final_k, final_q);
+		bn_add_to_ptrs(final_x, &bn_ptrs);
+		
+		BIGNUM *testy = BN_new();
+		bn_add_to_ptrs(testy, &bn_ptrs);
+		BN_mod_exp(test_y, final_g, final_x, final_p, ctx);
+		
+		// compute r and s to confirm
+		ByteVector hash = ByteVector();
+		ByteEncryption::sha1(&data, &hash);
+		BIGNUM *hash_bn = bn_from_bytevector(&hash, &bn_ptrs);
+		BIGNUM *final_r = BN_new();
+		BIGNUM *final_s = BN_new();
+		bn_add_to_ptrs(final_r, &bn_ptrs);
+		bn_add_to_ptrs(final_s, &bn_ptrs);
+
+		if (!BN_mod_exp(final_r, final_g, final_k, final_p, ctx)) {
+			cout << "Error generating r" << endl;
+			bn_free_ptrs(&bn_ptrs);
+			BN_CTX_free(ctx);
+			return;
+		}
+		if (!BN_mod(final_r, final_r, final_q, ctx)) {
+			cout << "Error generating r" << endl;
+			bn_free_ptrs(&bn_ptrs);
+			BN_CTX_free(ctx);
+			return;
+		}
+		if (BN_cmp(sig.r, final_r) != 0) {
+			cout << "Derived r does not match provided" << endl;
+			cout << BN_bn2dec(sig.r) << endl << BN_bn2dec(final_r) << endl;
+			bn_free_ptrs(&bn_ptrs);
+			BN_CTX_free(ctx);
+			return;
+		}
+
+		BIGNUM *final_k_inverse = BN_new();
+		bn_add_to_ptrs(final_k_inverse, &bn_ptrs);
+		if (!BN_mod_inverse(final_k_inverse, final_k, final_q, ctx)) {
+			cout << "Error generating inverse of k" << endl;
+			bn_free_ptrs(&bn_ptrs);
+			BN_CTX_free(ctx);
+			return;
+		}
+		if (!BN_mod_mul(final_s, final_x, final_r, final_q, ctx)) {
+			cout << "Error generating s" << endl;
+			bn_free_ptrs(&bn_ptrs);
+			BN_CTX_free(ctx);
+			return;
+		}
+		if (!BN_mod_add(final_s, hash_bn, final_s, final_q, ctx)) {
+			cout << "Error generating s" << endl;
+			bn_free_ptrs(&bn_ptrs);
+			BN_CTX_free(ctx);
+			return;
+		}
+		if (!BN_mod_mul(final_s, final_k_inverse, final_s, final_q, ctx)) {
+			cout << "Error generating s" << endl;
+			bn_free_ptrs(&bn_ptrs);
+			BN_CTX_free(ctx);
+			return;
+		}
+		if (BN_cmp(sig.s, final_s) != 0) {
+			cout << "Derived s does not match provided" << endl;
+			cout << BN_bn2dec(sig.r) << endl << BN_bn2dec(final_r) << endl;
+			bn_free_ptrs(&bn_ptrs);
+			BN_CTX_free(ctx);
+			return;
+		}
+
+		cout << "Private key that generates identical signature found: " << BN_bn2hex(final_x) << endl;
+		// the confirmation hash is the SHA-1 hash of the hex string (lowercase -> important) of x
+		ByteVector final_x_bv = ByteVector();
+		bn_to_bytevector(final_x, &final_x_bv);
+		ByteVector hexString = ByteVector(final_x_bv.toStr(HEX), ASCII);
+		ByteVector final_x_hash = ByteVector();
+		ByteEncryption::sha1(&hexString, &final_x_hash);
+		cout << "Private key has SHA-1 hash " << final_x_hash.toStr(HEX) << endl;
+		if (final_x_hash.equal(&verificationHash)) {
+			cout << "Hash of private key matches provided verification hash "  << verificationHash.toStr(HEX) << endl;
+		}
+		else {
+			cout << "Hash of private key does not match provided verification hash " << verificationHash.toStr(HEX) << endl;
+		}
+		
 	}
 
 	BN_free(sig.r);
