@@ -450,6 +450,20 @@ void Set6Challenge43() {
 	BN_CTX_free(ctx);
 }
 
+void Set6Challenge44() {
+	// deriving the equation used to determine re-used k
+	// with fixed k, r will be constant
+	// s1 = k^-1 (H(m1) + xr) % q
+	// s2 = k^-1 (H(m2) + xr) % q
+	// (s1 - s2) % q = (k^-1 (H(m1) + xr)) - (k^-1(H(m2) + xr)) % q
+	// (s1 - s1) % q = (k^-1) * (H(m1) - H(m2) + (xr - xr)) % q
+	// rearranged gives
+	// k % q = k (k <= q-1) = (H(m1) - H(m2)) / (s1 - s2) % q
+
+
+}
+
+
 int Set6() {
 	cout << "### SET 6 ###" << endl;
 	cout << "Set 6 Challenge 41" << endl;
