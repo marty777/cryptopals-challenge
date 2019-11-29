@@ -124,7 +124,7 @@ bool DSAClient::generateSignature(ByteVector *data, DSASignature *signature, int
 	BIGNUM *r = BN_new();
 	bn_add_to_ptrs(r, &bn_ptrs);
 
-	while (BN_cmp(s, zero) == 0) {
+	while (true) {
 		// generate k as random on {1, q-1}
 		BIGNUM *k = BN_new();
 		BIGNUM *two = bn_from_word(2, &bn_ptrs);
@@ -148,8 +148,6 @@ bool DSAClient::generateSignature(ByteVector *data, DSASignature *signature, int
 		}
 
 		// generate r =( g ^ k % p) % q
-		BIGNUM *r = BN_new();
-		bn_add_to_ptrs(r, &bn_ptrs);
 		if (!BN_mod_exp(r, g, k, p, ctx)) {
 			bn_free_ptrs(&bn_ptrs);
 			BN_CTX_free(ctx);
@@ -163,7 +161,43 @@ bool DSAClient::generateSignature(ByteVector *data, DSASignature *signature, int
 
 		// generate s = k^-1 * (Hash(data) + xr) % q
 		// if s = 0, go around the loop with another k
+		BIGNUM *k_inverse = BN_new();
+		bn_add_to_ptrs(k, &bn_ptrs);
+		if (!BN_mod_inverse(k_inverse, k, q, ctx)) {
+			bn_free_ptrs(&bn_ptrs);
+			BN_CTX_free(ctx);
+			return false;
+		}
+		BN_copy(s, r);
+		bn_add_to_ptrs(s, &bn_ptrs);
+		BIGNUM *hash_bn = bn_from_bytevector(&hash, &bn_ptrs);
+		if (!BN_mod_mul(s, s, x, q, ctx)) {
+			bn_free_ptrs(&bn_ptrs);
+			BN_CTX_free(ctx);
+			return false;
+		}
+		if (!BN_mod_add(s, s, hash_bn, q, ctx)) {
+			bn_free_ptrs(&bn_ptrs);
+			BN_CTX_free(ctx);
+			return false;
+		}
+		if (!BN_mod_mul(s, s, k_inverse, q, ctx)) {
+			bn_free_ptrs(&bn_ptrs);
+			BN_CTX_free(ctx);
+			return false;
+		}
+		
+		if (BN_cmp(s, zero) != 0) {
+			break;
+		}
+	}
 
+	signature->s = BN_dup(s);
+	signature->r = BN_dup(r);
+	if (signature->s == NULL || signature->r == NULL) {
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
+		return false;
 	}
 
 	bn_free_ptrs(&bn_ptrs);
@@ -172,6 +206,125 @@ bool DSAClient::generateSignature(ByteVector *data, DSASignature *signature, int
 }
 bool DSAClient::verifySignature(ByteVector *data, DSASignature *signature, int userID) {
 
+	BIGNUM *x = NULL;
+	BIGNUM *y = NULL;
+	// get user keys
+	for (size_t i = 0; i < userkeys.size(); i++) {
+		if (userkeys[i].user_id == userID) {
+			x = BN_dup(userkeys[i].x);
+			y = BN_dup(userkeys[i].y);
+		}
+	}
+
+	if (x == NULL || y == NULL) {
+		return false;
+	}
+
+	BIGNUM *r = BN_dup(signature->r);
+	BIGNUM *s = BN_dup(signature->s);
+	if (r == NULL || s == NULL) {
+		if (r != NULL) {
+			BN_free(r);
+		}
+		if (s != NULL) {
+			BN_free(s);
+		}
+		BN_free(x);
+		BN_free(y);
+		return false;
+	}
+
+	// From wikipedia, it looks like SHA-1 and SHA-2 are used with DSA. I only have SHA-1 implemented so...
+	ByteVector hash = ByteVector();
+	ByteEncryption::sha1(data, &hash);
+	// note that the hash may need to be truncated depending on N
+	int n = BN_num_bits(q);
+	if (hash.length() * 8 > n) {
+		printf("Truncating hash %d %d\n", n, hash.length() * 8);
+
+	}
+
+	BN_CTX *ctx = BN_CTX_new();
+	std::vector<BIGNUM *> bn_ptrs;
+	bn_add_to_ptrs(x, &bn_ptrs);
+	bn_add_to_ptrs(y, &bn_ptrs);
+	bn_add_to_ptrs(r, &bn_ptrs);
+	bn_add_to_ptrs(s, &bn_ptrs);
+
+	BIGNUM *zero = bn_from_word(0, &bn_ptrs);
+
+	// verify 0 < r < q and 0 < s < q
+	if (BN_cmp(zero, r) >= 0 || BN_cmp(r, q) >= 0 || BN_cmp(zero, s) >= 0 || BN_cmp(s, q) >= 0) {
+		BN_CTX_free(ctx);
+		bn_free_ptrs(&bn_ptrs);
+		return false;
+	}
+
+	// compute w = s^-1 mod q
+	BIGNUM *w = BN_new();
+	bn_add_to_ptrs(w, &bn_ptrs);
+	if (!BN_mod_inverse(w, s, q, ctx)) {
+		BN_CTX_free(ctx);
+		bn_free_ptrs(&bn_ptrs);
+		return false;
+	}
+
+	BIGNUM *hash_bn = bn_from_bytevector(&hash, &bn_ptrs);
+
+	// compute u1 = hash * w % q
+	BIGNUM *u1 = BN_new();
+	bn_add_to_ptrs(u1,&bn_ptrs);
+	if (!BN_mod_mul(u1, hash_bn, w, q, ctx)) {
+		BN_CTX_free(ctx);
+		bn_free_ptrs(&bn_ptrs);
+		return false;
+	}
+
+	// compute u2 = r*w % q
+	BIGNUM *u2 = BN_new();
+	bn_add_to_ptrs(u2, &bn_ptrs);
+	if (!BN_mod_mul(u2, r, w, q, ctx)) {
+		BN_CTX_free(ctx);
+		bn_free_ptrs(&bn_ptrs);
+		return false;
+	}
+
+	// compute v =( g^u1 * y^u2 % p) % q
+	BIGNUM *v = BN_new();
+	BIGNUM *temp1 = BN_new();
+	BIGNUM *temp2 = BN_new();
+	bn_add_to_ptrs(v, &bn_ptrs);
+	bn_add_to_ptrs(temp1, &bn_ptrs);
+	bn_add_to_ptrs(temp2, &bn_ptrs);
+	if (!BN_mod_exp(temp1, g, u1, p, ctx)) {
+		BN_CTX_free(ctx);
+		bn_free_ptrs(&bn_ptrs);
+		return false;
+	}
+	if (!BN_mod_exp(temp2, y, u2, p, ctx)) {
+		BN_CTX_free(ctx);
+		bn_free_ptrs(&bn_ptrs);
+		return false;
+	}
+	if (!BN_mod_mul(v, temp1, temp2, p, ctx)) {
+		BN_CTX_free(ctx);
+		bn_free_ptrs(&bn_ptrs);
+		return false;
+	}
+	if (!BN_mod(v, v, q, ctx)) {
+		BN_CTX_free(ctx);
+		bn_free_ptrs(&bn_ptrs);
+		return false;
+	}
+
+	if (BN_cmp(v, r) == 0) {
+		BN_CTX_free(ctx);
+		bn_free_ptrs(&bn_ptrs);
+		return true;
+	}
+
+	BN_CTX_free(ctx);
+	bn_free_ptrs(&bn_ptrs);
 	return false;
 }
 

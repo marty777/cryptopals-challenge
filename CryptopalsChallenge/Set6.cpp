@@ -234,8 +234,22 @@ void Set6Challenge43() {
 
 
 	DSASignature sig;
-	//client.generateSignature(&data, &sig, userID);
+	cout << "Generating test signature..." << endl;
+	if (!client.generateSignature(&data, &sig, userID)) {
+		cout << "Issue generating signature" << endl;
+		return;
+	}
 
+	cout << "Verifying test signature..." << endl;
+	if (client.verifySignature(&data, &sig, userID)) {
+		cout << "Signature verified" << endl;
+	}
+	else {
+		cout << "Signature did not verify" << endl;
+	}
+
+	BN_free(sig.r);
+	BN_free(sig.s);
 
 }
 

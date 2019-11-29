@@ -10,8 +10,8 @@ struct DSAUserKey {
 };
 
 struct DSASignature {
-	ByteVector r;
-	ByteVector s;
+	BIGNUM *r;
+	BIGNUM *s;
 };
 
 class DSAClient
