@@ -20,6 +20,22 @@ BIGNUM *bn_from_bytevector(ByteVector *src, std::vector<BIGNUM *> *ptrs) {
 	return b;
 }
 
+// if an error occured, print msg and free BIGNUM ptrs and ctx. Returns the error code
+int bn_handle_error(int bn_func_return, char *msg, std::vector<BIGNUM *> *ptrs, BN_CTX *ctx) {
+	if (!bn_func_return) {
+		if (msg != NULL) {
+			std::cout << msg << std::endl;
+		}
+		if (ptrs != NULL) {
+			bn_free_ptrs(ptrs);
+		}
+		if (ctx != NULL) {
+			BN_CTX_free(ctx);
+		}
+	}
+	return bn_func_return;
+}
+
 void bn_to_bytevector(BIGNUM *src, ByteVector *dest) {
 	size_t len = BN_num_bytes(src);
 	unsigned char* bin = (unsigned char*)malloc(len * sizeof(unsigned char));

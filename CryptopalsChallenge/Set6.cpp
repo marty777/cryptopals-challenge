@@ -463,6 +463,17 @@ void Set6Challenge44() {
 	// rearranged gives
 	// k % q = k (k <= q-1) = (H(m1) - H(m2)) / (s1 - s2) % q
 
+	vector<BIGNUM *> bn_ptrs;
+	BN_CTX *ctx = BN_CTX_new();
+
+	BIGNUM *y = BN_new();
+	bn_add_to_ptrs(y, &bn_ptrs);
+	if (!bn_handle_error(
+		BN_dec2bn(&y, "2d026f4bf30195ede3a088da85e398ef869611d0f68f0713d51c9c1a3a26c95105d915e2d8cdf26d056b86b8a7b85519b1c23cc3ecdc6062650462e3063bd179c2a6581519f674a61f1d89a1fff27171ebc1b93d4dc57bceb7ae2430f98a6a4d83d8279ee65d71c1203d2c96d65ebbf7cce9d32971c3de5084cce04a2e147821"),
+		"Error parsing y", &bn_ptrs, ctx)) {
+		return;
+	}
+
 	std::vector<std::string> lines;
 	char *relativePath = "/challenge-files/set6/44.txt";
 	std::string filePath = executable_relative_path(relativePath);
@@ -484,9 +495,127 @@ void Set6Challenge44() {
 	}
 	in.close();
 
+	std::vector<ByteVector> msg_r;
+	std::vector<BIGNUM *> s_r;
+	std::vector<BIGNUM *> r_r;
+	std::vector<BIGNUM *> m_r;
 	for (size_t i = 0; i < lines.size(); i++) {
-		cout << lines[i].c_str() << endl;
+		if (i % 4 == 0) {
+			string substr = lines[i].substr(strlen("msg: "), lines[i].length() - strlen("msg: "));
+			ByteVector msg = ByteVector((char *)substr.c_str(), ASCII);
+			ByteVector hash = ByteVector();
+			ByteEncryption::sha1(&msg, &hash);
+			BIGNUM *m = bn_from_bytevector(&hash, &bn_ptrs);
+			msg_r.push_back(msg);
+			m_r.push_back(m);
+		}
+		else if (i % 4 == 1) {
+			string substr = lines[i].substr(strlen("s: "), lines[i].length() - strlen("s: "));
+			BIGNUM *s = BN_new();
+			bn_add_to_ptrs(s, &bn_ptrs);
+			if (!bn_handle_error(BN_hex2bn(&s, substr.c_str()), "Error adding s", &bn_ptrs, ctx)) {
+				return;
+			}
+			s_r.push_back(s);
+		}
+		else if(i % 4 == 2) {
+			string substr = lines[i].substr(strlen("r: "), lines[i].length() - strlen("r: "));
+			BIGNUM *r = BN_new();
+			bn_add_to_ptrs(r, &bn_ptrs);
+			if (!bn_handle_error(BN_hex2bn(&r, substr.c_str()), "Error adding r", &bn_ptrs, ctx)) {
+				return;
+			}
+			r_r.push_back(r);
+		}
+		// ignore the provided hashes. I'm calculating them myself
 	}
+
+	// just using this to retrieve the parameters
+	DSAClient client = DSAClient(true); 
+
+	BIGNUM *g = client.getG();
+	BIGNUM *p = client.getP();
+	BIGNUM *q = client.getQ();
+
+	// for each pair of messages, assume a re-used k. Attempt to calulate k, 
+	// derive the corresponding x and use it to compute y. If y matches our 
+	// known y, we've found the re-used nonce and the actual x.
+	// Alternately, we can compute an x from k using each message's signature
+	// and see if those match.
+
+	BIGNUM *k = BN_new();
+	BIGNUM *x = BN_new();
+	BIGNUM *test_y = BN_new();
+	BIGNUM *temp = BN_new();
+	bn_add_to_ptrs(k, &bn_ptrs);
+	bn_add_to_ptrs(x, &bn_ptrs);
+	bn_add_to_ptrs(test_y, &bn_ptrs);
+
+	bool found = false;
+	for (size_t i = 0; i < msg_r.size(); i++) {
+		for (size_t j = 0; j < msg_r.size(); j++) {
+			if (j == i) {
+				continue;
+			}
+			//cout << i << " " << j << endl;
+
+			BIGNUM *m1 = m_r[i];
+			BIGNUM *m2 = m_r[j];
+			BIGNUM *s1 = s_r[i];
+			BIGNUM *s2 = s_r[j];
+
+			// calculate k assuming a re-used k
+			if (!bn_handle_error(BN_mod_sub(k, m1, m2, q, ctx), "Error calculating k", &bn_ptrs, ctx)) {
+				return;
+			}
+			if (!bn_handle_error(BN_mod_sub(temp, s1, s2, q, ctx), "Error calculating k", &bn_ptrs, ctx)) {
+				return;
+			}
+			if (BN_mod_inverse(temp, temp, q, ctx) == NULL) {
+				cout << "Error calculating k" << endl;
+				bn_free_ptrs(&bn_ptrs);
+				BN_CTX_free(ctx);
+				return;
+			}
+			if (!bn_handle_error(BN_mod_mul(k, k, temp, q, ctx), "Error calculating k", &bn_ptrs, ctx)) {
+				return;
+			}
+
+			// calculate x from k (using s and r from signature i)
+			if (BN_mod_inverse(temp, r_r[i], q, ctx) == NULL) {
+				cout << "Error calculating x" << endl;
+				bn_free_ptrs(&bn_ptrs);
+				BN_CTX_free(ctx);
+				return;
+			}
+			if (!bn_handle_error(BN_mod_mul(x, s_r[i], k, q, ctx), "Error calculating x", &bn_ptrs, ctx)) {
+				return;
+			}
+			if (!bn_handle_error(BN_mod_sub(x, x, m_r[i], q, ctx), "Error calculating x", &bn_ptrs, ctx)) {
+				return;
+			}
+			if (!bn_handle_error(BN_mod_mul(x, x, temp, q, ctx), "Error calculating x", &bn_ptrs, ctx)) {
+				return;
+			}
+
+			// calculate y
+			if (!bn_handle_error(BN_mod_exp(test_y, g, x, p, ctx), "Error calculating test y", &bn_ptrs, ctx)) {
+				return;
+			}
+
+			//cout << "Y: " << BN_bn2hex(test_y) << endl;
+
+			if (BN_cmp(test_y, y) == 0) {
+				cout << "Match found between " << i << " and " << j << endl;
+				cout << "Derived private key: " << BN_bn2hex(x) << endl;
+				found = true;
+			}
+		}
+	}
+	if (!found) {
+		cout << "No match found" << endl;
+	}
+
 }
 
 
