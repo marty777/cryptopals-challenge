@@ -1,10 +1,13 @@
 #include "Set6.h"
 #include <iostream>
+#include <vector>
+#include <fstream>
 #include "ByteVector.h"
 #include "ByteEncryption.h"
 #include "openssl\bn.h"
 #include "BNUtility.h"
-#include <vector>
+#include "Utility.h"
+
 #include "RSAClient.h"
 #include "DSAClient.h"
 
@@ -451,16 +454,39 @@ void Set6Challenge43() {
 }
 
 void Set6Challenge44() {
-	// deriving the equation used to determine re-used k
+	// deriving the equation used to determine re-used k:
 	// with fixed k, r will be constant
 	// s1 = k^-1 (H(m1) + xr) % q
 	// s2 = k^-1 (H(m2) + xr) % q
 	// (s1 - s2) % q = (k^-1 (H(m1) + xr)) - (k^-1(H(m2) + xr)) % q
-	// (s1 - s1) % q = (k^-1) * (H(m1) - H(m2) + (xr - xr)) % q
+	// (s1 - s1) % q = (k^-1) * (H(m1) - H(m2) + xr - xr) % q
 	// rearranged gives
 	// k % q = k (k <= q-1) = (H(m1) - H(m2)) / (s1 - s2) % q
 
+	std::vector<std::string> lines;
+	char *relativePath = "/challenge-files/set6/44.txt";
+	std::string filePath = executable_relative_path(relativePath);
+	std::ifstream in(filePath);
+	if (!in) {
+		std::cout << "Cannot open input file.\n";
+		return;
+	}
+	char line[255];
+	int linecount = 0;
+	while (in) {
+		in.getline(line, 255);
+		// read in each line, skip lines starting with '#'
+		if (strlen(line) > 0 && line[0] != '#') {
+			std::string theline = std::string(line);
+			lines.push_back(theline);
+			linecount++;
+		}
+	}
+	in.close();
 
+	for (size_t i = 0; i < lines.size(); i++) {
+		cout << lines[i].c_str() << endl;
+	}
 }
 
 
