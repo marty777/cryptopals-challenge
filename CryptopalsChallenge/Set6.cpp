@@ -649,6 +649,8 @@ void Set6Challenge45() {
 	vector<BIGNUM *> bn_ptrs;
 	BN_CTX *ctx = BN_CTX_new();
 
+	int dsaUserId = 1;
+
 	// setup p+1
 	BIGNUM *p_plus_one = BN_new();
 	bn_add_to_ptrs(p_plus_one, &bn_ptrs);
@@ -661,10 +663,80 @@ void Set6Challenge45() {
 	}
 
 	// client with g parameter 0
-	DSAClient client_0 = DSAClient(true, "0"); 
+	DSAClient client_zero = DSAClient(true, "0"); 
 
 	// client with g parameter p+1
 	DSAClient client_p_plus_one = DSAClient(true, BN_bn2hex(p_plus_one));
+
+	// generate user keys
+	client_zero.generateUserKey(dsaUserId);
+	client_p_plus_one.generateUserKey(dsaUserId);
+
+	ByteVector msg1 = ByteVector("Hello, world", ASCII);
+	ByteVector msg2 = ByteVector("Goodbye, world", ASCII);
+
+	cout << "With g=0:" << endl;
+	DSASignature sig_zero_msg1;
+	DSASignature sig_zero_msg2;
+	sig_zero_msg1.r = NULL;
+	sig_zero_msg1.s = NULL;
+	sig_zero_msg2.r = NULL;
+	sig_zero_msg2.s = NULL;
+
+	BIGNUM * public_key_zero = client_zero.getUserPublicKey(dsaUserId);
+	bn_add_to_ptrs(public_key_zero, &bn_ptrs);
+	cout << "Public key: " << BN_bn2dec(public_key_zero) << endl;
+	
+	client_zero.generateSignature(&msg1, &sig_zero_msg1, dsaUserId);
+	
+	bn_add_to_ptrs(sig_zero_msg1.r, &bn_ptrs);
+	bn_add_to_ptrs(sig_zero_msg1.s, &bn_ptrs);
+	
+	cout << "Signature for message \"" << msg1.toStr(ASCII) << "\": (r: " << BN_bn2dec(sig_zero_msg1.r) << ", s: " << BN_bn2dec(sig_zero_msg1.s) << ")" << endl;
+	if (client_zero.verifySignature(&msg1, &sig_zero_msg1, dsaUserId, true)) {
+		cout << "Signature verifies (when skipping bounds check on r and s)" << endl;
+	}
+	else {
+		cout << "Signature does not verify" << endl;
+	}
+
+	// forge a signature 
+	DSASignature test_sig;
+	test_sig.r = bn_from_word(0, &bn_ptrs);
+	test_sig.s = BN_new();
+	bn_add_to_ptrs(test_sig.s, &bn_ptrs);
+	BN_rand(test_sig.s, 1024, 0, 0);
+
+	// generate a random byte string
+	ByteVector testbv = ByteVector(1024);
+	testbv.random();
+	cout << "Random string with r=0 and s=random ";
+	if (client_zero.verifySignature(&testbv, &test_sig, dsaUserId, true)) {
+		cout << "verifies" << endl;
+	}
+	else {
+		cout << "does not verify" << endl;
+	}
+
+	BN_rand(test_sig.r, 1024, 0, 0);
+	BN_rand(test_sig.s, 1024, 0, 0);
+	testbv.random();
+	cout << "Random string with r=random and s=random ";
+	if (client_zero.verifySignature(&testbv, &test_sig, dsaUserId, true)) {
+		cout << "verifies" << endl;
+	}
+	else {
+		cout << "does not verify" << endl;
+	}
+
+
+	cout << endl <<"With g=p+1:" << endl;
+	BIGNUM *p = client_p_plus_one.getP();
+	BIGNUM *q = client_p_plus_one.getQ();
+	bn_add_to_ptrs(p, &bn_ptrs);
+	bn_add_to_ptrs(q, &bn_ptrs);
+
+	// ...
 
 	bn_free_ptrs(&bn_ptrs);
 	BN_CTX_free(ctx);

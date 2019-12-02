@@ -31,7 +31,7 @@ public:
 	BIGNUM *getX(int userID);
 
 	bool generateSignature(ByteVector *data, DSASignature *signature, int userID, BIGNUM *return_k = NULL);
-	bool verifySignature(ByteVector *data, DSASignature *signature, int userID);
+	bool verifySignature(ByteVector *data, DSASignature *signature, int userID, bool ignore_signature_bounds_check = false);
 
 private:
 	BIGNUM *p;

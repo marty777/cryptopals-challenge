@@ -243,7 +243,7 @@ bool DSAClient::generateSignature(ByteVector *data, DSASignature *signature, int
 	BN_CTX_free(ctx);
 	return true;
 }
-bool DSAClient::verifySignature(ByteVector *data, DSASignature *signature, int userID) {
+bool DSAClient::verifySignature(ByteVector *data, DSASignature *signature, int userID, bool ignore_signature_bounds_check) {
 
 	BIGNUM *x = NULL;
 	BIGNUM *y = NULL;
@@ -293,12 +293,14 @@ bool DSAClient::verifySignature(ByteVector *data, DSASignature *signature, int u
 	BIGNUM *zero = bn_from_word(0, &bn_ptrs);
 
 	// verify 0 < r < q and 0 < s < q
-	if (BN_cmp(zero, r) >= 0 || BN_cmp(r, q) >= 0 || BN_cmp(zero, s) >= 0 || BN_cmp(s, q) >= 0) {
-		BN_CTX_free(ctx);
-		bn_free_ptrs(&bn_ptrs);
-		return false;
+	if (!ignore_signature_bounds_check) { // ignore switch added 
+		if (BN_cmp(zero, r) >= 0 || BN_cmp(r, q) >= 0 || BN_cmp(zero, s) >= 0 || BN_cmp(s, q) >= 0) {
+			BN_CTX_free(ctx);
+			bn_free_ptrs(&bn_ptrs);
+			return false;
+		}
 	}
-
+	
 	// compute w = s^-1 mod q
 	BIGNUM *w = BN_new();
 	bn_add_to_ptrs(w, &bn_ptrs);
