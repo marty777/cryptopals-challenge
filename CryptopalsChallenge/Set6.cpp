@@ -569,9 +569,6 @@ void Set6Challenge44() {
 				continue;
 			}
 		
-
-			//cout << i << " " << j << endl;
-
 			BIGNUM *m1 = m_r[i];
 			BIGNUM *m2 = m_r[j];
 			BIGNUM *s1 = s_r[i];
@@ -595,7 +592,6 @@ void Set6Challenge44() {
 				return;
 			}
 
-
 			// calculate x from k (using s and r from signature i)
 			if (BN_mod_inverse(temp, r_r[i], q, ctx) == NULL) {
 				cout << "Error calculating x" << endl;
@@ -617,8 +613,6 @@ void Set6Challenge44() {
 			if (!bn_handle_error(BN_mod_exp(test_y, g, x, p, ctx), "Error calculating test y", &bn_ptrs, ctx)) {
 				return;
 			}
-
-			//cout << "Y: " << BN_bn2hex(test_y) << endl;
 
 			if (BN_cmp(test_y, y) == 0) {
 				cout << "Match found between signatures " << i << " and " << j << endl;
@@ -646,6 +640,35 @@ void Set6Challenge44() {
 		}
 	}
 
+	bn_free_ptrs(&bn_ptrs);
+	BN_CTX_free(ctx);
+}
+
+void Set6Challenge45() {
+
+	vector<BIGNUM *> bn_ptrs;
+	BN_CTX *ctx = BN_CTX_new();
+
+	// setup p+1
+	BIGNUM *p_plus_one = BN_new();
+	bn_add_to_ptrs(p_plus_one, &bn_ptrs);
+	if (!bn_handle_error(BN_hex2bn(&p_plus_one, "800000000000000089e1855218a0e7dac38136ffafa72eda7859f2171e25e65eac698c1702578b07dc2a1076da241c76c62d374d8389ea5aeffd3226a0530cc565f3bf6b50929139ebeac04f48c3c84afb796d61e5a4f9a8fda812ab59494232c7d2b4deb50aa18ee9e132bfa85ac4374d7f9091abc3d015efc871a584471bb1")
+		, "Error creating p+1", &bn_ptrs, ctx)) {
+		return;
+	}
+	if (!bn_handle_error(BN_add(p_plus_one, p_plus_one, BN_value_one()), "Error creating p+1", &bn_ptrs, ctx)) {
+		return;
+	}
+
+	// client with g parameter 0
+	DSAClient client_0 = DSAClient(true, "0"); 
+
+	// client with g parameter p+1
+	DSAClient client_p_plus_one = DSAClient(true, BN_bn2hex(p_plus_one));
+
+	bn_free_ptrs(&bn_ptrs);
+	BN_CTX_free(ctx);
+
 }
 
 
@@ -663,6 +686,16 @@ int Set6() {
 	getchar();
 	cout << "Set 6 Challenge 43" << endl;
 	Set6Challenge43();
+	// Pause before continuing
+	cout << "Press enter to continue..." << endl;
+	getchar();
+	cout << "Set 6 Challenge 44" << endl;
+	Set6Challenge44();
+	// Pause before continuing
+	cout << "Press enter to continue..." << endl;
+	getchar();
+	cout << "Set 6 Challenge 45" << endl;
+	Set6Challenge45();
 	// Pause before continuing
 	cout << "Press enter to continue..." << endl;
 	getchar();

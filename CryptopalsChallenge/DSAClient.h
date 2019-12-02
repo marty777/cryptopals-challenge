@@ -20,7 +20,7 @@ public:
 
 	bool init_err;
 
-	DSAClient(bool fixedG = false);
+	DSAClient(bool fixedG = false, const char *ghex = NULL);
 	~DSAClient();
 
 	bool generateUserKey(int userID);
@@ -39,7 +39,7 @@ private:
 	BIGNUM *g;
 	std::vector<DSAUserKey> userkeys;
 
-	bool generateParameters(bool fixedG = false);
+	bool generateParameters(bool fixedG = false, const char *ghex = NULL);
 };
 
 BIGNUM * DSA_xfromk(DSASignature *sig, ByteVector *data, BIGNUM *k, BIGNUM *q);

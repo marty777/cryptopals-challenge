@@ -4,17 +4,16 @@
 #include "ByteEncryption.h"
 #include <vector>
 
-DSAClient::DSAClient(bool fixedG)
+DSAClient::DSAClient(bool fixedG, const char* ghex)
 {
 	init_err = false;
 
 	// init p, q and g. p and q are predetermined and fixed
-	if (!generateParameters(fixedG)) {
+	if (!generateParameters(fixedG, ghex)) {
 		init_err = true;
 		return;
 	}
 }
-
 
 DSAClient::~DSAClient()
 {
@@ -22,7 +21,6 @@ DSAClient::~DSAClient()
 	BN_free(q);
 	BN_free(g);
 }
-
 
 bool DSAClient::generateUserKey(int userID) {
 	// check if this id has been previously used
@@ -370,7 +368,7 @@ bool DSAClient::verifySignature(ByteVector *data, DSASignature *signature, int u
 }
 
 // We're mostly using pre-generated ones
-bool DSAClient::generateParameters(bool fixedG) {
+bool DSAClient::generateParameters(bool fixedG, const char *ghex) {
 	
 	BN_CTX *ctx = BN_CTX_new();
 	std::vector<BIGNUM *> bn_ptrs;
@@ -382,7 +380,15 @@ bool DSAClient::generateParameters(bool fixedG) {
 	p = bn_from_bytevector(&predeterminedP);
 	q = bn_from_bytevector(&predeterminedQ);
 	if (fixedG) {
-		g = bn_from_bytevector(&predeterminedG);
+		if (ghex != NULL) {
+			g = BN_new();
+			if (!BN_hex2bn(&g, ghex)) {
+				return false;
+			}
+		}
+		else {
+			g = bn_from_bytevector(&predeterminedG);
+		}
 	}
 	else {
 		// g isn't as labourious to generate compared to p and q
