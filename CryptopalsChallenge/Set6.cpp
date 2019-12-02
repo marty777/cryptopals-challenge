@@ -469,7 +469,7 @@ void Set6Challenge44() {
 	BIGNUM *y = BN_new();
 	bn_add_to_ptrs(y, &bn_ptrs);
 	if (!bn_handle_error(
-		BN_dec2bn(&y, "2d026f4bf30195ede3a088da85e398ef869611d0f68f0713d51c9c1a3a26c95105d915e2d8cdf26d056b86b8a7b85519b1c23cc3ecdc6062650462e3063bd179c2a6581519f674a61f1d89a1fff27171ebc1b93d4dc57bceb7ae2430f98a6a4d83d8279ee65d71c1203d2c96d65ebbf7cce9d32971c3de5084cce04a2e147821"),
+		BN_hex2bn(&y, "2d026f4bf30195ede3a088da85e398ef869611d0f68f0713d51c9c1a3a26c95105d915e2d8cdf26d056b86b8a7b85519b1c23cc3ecdc6062650462e3063bd179c2a6581519f674a61f1d89a1fff27171ebc1b93d4dc57bceb7ae2430f98a6a4d83d8279ee65d71c1203d2c96d65ebbf7cce9d32971c3de5084cce04a2e147821"),
 		"Error parsing y", &bn_ptrs, ctx)) {
 		return;
 	}
@@ -513,7 +513,7 @@ void Set6Challenge44() {
 			string substr = lines[i].substr(strlen("s: "), lines[i].length() - strlen("s: "));
 			BIGNUM *s = BN_new();
 			bn_add_to_ptrs(s, &bn_ptrs);
-			if (!bn_handle_error(BN_hex2bn(&s, substr.c_str()), "Error adding s", &bn_ptrs, ctx)) {
+			if (!bn_handle_error(BN_dec2bn(&s, substr.c_str()), "Error adding s", &bn_ptrs, ctx)) {
 				return;
 			}
 			s_r.push_back(s);
@@ -522,7 +522,7 @@ void Set6Challenge44() {
 			string substr = lines[i].substr(strlen("r: "), lines[i].length() - strlen("r: "));
 			BIGNUM *r = BN_new();
 			bn_add_to_ptrs(r, &bn_ptrs);
-			if (!bn_handle_error(BN_hex2bn(&r, substr.c_str()), "Error adding r", &bn_ptrs, ctx)) {
+			if (!bn_handle_error(BN_dec2bn(&r, substr.c_str()), "Error adding r", &bn_ptrs, ctx)) {
 				return;
 			}
 			r_r.push_back(r);
@@ -530,7 +530,7 @@ void Set6Challenge44() {
 		// ignore the provided hashes. I'm calculating them myself
 	}
 
-	// just using this to retrieve the parameters
+	// just using this to retrieve the default parameters
 	DSAClient client = DSAClient(true); 
 
 	BIGNUM *g = client.getG();
@@ -545,18 +545,31 @@ void Set6Challenge44() {
 
 	BIGNUM *k = BN_new();
 	BIGNUM *x = BN_new();
+	BIGNUM *x2 = BN_new();
 	BIGNUM *test_y = BN_new();
 	BIGNUM *temp = BN_new();
 	bn_add_to_ptrs(k, &bn_ptrs);
 	bn_add_to_ptrs(x, &bn_ptrs);
+	bn_add_to_ptrs(x2, &bn_ptrs);
 	bn_add_to_ptrs(test_y, &bn_ptrs);
-
+	bn_add_to_ptrs(temp, &bn_ptrs);
 	bool found = false;
 	for (size_t i = 0; i < msg_r.size(); i++) {
+		if (found) {
+			break;
+		}
 		for (size_t j = 0; j < msg_r.size(); j++) {
+			
 			if (j == i) {
 				continue;
 			}
+
+			// with a constant g, p and q, r will be identical between two messages with the same k ( r= (g^k %p)) % q
+			if (!BN_cmp(r_r[i], r_r[j]) == 0) {
+				continue;
+			}
+		
+
 			//cout << i << " " << j << endl;
 
 			BIGNUM *m1 = m_r[i];
@@ -571,6 +584,7 @@ void Set6Challenge44() {
 			if (!bn_handle_error(BN_mod_sub(temp, s1, s2, q, ctx), "Error calculating k", &bn_ptrs, ctx)) {
 				return;
 			}
+			
 			if (BN_mod_inverse(temp, temp, q, ctx) == NULL) {
 				cout << "Error calculating k" << endl;
 				bn_free_ptrs(&bn_ptrs);
@@ -580,6 +594,7 @@ void Set6Challenge44() {
 			if (!bn_handle_error(BN_mod_mul(k, k, temp, q, ctx), "Error calculating k", &bn_ptrs, ctx)) {
 				return;
 			}
+
 
 			// calculate x from k (using s and r from signature i)
 			if (BN_mod_inverse(temp, r_r[i], q, ctx) == NULL) {
@@ -606,14 +621,29 @@ void Set6Challenge44() {
 			//cout << "Y: " << BN_bn2hex(test_y) << endl;
 
 			if (BN_cmp(test_y, y) == 0) {
-				cout << "Match found between " << i << " and " << j << endl;
+				cout << "Match found between signatures " << i << " and " << j << endl;
 				cout << "Derived private key: " << BN_bn2hex(x) << endl;
 				found = true;
+				break;
 			}
 		}
 	}
 	if (!found) {
 		cout << "No match found" << endl;
+	}
+	else {
+		ByteVector verificationHash = ByteVector("ca8f6f7c66fa362d40760d135b763eb8527d3d52", HEX);
+		ByteVector testHash = ByteVector();
+		ByteVector x_bv = ByteVector();
+		bn_to_bytevector(x, &x_bv);
+		ByteVector x_hex = ByteVector(x_bv.toStr(HEX), ASCII);
+		ByteEncryption::sha1(&x_hex, &testHash);
+		if (testHash.equal(&verificationHash)) {
+			cout << "Calculated private key matches verification hash" << endl;
+		}
+		else {
+			cout << "Calculated private key does not match verification hash" << endl;
+		}
 	}
 
 }
