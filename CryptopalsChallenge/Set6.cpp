@@ -736,7 +736,75 @@ void Set6Challenge45() {
 	bn_add_to_ptrs(p, &bn_ptrs);
 	bn_add_to_ptrs(q, &bn_ptrs);
 
-	// ...
+
+
+
+	client_p_plus_one.generateUserKey(dsaUserId);
+	BIGNUM *y = client_p_plus_one.getUserPublicKey(dsaUserId);
+	bn_add_to_ptrs(y, &bn_ptrs);
+	cout << "Testing signature validation..." << endl;
+	DSASignature sig1_p_plus_one;
+	sig1_p_plus_one.r = NULL;
+	sig1_p_plus_one.s = NULL;
+	client_p_plus_one.generateSignature(&msg1, &sig1_p_plus_one, dsaUserId);
+	bn_add_to_ptrs(sig1_p_plus_one.r, &bn_ptrs);
+	bn_add_to_ptrs(sig1_p_plus_one.s, &bn_ptrs);
+
+	if (client_p_plus_one.verifySignature(&msg1, &sig1_p_plus_one, dsaUserId)) {
+		cout << "Properly signed signature validates." << endl;
+	}
+	else{
+		cout << "Properly signed signature does not validate." << endl;
+	}
+
+	// generate random z on 0..q-1
+	BIGNUM *z = BN_new();
+	bn_add_to_ptrs(z, &bn_ptrs);
+	if (!bn_handle_error(BN_rand_range(z, q), "Error generating z", &bn_ptrs, ctx)) {
+		return;
+	}
+	if (!bn_handle_error(BN_mod(z, z, q, ctx), "Error generating z", &bn_ptrs, ctx)) {
+		return;
+	}
+	BIGNUM *z_inv = BN_new();
+	bn_add_to_ptrs(z_inv, &bn_ptrs);
+	if (BN_mod_inverse(z_inv, z, q, ctx) == NULL) {
+		cout << "Error calculating z_inv" << endl;
+		bn_free_ptrs(&bn_ptrs);
+		BN_CTX_free(ctx);
+		return;
+	}
+
+	// forge signatures
+	cout << "Forging signature with random z..." << endl;
+	// r = (y ^ z % p) % q
+	if (!bn_handle_error(BN_mod_exp(sig1_p_plus_one.r, y, z, p, ctx), "Error forging r", &bn_ptrs, ctx)) {
+		return;
+	}
+	if (!bn_handle_error(BN_mod(sig1_p_plus_one.r, sig1_p_plus_one.r, q, ctx), "Error forging r", &bn_ptrs, ctx)) {
+		return;
+	}
+	// s = (r/z) % q
+	if (!bn_handle_error(BN_mod_mul(sig1_p_plus_one.s, sig1_p_plus_one.r, z, p, ctx), "Error forging s", &bn_ptrs, ctx)) {
+		return;
+	}
+
+	// try verification
+	cout << "Attempting signature validation..." << endl;
+	if (client_p_plus_one.verifySignature(&msg1, &sig1_p_plus_one, dsaUserId)) {
+		cout << "Forged signature validates message \"" << msg1.toStr(ASCII) << "\"." << endl;
+	}
+	else {
+		cout << "Forged signature does not validate message \"" << msg1.toStr(ASCII) << "\"." << endl;
+	}
+
+	if (client_p_plus_one.verifySignature(&msg2, &sig1_p_plus_one, dsaUserId)) {
+		cout << "Forged signature validates message \"" << msg2.toStr(ASCII) << "\"." << endl;
+	}
+	else {
+		cout << "Forged signature does not validate message \"" << msg2.toStr(ASCII) << "\"." << endl;
+	}
+
 
 	bn_free_ptrs(&bn_ptrs);
 	BN_CTX_free(ctx);
