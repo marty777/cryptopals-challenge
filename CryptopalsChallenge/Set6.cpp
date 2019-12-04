@@ -808,7 +808,80 @@ void Set6Challenge45() {
 
 	bn_free_ptrs(&bn_ptrs);
 	BN_CTX_free(ctx);
+}
 
+void Set6Challenge46() {
+
+	bool padded = false;
+	int paddingType = 1;
+
+	ByteVector secretInput = ByteVector("VGhhdCdzIHdoeSBJIGZvdW5kIHlvdSBkb24ndCBwbGF5IGFyb3VuZCB3aXRoIHRoZSBGdW5reSBDb2xkIE1lZGluYQ==", BASE64);
+	RSAClient client = RSAClient(1024);
+	ByteVector encrypted = ByteVector();
+	if (!client.encrypt_bv(&secretInput, &encrypted, padded, paddingType)) {
+		cout << "Error on initial encryption" << endl;
+		return;
+	}
+
+	vector<BIGNUM *> bn_ptrs;
+	BN_CTX *ctx = BN_CTX_new();
+
+	// lets give this a try
+	BIGNUM *n = BN_new();
+	BIGNUM *e = BN_new();
+	bn_add_to_ptrs(n, &bn_ptrs);
+	bn_add_to_ptrs(e, &bn_ptrs);
+	client.public_key(e, n);
+	BIGNUM *low = bn_from_word(0, &bn_ptrs);
+	BIGNUM *high = BN_dup(n);
+	bn_add_to_ptrs(high, &bn_ptrs);
+	BIGNUM *ciphertext = bn_from_bytevector(&encrypted, &bn_ptrs);
+	BIGNUM *coefficient = BN_new();
+	bn_add_to_ptrs(coefficient, &bn_ptrs);
+	BIGNUM *two = bn_from_word(2, &bn_ptrs);
+
+	if (!bn_handle_error(BN_mod_exp(coefficient, two, e, n, ctx), "Error generating coefficient", &bn_ptrs, ctx)) {
+		return;
+	}
+
+	while (BN_cmp(low, high) <  0) {
+		ByteVector ciphertext_bv = ByteVector();
+		ByteVector high_bv = ByteVector();
+		if (!bn_handle_error(BN_mod_mul(ciphertext, ciphertext, coefficient, n, ctx), "Error multiplying by coefficient", &bn_ptrs, ctx)) {
+			return;
+		}
+		bn_to_bytevector(ciphertext, &ciphertext_bv);
+		if (client.decryptionIsOdd(&ciphertext_bv, padded, paddingType)) {
+			// if odd update lower bound = (low + high)/2
+			if (!bn_handle_error(BN_add(low, low, high), "Error updating lower bound", &bn_ptrs, ctx)) {
+				return;
+			}
+			if (!bn_handle_error(BN_div(low, NULL, low, two, ctx), "Error updating lower bound", &bn_ptrs, ctx)) {
+				return;
+			}
+
+		}
+		else {
+			// if even update upper boud = (low + high)/2
+			if (!bn_handle_error(BN_add(high, low, high), "Error updating upper bound", &bn_ptrs, ctx)) {
+				return;
+			}
+			if (!bn_handle_error(BN_div(high, NULL, high, two, ctx), "Error updating upper bound", &bn_ptrs, ctx)) {
+				return;
+			}
+		}
+
+		bn_to_bytevector(high, &high_bv);
+		cout << high_bv.toStr(ASCII) << " " << std::hex << (int)high_bv[high_bv.length() - 1] << std::dec << endl;
+	}
+	
+	ByteVector low_bv = ByteVector();
+	bn_to_bytevector(low, &low_bv);
+	cout << "Completed decryption except for final byte: " << endl;
+	cout << low_bv.toStr(ASCII) << endl;
+	
+	bn_free_ptrs(&bn_ptrs);
+	BN_CTX_free(ctx);
 }
 
 

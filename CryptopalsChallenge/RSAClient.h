@@ -17,6 +17,8 @@ public:
 	bool verify_signature_bv(ByteVector *signature, ByteVector *data);
 	void print_vals();
 	bool public_key(BIGNUM *e_out, BIGNUM *n_out);
+	bool decryptionIsOdd(ByteVector *input, bool padded = false, int padtype = 0);
+
 
 private:
 	BIGNUM *p;

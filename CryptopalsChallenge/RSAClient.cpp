@@ -519,3 +519,10 @@ bool RSAClient::public_key(BIGNUM *e_out, BIGNUM *n_out) {
 	return true;
 }
 
+// oracle function for challenge 46
+bool RSAClient::decryptionIsOdd(ByteVector *input, bool padded, int padtype) {
+	ByteVector output = ByteVector();
+	this->decrypt_bv(input, &output, padded, padtype);
+	return (output[output.length() - 1] & 0x01 != 0);
+}
+
